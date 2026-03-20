@@ -1,4 +1,8 @@
 // Vercel 서버리스 함수 - KIS API 프록시
+// 토큰 캐시 (서버리스 인스턴스 내 메모리 캐시)
+let _token = null;
+let _tokenExp = 0;
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -12,8 +16,11 @@ export default async function handler(req, res) {
   try {
     const { action } = req.query;
 
-    // 액세스 토큰 발급
+    // 액세스 토큰 발급 (캐시 적용 - 20분 유효)
     async function getToken() {
+      const now = Date.now();
+      if (_token && now < _tokenExp) return _token;
+
       const r = await fetch(`${BASE_URL}/oauth2/tokenP`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -25,7 +32,9 @@ export default async function handler(req, res) {
       });
       const data = await r.json();
       if (!data.access_token) throw new Error('토큰 발급 실패: ' + JSON.stringify(data));
-      return data.access_token;
+      _token = data.access_token;
+      _tokenExp = now + 20 * 60 * 1000; // 20분 캐시
+      return _token;
     }
 
     // 토큰 테스트
@@ -34,7 +43,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, token_length: token.length });
     }
 
-    // 시장 투자자별 매매동향
+    // 시장 투자자별 매매동향 (외국인/기관 순매수)
     if (action === 'market_investor') {
       const token = await getToken();
       const { market = 'J' } = req.query;
