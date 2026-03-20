@@ -510,7 +510,11 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
 
     <!-- 시장 기본 -->
-    <div class="sh" style="padding-top:14px"><span class="sh-title">시장 기본 정보</span></div>
+    <div class="sh" style="padding-top:14px">
+      <span class="sh-title">시장 기본 정보</span>
+      <button class="btn btn-ac btn-sm" onclick="kisAutoFetch()" id="kisBtn">⚡ KIS 자동입력</button>
+    </div>
+    <div id="kisMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
     <div class="card">
       <div class="f-row c2">
         <div class="fg"><label>상승 종목 수</label><input type="number" id="mUp" placeholder="예) 800" inputmode="numeric" oninput="calcMkt()"></div>
@@ -1939,6 +1943,68 @@ window.selectEmoji = (emoji) => {
 };
 
 // ── 종목코드로 현재가 불러오기
+// ── KIS API 시장 데이터 자동 입력
+window.kisAutoFetch = async () => {
+  const btn = document.getElementById('kisBtn');
+  const msg = document.getElementById('kisMsg');
+  btn.textContent = '⏳ 불러오는 중...';
+  btn.disabled = true;
+  msg.style.display = 'block';
+  msg.style.color = 'var(--ac)';
+  msg.textContent = '🔍 KIS에서 시장 데이터 불러오는 중...';
+
+  try {
+    // 코스피 투자자별 순매수
+    const [kospiRes, kosdaqRes] = await Promise.all([
+      fetch('/api/kis?action=market_investor&market=J'),
+      fetch('/api/kis?action=market_investor&market=Q')
+    ]);
+    const kospi  = await kospiRes.json();
+    const kosdaq = await kosdaqRes.json();
+
+    if(kospi.error || kosdaq.error) {
+      throw new Error(kospi.error || kosdaq.error);
+    }
+
+    // 코스피 + 코스닥 외국인/기관 합산
+    const kp = kospi.output  || {};
+    const kq = kosdaq.output || {};
+
+    const fBuy = Math.round(
+      ((parseFloat(kp.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq.frgn_ntby_tr_pbmn)||0)) / 100000000
+    );
+    const iBuy = Math.round(
+      ((parseFloat(kp.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq.orgn_ntby_tr_pbmn)||0)) / 100000000
+    );
+
+    // 상승/하락 종목수, 거래대금
+    const upCnt   = (parseInt(kp.up_cnt)||0)   + (parseInt(kq.up_cnt)||0);
+    const totCnt  = (parseInt(kp.tot_cnt)||0)  + (parseInt(kq.tot_cnt)||0);
+    const trPbmn  = Math.round(
+      ((parseFloat(kp.acml_tr_pbmn)||0) + (parseFloat(kq.acml_tr_pbmn)||0)) / 100000000
+    );
+
+    // 입력
+    if(upCnt)  document.getElementById('mUp').value    = upCnt;
+    if(totCnt) document.getElementById('mTotal').value = totCnt;
+    if(trPbmn) document.getElementById('mVol').value   = trPbmn;
+    if(fBuy)   document.getElementById('mFBuy').value  = fBuy;
+    if(iBuy)   document.getElementById('mIBuy').value  = iBuy;
+    calcMkt();
+
+    msg.style.color = 'var(--ac)';
+    msg.textContent = '✓ KIS 데이터 자동입력 완료! 확인 후 저장해주세요.';
+    setTimeout(() => { msg.style.display='none'; }, 4000);
+
+  } catch(e) {
+    msg.style.color = 'var(--up)';
+    msg.textContent = '❌ 오류: ' + e.message;
+  } finally {
+    btn.textContent = '⚡ KIS 자동입력';
+    btn.disabled = false;
+  }
+};
+
 window.fetchStockPrice = async () => {
   const code = document.getElementById('sCode').value.trim();
   const msg = document.getElementById('sCodeMsg');
