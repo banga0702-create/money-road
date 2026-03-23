@@ -1954,34 +1954,35 @@ window.kisAutoFetch = async () => {
   msg.textContent = '🔍 KIS에서 시장 데이터 불러오는 중...';
 
   try {
-    // 코스피 투자자별 순매수
-    const [kospiRes, kosdaqRes] = await Promise.all([
-      fetch('/api/kis?action=market_investor&market=J'),
-      fetch('/api/kis?action=market_investor&market=Q')
-    ]);
-    const kospi  = await kospiRes.json();
-    const kosdaq = await kosdaqRes.json();
+    // 시장별 투자자매매동향 (코스피+코스닥 한번에)
+    const r = await fetch('/api/kis?action=market_investor');
+    const data = await r.json();
 
-    if(kospi.error || kosdaq.error) {
-      throw new Error(kospi.error || kosdaq.error);
-    }
+    if(data.error) throw new Error(data.error);
 
-    // 코스피 + 코스닥 외국인/기관 합산
-    const kp = kospi.output  || {};
-    const kq = kosdaq.output || {};
+    // 코스피 오늘 데이터 (output 배열의 첫번째)
+    const kpList = data.kospi?.output || [];
+    const kqList = data.kosdaq?.output || [];
+    const kp = Array.isArray(kpList) ? kpList[0] : kpList;
+    const kq = Array.isArray(kqList) ? kqList[0] : kqList;
 
+    if(!kp && !kq) throw new Error('데이터가 없어요. 장 중에 다시 시도해주세요.');
+
+    // 외국인/기관 순매수 합산 (단위: 백만원 → 억원)
     const fBuy = Math.round(
-      ((parseFloat(kp.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq.frgn_ntby_tr_pbmn)||0)) / 100000000
+      ((parseFloat(kp?.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.frgn_ntby_tr_pbmn)||0)) / 100
     );
     const iBuy = Math.round(
-      ((parseFloat(kp.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq.orgn_ntby_tr_pbmn)||0)) / 100000000
+      ((parseFloat(kp?.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.orgn_ntby_tr_pbmn)||0)) / 100
     );
 
-    // 상승/하락 종목수, 거래대금
-    const upCnt   = (parseInt(kp.up_cnt)||0)   + (parseInt(kq.up_cnt)||0);
-    const totCnt  = (parseInt(kp.tot_cnt)||0)  + (parseInt(kq.tot_cnt)||0);
-    const trPbmn  = Math.round(
-      ((parseFloat(kp.acml_tr_pbmn)||0) + (parseFloat(kq.acml_tr_pbmn)||0)) / 100000000
+    // 상승/하락 종목수 (코스피+코스닥)
+    const upCnt  = (parseInt(kp?.up_cnt)||0)  + (parseInt(kq?.up_cnt)||0);
+    const totCnt = (parseInt(kp?.tot_cnt)||0) + (parseInt(kq?.tot_cnt)||0);
+
+    // 거래대금 합산 (단위: 백만원 → 억원)
+    const trPbmn = Math.round(
+      ((parseFloat(kp?.acml_tr_pbmn)||0) + (parseFloat(kq?.acml_tr_pbmn)||0)) / 100
     );
 
     // 입력
