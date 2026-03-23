@@ -31,54 +31,59 @@ export default async function handler(req, res) {
       return _token;
     }
 
+    // 오늘 날짜 YYYYMMDD
+    function today() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${y}${m}${dd}`;
+    }
+
     // 토큰 테스트
     if (action === 'test') {
       const token = await getToken();
       return res.status(200).json({ ok: true, token_length: token.length });
     }
 
-    // 국내기관_외국인 매매종목 가집계 (장중 외국인/기관 순매수 추정)
-    // HTS [0440] 화면 - 장중 09:30, 11:20, 13:20, 14:30 업데이트
+    // 시장별 투자자매매동향(일별) - 코스피/코스닥 외국인/기관 순매수
+    // TR: FHPTJ04040000
     if (action === 'market_investor') {
       const token = await getToken();
+      const dt = today();
 
-      const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?fid_cond_mrkt_div_code=J&fid_input_iscd=0000&fid_div_cls_code=0&fid_rank_sort_cls_code=0&fid_etc_cls_code=0`,
-        {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHPST02060000',
-            'custtype': 'P'
+      const [rKp, rKq] = await Promise.all([
+        fetch(
+          `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${dt}&FID_INPUT_ISCD_1=KSP&FID_INPUT_DATE_2=${dt}&FID_INPUT_ISCD_2=0001`,
+          {
+            headers: {
+              'content-type': 'application/json',
+              'authorization': `Bearer ${token}`,
+              'appkey': APP_KEY,
+              'appsecret': APP_SECRET,
+              'tr_id': 'FHPTJ04040000',
+              'custtype': 'P'
+            }
           }
-        }
-      );
-      const data = await r.json();
-      return res.status(200).json(data);
-    }
-
-    // 시장별 투자자매매동향 (시세) - 코스피/코스닥 외국인/기관 순매수
-    if (action === 'market_trend') {
-      const token = await getToken();
-      const { market = 'J' } = req.query;
-
-      const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/investor-trend-estimate?fid_cond_mrkt_div_code=${market}`,
-        {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHKST01010800',
-            'custtype': 'P'
+        ),
+        fetch(
+          `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${dt}&FID_INPUT_ISCD_1=KSQ&FID_INPUT_DATE_2=${dt}&FID_INPUT_ISCD_2=0001`,
+          {
+            headers: {
+              'content-type': 'application/json',
+              'authorization': `Bearer ${token}`,
+              'appkey': APP_KEY,
+              'appsecret': APP_SECRET,
+              'tr_id': 'FHPTJ04040000',
+              'custtype': 'P'
+            }
           }
-        }
-      );
-      const data = await r.json();
-      return res.status(200).json(data);
+        )
+      ]);
+
+      const kospi  = await rKp.json();
+      const kosdaq = await rKq.json();
+      return res.status(200).json({ kospi, kosdaq, date: dt });
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
