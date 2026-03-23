@@ -37,8 +37,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, token_length: token.length });
     }
 
-    // 시장별 투자자매매동향 (일별) - 외국인/기관 순매수 금액
-    // TR: FHKST01010900 - inquire-investor-daily-by-market
+    // 시장별 투자자매매동향(일별) - TR: FHPTJ04040000
     if (action === 'market_investor') {
       const token = await getToken();
       const today = new Date();
@@ -47,23 +46,23 @@ export default async function handler(req, res) {
         String(today.getDate()).padStart(2,'0');
 
       const [kospiRes, kosdaqRes] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?fid_cond_mrkt_div_code=J&fid_input_date_1=${dateStr}&fid_input_date_2=${dateStr}&fid_period_div_code=D`, {
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSP&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=0001`, {
           headers: {
             'content-type': 'application/json',
             'authorization': `Bearer ${token}`,
             'appkey': APP_KEY,
             'appsecret': APP_SECRET,
-            'tr_id': 'FHKST01010900',
+            'tr_id': 'FHPTJ04040000',
             'custtype': 'P'
           }
         }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?fid_cond_mrkt_div_code=Q&fid_input_date_1=${dateStr}&fid_input_date_2=${dateStr}&fid_period_div_code=D`, {
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSQ&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=1001`, {
           headers: {
             'content-type': 'application/json',
             'authorization': `Bearer ${token}`,
             'appkey': APP_KEY,
             'appsecret': APP_SECRET,
-            'tr_id': 'FHKST01010900',
+            'tr_id': 'FHPTJ04040000',
             'custtype': 'P'
           }
         })
