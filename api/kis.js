@@ -15,6 +15,7 @@ export default async function handler(req, res) {
   try {
     const { action } = req.query;
 
+    // 토큰 캐싱 (20분)
     async function getToken() {
       const now = Date.now();
       if (_token && now < _tokenExp) return _token;
@@ -36,46 +37,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, token_length: token.length });
     }
 
-    // 시장 전체 투자자별 매매동향 (KOSPI + KOSDAQ 합산)
-    // TR: FHKST01010900 → 종목 투자자별 조회 (지수코드로 시장전체)
+    // 시장별 투자자매매동향 (시세) - 외국인/기관 실시간 순매수
+    // TR: FHKST01010900 → 국내기관_외국인 매매종목가집계
     if (action === 'market_investor') {
       const token = await getToken();
+      const { market = 'J' } = req.query; // J=코스피, Q=코스닥
 
-      // 코스피 전체 (fid_input_iscd=0001)
-      const [rKp, rKq] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-member?fid_cond_mrkt_div_code=J&fid_input_iscd=0001`, {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHKST01010600',
-            'custtype': 'P'
-          }
-        }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-member?fid_cond_mrkt_div_code=Q&fid_input_iscd=1001`, {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHKST01010600',
-            'custtype': 'P'
-          }
-        })
-      ]);
-      const kp = await rKp.json();
-      const kq = await rKq.json();
-      return res.status(200).json({ kospi: kp, kosdaq: kq });
-    }
-
-    // 시장 전체 투자자 순매수 (올바른 TR)
-    if (action === 'market_trade') {
-      const token = await getToken();
-
-      // 전체 시장 투자자별 순매수 현황
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-trade-volume?fid_cond_mrkt_div_code=J&fid_input_iscd=0001&fid_period_div_code=D`,
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-trade-volume?fid_cond_mrkt_div_code=${market}&fid_input_iscd=0001&fid_period_div_code=D`,
         {
           headers: {
             'content-type': 'application/json',
@@ -91,35 +60,47 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // 업종 현황 (상승/하락 종목수, 거래대금)
-    if (action === 'market_updown') {
+    // 시장별 투자자매매동향 (일별) - 가장 정확한 TR
+    if (action === 'market_daily') {
+      const token = await getToken();
+      const { market = 'J' } = req.query;
+
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/investor-trend-estimate?fid_cond_mrkt_div_code=${market}`,
+        {
+          headers: {
+            'content-type': 'application/json',
+            'authorization': `Bearer ${token}`,
+            'appkey': APP_KEY,
+            'appsecret': APP_SECRET,
+            'tr_id': 'FHKST01010800',
+            'custtype': 'P'
+          }
+        }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
+    // 국내기관_외국인 매매종목 가집계 (실시간 추정)
+    if (action === 'foreign_inst') {
       const token = await getToken();
 
-      const [rKp, rKq] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice?fid_cond_mrkt_div_code=U&fid_input_iscd=0001&fid_input_date_1=&fid_input_date_2=&fid_period_div_code=D`, {
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?fid_cond_mrkt_div_code=J&fid_input_iscd=0000&fid_div_cls_code=0&fid_rank_sort_cls_code=0&fid_etc_cls_code=0`,
+        {
           headers: {
             'content-type': 'application/json',
             'authorization': `Bearer ${token}`,
             'appkey': APP_KEY,
             'appsecret': APP_SECRET,
-            'tr_id': 'FHKUP03500100',
+            'tr_id': 'FHPST02060000',
             'custtype': 'P'
           }
-        }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice?fid_cond_mrkt_div_code=U&fid_input_iscd=1001&fid_input_date_1=&fid_input_date_2=&fid_period_div_code=D`, {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHKUP03500100',
-            'custtype': 'P'
-          }
-        })
-      ]);
-      const kp = await rKp.json();
-      const kq = await rKq.json();
-      return res.status(200).json({ kospi: kp, kosdaq: kq });
+        }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
