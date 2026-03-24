@@ -1988,20 +1988,16 @@ window.kisTopFetch = async () => {
     }));
 
     // 종목 행 생성 함수 (콤팩트 - 종목명+순위만)
+    // 클릭용 임시 데이터 저장소
+    if(!window._kisRows) window._kisRows = {};
     const makeRow = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)';
-      row.innerHTML =
+      const key = 'k_' + Date.now() + '_' + i;
+      window._kisRows[key] = s;
+      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)" onclick="kisRowClick('' + key + '')">' +
         '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>' +
-        '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>';
-      row.addEventListener('click', () => {
-        const total = s.fBuy + s.iBuy;
-        if(confirm(s.name + '\n외국인: ' + s.fBuy.toLocaleString() + '억\n기관: ' + s.iBuy.toLocaleString() + '억\n합계: ' + total.toLocaleString() + '억\n\n수급기록에 추가할까요?')) {
-          kisAddTop(s.name, s.fBuy, s.iBuy);
-        }
-      });
-      return row.outerHTML;
+        '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>' +
+        '</div>';
     };
 
     // 외+기 동시 순매수 (합산 기준)
@@ -2028,6 +2024,16 @@ window.kisTopFetch = async () => {
   } finally {
     btn.textContent = '⚡ KIS 자동불러오기';
     btn.disabled = false;
+  }
+};
+
+// 종목 행 클릭 핸들러
+window.kisRowClick = (key) => {
+  const s = window._kisRows && window._kisRows[key];
+  if(!s) return;
+  const total = s.fBuy + s.iBuy;
+  if(confirm(s.name + '\n외국인: ' + s.fBuy.toLocaleString() + '억\n기관: ' + s.iBuy.toLocaleString() + '억\n합계: ' + total.toLocaleString() + '억\n\n수급기록에 추가할까요?')) {
+    kisAddTop(s.name, s.fBuy, s.iBuy);
   }
 };
 
