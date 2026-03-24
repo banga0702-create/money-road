@@ -556,10 +556,14 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     <!-- 순매수 TOP -->
     <div class="fpanel active" id="fp-순매수">
-      <div class="sh"><span class="sh-title">외국인+기관 순매수 TOP15</span></div>
+      <div class="sh">
+        <span class="sh-title">외국인+기관 순매수 TOP</span>
+        <button class="btn btn-ac btn-sm" onclick="kisTopFetch()" id="kisTopBtn">⚡ KIS 자동불러오기</button>
+      </div>
+      <div id="kisTopMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <div class="tbl" style="margin-bottom:12px">
-        <div class="tbl-hdr" style="grid-template-columns:28px 1fr 40px 40px 50px">
-          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span><span>비중%</span>
+        <div class="tbl-hdr" style="grid-template-columns:28px 1fr 60px 60px">
+          <span>#</span><span style="text-align:left">종목</span><span>외국인(억)</span><span>기관(억)</span>
         </div>
         <div id="topList"></div>
       </div>
@@ -1943,6 +1947,86 @@ window.selectEmoji = (emoji) => {
 };
 
 // ── 종목코드로 현재가 불러오기
+// ── KIS 외국인+기관 순매수 상위 종목 자동불러오기
+window.kisTopFetch = async () => {
+  const btn = document.getElementById('kisTopBtn');
+  const msg = document.getElementById('kisTopMsg');
+  btn.textContent = '⏳ 불러오는 중...';
+  btn.disabled = true;
+  msg.style.display = 'block';
+  msg.style.color = 'var(--ac)';
+  msg.textContent = '🔍 KIS에서 순매수 상위 종목 불러오는 중...';
+
+  try {
+    const r = await fetch('/api/kis?action=foreign_inst');
+    const data = await r.json();
+
+    if(data.error) throw new Error(data.error);
+    if(!data.output || !data.output.length) throw new Error('데이터가 없어요. 장 중(09:30 이후)에 다시 시도해주세요.');
+
+    // 외국인+기관 순매수 금액 합산 후 필터링
+    const filtered = data.output
+      .filter(s => parseFloat(s.frgn_ntby_tr_pbmn) > 0 && parseFloat(s.orgn_ntby_tr_pbmn) > 0)
+      .sort((a, b) => 
+        (parseFloat(b.frgn_ntby_tr_pbmn) + parseFloat(b.orgn_ntby_tr_pbmn)) -
+        (parseFloat(a.frgn_ntby_tr_pbmn) + parseFloat(a.orgn_ntby_tr_pbmn))
+      )
+      .slice(0, 15);
+
+    if(!filtered.length) {
+      msg.style.color = 'var(--wa)';
+      msg.textContent = '⚠️ 외국인+기관 동시 순매수 종목이 없어요.';
+      btn.textContent = '⚡ KIS 자동불러오기';
+      btn.disabled = false;
+      return;
+    }
+
+    // topList에 표시
+    const tl = document.getElementById('topList');
+    tl.innerHTML = filtered.map((s, i) => {
+      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
+      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+      return '<div class="tbl-row" style="grid-template-columns:28px 1fr 60px 60px" onclick="kisAddTop('' + s.hts_kor_isnm + '',' + fBuy + ',' + iBuy + ')">' +
+        '<span><div class="rank-badge ' + (i<3?['r1','r2','r3'][i]:'b-gr') + '">' + (i+1) + '</div></span>' +
+        '<span style="text-align:left;font-weight:700">' + s.hts_kor_isnm + '</span>' +
+        '<span style="color:var(--up)">' + fBuy.toLocaleString() + '</span>' +
+        '<span style="color:var(--dn)">' + iBuy.toLocaleString() + '</span>' +
+        '</div>';
+    }).join('');
+
+    msg.style.color = 'var(--ac)';
+    msg.textContent = '✓ ' + filtered.length + '개 종목 불러오기 완료! 종목 클릭하면 수급기록에 추가됩니다.';
+    setTimeout(() => { msg.style.display='none'; }, 5000);
+
+  } catch(e) {
+    msg.style.color = 'var(--up)';
+    msg.textContent = '❌ 오류: ' + e.message;
+  } finally {
+    btn.textContent = '⚡ KIS 자동불러오기';
+    btn.disabled = false;
+  }
+};
+
+// 종목 클릭 시 수급기록에 추가
+window.kisAddTop = (name, fBuy, iBuy) => {
+  if(!S.topStocks) S.topStocks = [];
+  const exists = S.topStocks.find(s => s.name === name);
+  if(exists) { alert(name + '은 이미 추가되어 있어요!'); return; }
+  S.topStocks.push({
+    id: Date.now(),
+    name: name,
+    sector: '',
+    fRank: 0,
+    iRank: 0,
+    ratio: 0,
+    fBuy: fBuy,
+    iBuy: iBuy
+  });
+  save();
+  renderTop();
+  alert('✓ ' + name + ' 추가됐어요!');
+};
+
 // ── KIS API 시장 데이터 자동 입력
 window.kisAutoFetch = async () => {
   const btn = document.getElementById('kisBtn');
