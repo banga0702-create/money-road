@@ -37,7 +37,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, token_length: token.length });
     }
 
-    // 시장별 투자자매매동향(일별) - TR: FHPTJ04040000
+    // 시장별 투자자매매동향(일별) - 외국인/기관 순매수
     if (action === 'market_investor') {
       const token = await getToken();
       const today = new Date();
@@ -71,6 +71,28 @@ export default async function handler(req, res) {
       const kospi  = await kospiRes.json();
       const kosdaq = await kosdaqRes.json();
       return res.status(200).json({ kospi, kosdaq });
+    }
+
+    // 국내기관_외국인 매매종목 가집계 - 순매수 상위 종목
+    if (action === 'foreign_inst') {
+      const token = await getToken();
+      const { market = '0000' } = req.query; // 0000:전체, 0001:코스피, 1001:코스닥
+
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`,
+        {
+          headers: {
+            'content-type': 'application/json',
+            'authorization': `Bearer ${token}`,
+            'appkey': APP_KEY,
+            'appsecret': APP_SECRET,
+            'tr_id': 'FHPTJ04400000',
+            'custtype': 'P'
+          }
+        }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
