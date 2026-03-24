@@ -557,15 +557,36 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 순매수 TOP -->
     <div class="fpanel active" id="fp-순매수">
       <div class="sh">
-        <span class="sh-title">외국인+기관 순매수 TOP</span>
+        <span class="sh-title">순매수 TOP</span>
         <button class="btn btn-ac btn-sm" onclick="kisTopFetch()" id="kisTopBtn">⚡ KIS 자동불러오기</button>
       </div>
       <div id="kisTopMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
-      <div class="tbl" style="margin-bottom:12px">
-        <div class="tbl-hdr" style="grid-template-columns:28px 1fr 60px 60px">
-          <span>#</span><span style="text-align:left">종목</span><span>외국인(억)</span><span>기관(억)</span>
+
+      <!-- 외+기 합산 -->
+      <div class="sh" style="padding-top:10px"><span class="sh-title" style="font-size:11px">🔥 외국인+기관 동시</span></div>
+      <div class="tbl" style="margin-bottom:10px">
+        <div class="tbl-hdr" style="grid-template-columns:24px 1fr 55px 55px">
+          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span>
         </div>
-        <div id="topList"></div>
+        <div id="topListFI"></div>
+      </div>
+
+      <!-- 외국인 TOP -->
+      <div class="sh" style="padding-top:6px"><span class="sh-title" style="font-size:11px">📈 외국인 순매수</span></div>
+      <div class="tbl" style="margin-bottom:10px">
+        <div class="tbl-hdr" style="grid-template-columns:24px 1fr 55px 55px">
+          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span>
+        </div>
+        <div id="topListF"></div>
+      </div>
+
+      <!-- 기관 TOP -->
+      <div class="sh" style="padding-top:6px"><span class="sh-title" style="font-size:11px">🏦 기관 순매수</span></div>
+      <div class="tbl" style="margin-bottom:12px">
+        <div class="tbl-hdr" style="grid-template-columns:24px 1fr 55px 55px">
+          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span>
+        </div>
+        <div id="topListI"></div>
       </div>
       <div class="sh"><span class="sh-title">직접 추가</span></div>
       <div class="card">
@@ -1964,44 +1985,49 @@ window.kisTopFetch = async () => {
     if(data.error) throw new Error(data.error);
     if(!data.output || !data.output.length) throw new Error('데이터가 없어요. 장 중(09:30 이후)에 다시 시도해주세요.');
 
-    // 외국인+기관 순매수 금액 합산 후 필터링
-    const filtered = data.output
-      .filter(s => parseFloat(s.frgn_ntby_tr_pbmn) > 0 && parseFloat(s.orgn_ntby_tr_pbmn) > 0)
-      .sort((a, b) => 
-        (parseFloat(b.frgn_ntby_tr_pbmn) + parseFloat(b.orgn_ntby_tr_pbmn)) -
-        (parseFloat(a.frgn_ntby_tr_pbmn) + parseFloat(a.orgn_ntby_tr_pbmn))
-      )
-      .slice(0, 15);
+    const all = data.output.map(s => ({
+      name: s.hts_kor_isnm,
+      fBuy: Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100),
+      iBuy: Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100),
+    }));
 
-    if(!filtered.length) {
-      msg.style.color = 'var(--wa)';
-      msg.textContent = '⚠️ 외국인+기관 동시 순매수 종목이 없어요.';
-      btn.textContent = '⚡ KIS 자동불러오기';
-      btn.disabled = false;
-      return;
-    }
-
-    // topList에 표시
-    const tl = document.getElementById('topList');
-    tl.innerHTML = filtered.map((s, i) => {
-      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
-      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+    // 종목 행 생성 함수
+    const makeRow = (s, i, sortKey) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const row = document.createElement('div');
       row.className = 'tbl-row';
-      row.style.gridTemplateColumns = '28px 1fr 60px 60px';
-      row.style.cursor = 'pointer';
-      row.innerHTML = '<span><div class="rank-badge ' + rankCls + '">' + (i+1) + '</div></span>' +
-        '<span style="text-align:left;font-weight:700">' + s.hts_kor_isnm + '</span>' +
-        '<span style="color:var(--up)">' + fBuy.toLocaleString() + '</span>' +
-        '<span style="color:var(--dn)">' + iBuy.toLocaleString() + '</span>';
-      row.addEventListener('click', () => kisAddTop(s.hts_kor_isnm, fBuy, iBuy));
+      row.style.cssText = 'grid-template-columns:24px 1fr 55px 55px;cursor:pointer';
+      row.innerHTML =
+        '<span><div class="rank-badge ' + rankCls + '">' + (i+1) + '</div></span>' +
+        '<span style="text-align:left;font-weight:700;font-size:12px">' + s.name + '</span>' +
+        '<span style="color:var(--up);font-size:11px">' + (s.fBuy > 0 ? s.fBuy.toLocaleString() : '<span style='color:var(--dn)'>' + s.fBuy.toLocaleString() + '</span>') + '</span>' +
+        '<span style="color:var(--dn);font-size:11px">' + (s.iBuy > 0 ? s.iBuy.toLocaleString() : '<span style='color:var(--up)'>' + s.iBuy.toLocaleString() + '</span>') + '</span>';
+      row.addEventListener('click', () => {
+        const total = s.fBuy + s.iBuy;
+        if(confirm(s.name + '\n외국인: ' + s.fBuy.toLocaleString() + '억\n기관: ' + s.iBuy.toLocaleString() + '억\n합계: ' + total.toLocaleString() + '억\n\n수급기록에 추가할까요?')) {
+          kisAddTop(s.name, s.fBuy, s.iBuy);
+        }
+      });
       return row.outerHTML;
-    }).join('');
+    };
+
+    // 외+기 동시 순매수 (합산 기준)
+    const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
+      .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,10);
+    // 외국인 TOP
+    const f = all.filter(s => s.fBuy > 0)
+      .sort((a,b) => b.fBuy - a.fBuy).slice(0,10);
+    // 기관 TOP
+    const inst = all.filter(s => s.iBuy > 0)
+      .sort((a,b) => b.iBuy - a.iBuy).slice(0,10);
+
+    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i,'fi')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i,'f')).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> makeRow(s,i,'i')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
 
     msg.style.color = 'var(--ac)';
-    msg.textContent = '✓ ' + filtered.length + '개 종목 불러오기 완료! 종목 클릭하면 수급기록에 추가됩니다.';
-    setTimeout(() => { msg.style.display='none'; }, 5000);
+    msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
+    setTimeout(() => { msg.style.display='none'; }, 4000);
 
   } catch(e) {
     msg.style.color = 'var(--up)';
