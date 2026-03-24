@@ -2003,7 +2003,7 @@ window.kisTopFetch = async () => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'k_' + Date.now() + '_' + i;
       window._kisRows[key] = s;
-      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)" onclick="kisRowClick('' + key + '')">' +
+      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)" onclick="kisRowClick(\'' + key + '\')">' +
         '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>' +
         '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>' +
         '</div>';
