@@ -927,13 +927,11 @@ function switchTab(tab){
   if(tab==='home') renderHome();
   if(tab==='supply'){
     renderStockList();
-    // 수급입력 탭 진입 시 KIS 자동입력 (외국인/기관 순매수)
     const mFBuy = document.getElementById('mFBuy');
     if(mFBuy && !mFBuy.value) setTimeout(()=>kisAutoFetch(), 500);
   }
   if(tab==='feat'){
     renderFeat();
-    // 특징주 탭 진입 시 자동 로드
     if(!document.getElementById('topListFI').children.length) setTimeout(()=>kisTopFetch(), 800);
   }
   if(tab==='analysis') renderAnalysis();
@@ -1998,12 +1996,13 @@ window.kisTopFetch = async () => {
 
     // 종목 행 생성 함수 (콤팩트 - 종목명+순위만)
     // 클릭용 임시 데이터 저장소
-    if(!window._kisRows) window._kisRows = {};
+    window._kisRows = {};
+    let _rowIdx = 0;
     const makeRow = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
-      const key = 'k_' + Date.now() + '_' + i;
+      const key = 'k_' + (++_rowIdx);
       window._kisRows[key] = s;
-      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)" onclick="kisRowClick(\'' + key + '\')">' +
+      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)" onclick="kisRowClick('' + key + '')">' +
         '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>' +
         '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>' +
         '</div>';
@@ -2011,13 +2010,13 @@ window.kisTopFetch = async () => {
 
     // 외+기 동시 순매수 (합산 기준)
     const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
-      .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,10);
+      .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
     // 외국인 TOP
     const f = all.filter(s => s.fBuy > 0)
-      .sort((a,b) => b.fBuy - a.fBuy).slice(0,10);
+      .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
     // 기관 TOP
     const inst = all.filter(s => s.iBuy > 0)
-      .sort((a,b) => b.iBuy - a.iBuy).slice(0,10);
+      .sort((a,b) => b.iBuy - a.iBuy).slice(0,15);
 
     document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i,'fi')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i,'f')).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
