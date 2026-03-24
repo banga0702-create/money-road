@@ -1986,12 +1986,17 @@ window.kisTopFetch = async () => {
     tl.innerHTML = filtered.map((s, i) => {
       const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
       const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
-      return '<div class="tbl-row" style="grid-template-columns:28px 1fr 60px 60px" onclick="kisAddTop('' + s.hts_kor_isnm + '',' + fBuy + ',' + iBuy + ')">' +
-        '<span><div class="rank-badge ' + (i<3?['r1','r2','r3'][i]:'b-gr') + '">' + (i+1) + '</div></span>' +
+      const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
+      const row = document.createElement('div');
+      row.className = 'tbl-row';
+      row.style.gridTemplateColumns = '28px 1fr 60px 60px';
+      row.style.cursor = 'pointer';
+      row.innerHTML = '<span><div class="rank-badge ' + rankCls + '">' + (i+1) + '</div></span>' +
         '<span style="text-align:left;font-weight:700">' + s.hts_kor_isnm + '</span>' +
         '<span style="color:var(--up)">' + fBuy.toLocaleString() + '</span>' +
-        '<span style="color:var(--dn)">' + iBuy.toLocaleString() + '</span>' +
-        '</div>';
+        '<span style="color:var(--dn)">' + iBuy.toLocaleString() + '</span>';
+      row.addEventListener('click', () => kisAddTop(s.hts_kor_isnm, fBuy, iBuy));
+      return row.outerHTML;
     }).join('');
 
     msg.style.color = 'var(--ac)';
