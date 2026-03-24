@@ -549,7 +549,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <!-- ══ 탭3: 특징주 ══ -->
   <div class="page" id="pg-feat">
     <div class="ftabs">
-      <div class="ftab active" onclick="showFTab('순매수',this)">순매수 TOP</div>
+      <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
       <div class="ftab" onclick="showFTab('ETF',this)">ETF 흐름</div>
       <div class="ftab" onclick="showFTab('기준봉',this)">기준봉</div>
     </div>
@@ -562,31 +562,27 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
       <div id="kisTopMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
 
-      <!-- 외+기 합산 -->
-      <div class="sh" style="padding-top:10px"><span class="sh-title" style="font-size:11px">🔥 외국인+기관 동시</span></div>
-      <div class="tbl" style="margin-bottom:10px">
-        <div class="tbl-hdr" style="grid-template-columns:24px 1fr 55px 55px">
-          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span>
-        </div>
-        <div id="topListFI"></div>
-      </div>
+      <!-- 3열 가로 레이아웃 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 16px 12px">
 
-      <!-- 외국인 TOP -->
-      <div class="sh" style="padding-top:6px"><span class="sh-title" style="font-size:11px">📈 외국인 순매수</span></div>
-      <div class="tbl" style="margin-bottom:10px">
-        <div class="tbl-hdr" style="grid-template-columns:24px 1fr 55px 55px">
-          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span>
+        <!-- 외+기 동시 -->
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">🔥 외+기</div>
+          <div id="topListFI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
-        <div id="topListF"></div>
-      </div>
 
-      <!-- 기관 TOP -->
-      <div class="sh" style="padding-top:6px"><span class="sh-title" style="font-size:11px">🏦 기관 순매수</span></div>
-      <div class="tbl" style="margin-bottom:12px">
-        <div class="tbl-hdr" style="grid-template-columns:24px 1fr 55px 55px">
-          <span>#</span><span style="text-align:left">종목</span><span>외국인</span><span>기관</span>
+        <!-- 외국인 -->
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">📈 외국인</div>
+          <div id="topListF" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
-        <div id="topListI"></div>
+
+        <!-- 기관 -->
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--dn);margin-bottom:6px;display:flex;align-items:center;gap:3px">🏦 기관</div>
+          <div id="topListI" style="display:flex;flex-direction:column;gap:3px"></div>
+        </div>
+
       </div>
       <div class="sh"><span class="sh-title">직접 추가</span></div>
       <div class="card">
@@ -1991,17 +1987,14 @@ window.kisTopFetch = async () => {
       iBuy: Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100),
     }));
 
-    // 종목 행 생성 함수
-    const makeRow = (s, i, sortKey) => {
+    // 종목 행 생성 함수 (콤팩트 - 종목명+순위만)
+    const makeRow = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const row = document.createElement('div');
-      row.className = 'tbl-row';
-      row.style.cssText = 'grid-template-columns:24px 1fr 55px 55px;cursor:pointer';
+      row.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--sf);border-radius:8px;cursor:pointer;border:1px solid var(--bd)';
       row.innerHTML =
-        '<span><div class="rank-badge ' + rankCls + '">' + (i+1) + '</div></span>' +
-        '<span style="text-align:left;font-weight:700;font-size:12px">' + s.name + '</span>' +
-        '<span style="color:var(--up);font-size:11px">' + s.fBuy.toLocaleString() + '</span>' +
-        '<span style="color:var(--dn);font-size:11px">' + s.iBuy.toLocaleString() + '</span>';
+        '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>' +
+        '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>';
       row.addEventListener('click', () => {
         const total = s.fBuy + s.iBuy;
         if(confirm(s.name + '\n외국인: ' + s.fBuy.toLocaleString() + '억\n기관: ' + s.iBuy.toLocaleString() + '억\n합계: ' + total.toLocaleString() + '억\n\n수급기록에 추가할까요?')) {
@@ -2227,6 +2220,8 @@ onAuthStateChanged(auth, async (user) => {
           Object.assign(S, data.appState);
           renderHome();
           renderStockList();
+          // 특징주 자동 로드
+          setTimeout(()=>{ if(document.getElementById('fp-순매수').classList.contains('active')) kisTopFetch(); }, 1500);
         }
       }
     });
