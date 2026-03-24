@@ -925,8 +925,17 @@ function switchTab(tab){
   const fab=document.getElementById('fabBtn');
   fab.style.display=tab==='supply'?'flex':'none';
   if(tab==='home') renderHome();
-  if(tab==='supply') renderStockList();
-  if(tab==='feat') renderFeat();
+  if(tab==='supply'){
+    renderStockList();
+    // 수급입력 탭 진입 시 KIS 자동입력 (외국인/기관 순매수)
+    const mFBuy = document.getElementById('mFBuy');
+    if(mFBuy && !mFBuy.value) setTimeout(()=>kisAutoFetch(), 500);
+  }
+  if(tab==='feat'){
+    renderFeat();
+    // 특징주 탭 진입 시 자동 로드
+    if(!document.getElementById('topListFI').children.length) setTimeout(()=>kisTopFetch(), 800);
+  }
   if(tab==='analysis') renderAnalysis();
   if(tab==='track') renderTrack();
 }
@@ -2226,8 +2235,6 @@ onAuthStateChanged(auth, async (user) => {
           Object.assign(S, data.appState);
           renderHome();
           renderStockList();
-          // 특징주 자동 로드
-          setTimeout(()=>{ if(document.getElementById('fp-순매수').classList.contains('active')) kisTopFetch(); }, 1500);
         }
       }
     });
