@@ -78,21 +78,50 @@ export default async function handler(req, res) {
       const token = await getToken();
       const { market = '0000' } = req.query; // 0000:전체, 0001:코스피, 1001:코스닥
 
-      const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`,
-        {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHPTJ04400000',
-            'custtype': 'P'
-          }
+      const headers = {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${token}`,
+        'appkey': APP_KEY,
+        'appsecret': APP_SECRET,
+        'tr_id': 'FHPTJ04400000',
+        'custtype': 'P'
+      };
+
+      // 외국인(1)과 기관(2) 각각 호출
+      const [fRes, iRes] = await Promise.all([
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`, { headers }),
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=2&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`, { headers })
+      ]);
+
+      const fData = await fRes.json();
+      const iData = await iRes.json();
+
+      // 외국인 데이터 기준으로 기관 데이터 병합
+      const fList = fData.output || [];
+      const iList = iData.output || [];
+
+      // 기관 데이터를 종목코드 기준 맵으로 변환
+      const iMap = {};
+      iList.forEach(s => { iMap[s.mksc_shrn_iscd] = s; });
+
+      // 외국인 리스트에 기관 순매수 병합
+      const merged = fList.map(s => {
+        const inst = iMap[s.mksc_shrn_iscd];
+        return {
+          ...s,
+          orgn_ntby_tr_pbmn: inst ? inst.orgn_ntby_tr_pbmn : '0'
+        };
+      });
+
+      // 기관 데이터에만 있는 종목 추가
+      const fIscdSet = new Set(fList.map(f => f.mksc_shrn_iscd));
+      iList.forEach(s => {
+        if (!fIscdSet.has(s.mksc_shrn_iscd)) {
+          merged.push({ ...s, frgn_ntby_tr_pbmn: '0' });
         }
-      );
-      const data = await r.json();
-      return res.status(200).json(data);
+      });
+
+      return res.status(200).json({ output: merged, foreign: fData, institution: iData });
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
