@@ -2033,7 +2033,7 @@ window.kisTopFetch = async () => {
       window._kisRows[key] = s;
       const isTriple = tripleNames.has(s.name);
       const bg = isTriple
-        ? 'background:rgba(255,236,153,0.18);border:1px solid rgba(255,214,0,0.4)'
+        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
         : 'background:var(--sf);border:1px solid var(--bd)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
