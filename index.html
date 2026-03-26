@@ -2307,8 +2307,8 @@ window.etfReverseFetch = async () => {
         + '</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px">'
         + '<span style="font-size:9px;color:var(--tx3)">' + trPbmn + '억</span>'
-        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
-        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
+        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuyStr + '</span>' : '')
+        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuyStr + '</span>' : '')
         + '</div>'
         + '</div>';
     };
@@ -2364,13 +2364,13 @@ window.reverseFetch = async () => {
     });
     const fiList = fiData.output || [];
 
-    // 외국인/기관 순매수 종목명 셋
+    // 외국인/기관 순매수 종목명 셋 (소수점 1자리, 0.1억 이상)
     const fBuyMap  = {}; // 종목명 → fBuy
     const iBuyMap  = {}; // 종목명 → iBuy
     fiList.forEach(s => {
       const name = s.hts_kor_isnm;
-      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
-      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 10) / 10; // 0.1억 단위
+      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 10) / 10;
       if(fBuy > 0) fBuyMap[name] = fBuy;
       if(iBuy > 0) iBuyMap[name] = iBuy;
     });
@@ -2400,6 +2400,8 @@ window.reverseFetch = async () => {
       const trPbmn = Math.round(parseFloat(s.acml_tr_pbmn) / 100000000);
       const fBuy = fBuyMap[name] || 0;
       const iBuy = iBuyMap[name] || 0;
+      const fBuyStr = fBuy >= 1 ? fBuy + '억' : (fBuy > 0 ? fBuy + '억' : '');
+      const iBuyStr = iBuy >= 1 ? iBuy + '억' : (iBuy > 0 ? iBuy + '억' : '');
       const isFI = type === 'fi';
       const bg = isFI
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
@@ -2411,8 +2413,8 @@ window.reverseFetch = async () => {
         + '</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px">'
         + '<span style="font-size:9px;color:var(--tx3)">' + trPbmn + '억</span>'
-        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
-        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
+        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuyStr + '</span>' : '')
+        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuyStr + '</span>' : '')
         + '</div>'
         + '</div>';
     };
