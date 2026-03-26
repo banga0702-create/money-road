@@ -2172,16 +2172,22 @@ window.loadKisWeekly = async (uid) => {
     const fRanked = Object.entries(fCounter).sort((a,b)=>b[1]-a[1]).slice(0,15);
     const iRanked = Object.entries(iCounter).sort((a,b)=>b[1]-a[1]).slice(0,15);
 
+    // 3개 카운터 모두에서 겹치는 종목
+    const weekTriple = new Set(
+      Object.keys(counter).filter(n => fCounter[n] && iCounter[n])
+    );
+
     const makeWeekRow = ([name, cnt], i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
-      const isHot = cnt >= maxCount;
-      const bg = isHot
-        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
+      const isTriple = weekTriple.has(name);
+      const bg = isTriple
+        ? 'background:linear-gradient(135deg,rgba(255,180,0,0.13),rgba(255,100,0,0.08));border:1px solid rgba(255,180,0,0.45);box-shadow:0 0 7px rgba(255,180,0,0.13)'
         : 'background:var(--sf);border:1px solid var(--bd)';
+      const cntColor = isTriple ? 'color:#FFB400' : 'color:var(--ac)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;' + bg + '">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
         + '<span style="font-size:11px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name + '</span>'
-        + '<span style="font-size:10px;color:var(--ac);font-weight:800;flex-shrink:0">' + cnt + '/' + maxCount + '일</span>'
+        + '<span style="font-size:10px;font-weight:800;flex-shrink:0;' + cntColor + '">' + cnt + '/' + maxCount + '일</span>'
         + '</div>';
     };
 
