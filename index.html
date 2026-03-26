@@ -2368,10 +2368,12 @@ window.reverseFetch = async () => {
     // 거래대금 1000억↑ + 하락 종목 필터
     // prdy_vrss_sign: 4=하한, 5=하락
     // acml_tr_pbmn: 누적거래대금 (단위: 원)
+    const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO','SMART','PLUS'];
+    const isETFName = (name) => ETF_KW.some(k => name.toUpperCase().includes(k));
     const downBig = volList.filter(s => {
       const sign = s.prdy_vrss_sign;
       const trPbmn = parseFloat(s.acml_tr_pbmn) / 100000000; // 원 → 억
-      return (sign === '4' || sign === '5') && trPbmn >= 1000;
+      return (sign === '4' || sign === '5') && trPbmn >= 1000 && !isETFName(s.hts_kor_isnm);
     });
 
     // 외국인 순매수 교차
