@@ -2162,9 +2162,18 @@ window.loadKisWeekly = async (uid) => {
     const ranked = Object.entries(counter).sort((a,b)=>b[1]-a[1]).slice(0,15);
     const maxCount = docs.length;
 
+    // 외국인/기관 각각 빈도 카운트
+    const fCounter = {}, iCounter = {};
+    docs.forEach(d => {
+      const data = d.data();
+      (data.f||[]).forEach(s => { fCounter[s.name] = (fCounter[s.name]||0) + 1; });
+      (data.inst||[]).forEach(s => { iCounter[s.name] = (iCounter[s.name]||0) + 1; });
+    });
+    const fRanked = Object.entries(fCounter).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const iRanked = Object.entries(iCounter).sort((a,b)=>b[1]-a[1]).slice(0,15);
+
     const makeWeekRow = ([name, cnt], i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
-      const pct = Math.round(cnt/maxCount*100);
       const isHot = cnt >= maxCount;
       const bg = isHot
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
@@ -2176,9 +2185,9 @@ window.loadKisWeekly = async (uid) => {
         + '</div>';
     };
 
-    document.getElementById('topListFI').innerHTML = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">📊 7일간 전체 등장 빈도</div>' + ranked.map((r,i)=>makeWeekRow(r,i)).join('');
-    document.getElementById('topListF').innerHTML  = '<div class="empty" style="padding:16px"><p>7일 통계는<br>전체 탭 확인</p></div>';
-    document.getElementById('topListI').innerHTML  = '<div class="empty" style="padding:16px"><p>7일 통계는<br>전체 탭 확인</p></div>';
+    document.getElementById('topListFI').innerHTML = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">🔥 7일간 전체 등장 빈도</div>' + ranked.map((r,i)=>makeWeekRow(r,i)).join('');
+    document.getElementById('topListF').innerHTML  = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">📈 7일간 외국인 빈도</div>'  + fRanked.map((r,i)=>makeWeekRow(r,i)).join('');
+    document.getElementById('topListI').innerHTML  = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">🏦 7일간 기관 빈도</div>'    + iRanked.map((r,i)=>makeWeekRow(r,i)).join('');
   } catch(e) { console.warn('주간통계 실패:', e); }
 };
 
