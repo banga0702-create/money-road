@@ -1477,7 +1477,7 @@ function showFTab(name,el){
 
 function renderFeat(){
   // 순매수 TOP
-  const tl=document.getElementById('topListFI');
+  const tl=document.getElementById('topList');
   if(!S.topStocks.length){
     tl.innerHTML='<div class="empty" style="padding:24px"><div class="ico">📋</div><p>아래 폼에서 추가하세요</p></div>';
   } else {
@@ -1839,6 +1839,9 @@ window.addEventListener('load',()=>{
   const _mt=document.getElementById('memoTxt');if(_mt&&S.memo)_mt.textContent=S.memo;
   if(S.cfg.total) document.getElementById('cfgTotal').value=S.cfg.total;
   if(S.cfg.avgVol) document.getElementById('cfgAvg').value=S.cfg.avgVol;
+  // 특징주 탭 데이터 자동 로드
+  setTimeout(()=>kisTopFetch(), 1000);
+
   if(S.market.up){
     document.getElementById('mUp').value=S.market.up||'';
     document.getElementById('mTotal').value=S.market.total||'';
@@ -2018,9 +2021,29 @@ window.kisTopFetch = async () => {
     const inst = all.filter(s => s.iBuy > 0)
       .sort((a,b) => b.iBuy - a.iBuy).slice(0,15);
 
-    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i,'fi')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i,'f')).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> makeRow(s,i,'i')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // 3개 리스트 모두 등장하는 종목 → 노란색 하이라이트
+    const fiNames = new Set(fi.map(s => s.name));
+    const fNames  = new Set(f.map(s => s.name));
+    const iNames  = new Set(inst.map(s => s.name));
+    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n) && iNames.has(n)));
+
+    const makeRowHL = (s, i) => {
+      const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
+      const key = 'k_' + (++_rowIdx);
+      window._kisRows[key] = s;
+      const isTriple = tripleNames.has(s.name);
+      const bg = isTriple
+        ? 'background:rgba(255,236,153,0.18);border:1px solid rgba(255,214,0,0.4)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + '</div>';
+    };
+
+    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRowHL(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
 
     msg.style.color = 'var(--ac)';
     msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
