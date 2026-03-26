@@ -15,7 +15,6 @@ export default async function handler(req, res) {
   try {
     const { action } = req.query;
 
-    // 토큰 캐싱 (20분)
     async function getToken() {
       const now = Date.now();
       if (_token && now < _tokenExp) return _token;
@@ -31,13 +30,11 @@ export default async function handler(req, res) {
       return _token;
     }
 
-    // 토큰 테스트
     if (action === 'test') {
       const token = await getToken();
       return res.status(200).json({ ok: true, token_length: token.length });
     }
 
-    // 시장별 투자자매매동향(일별) - 외국인/기관 순매수
     if (action === 'market_investor') {
       const token = await getToken();
       const today = new Date();
@@ -47,24 +44,10 @@ export default async function handler(req, res) {
 
       const [kospiRes, kosdaqRes] = await Promise.all([
         fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSP&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=0001`, {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHPTJ04040000',
-            'custtype': 'P'
-          }
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' }
         }),
         fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSQ&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=1001`, {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHPTJ04040000',
-            'custtype': 'P'
-          }
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' }
         })
       ]);
 
@@ -73,55 +56,26 @@ export default async function handler(req, res) {
       return res.status(200).json({ kospi, kosdaq });
     }
 
-    // 국내기관_외국인 매매종목 가집계 - 순매수 상위 종목
     if (action === 'foreign_inst') {
       const token = await getToken();
-      const { market = '0000' } = req.query; // 0000:전체, 0001:코스피, 1001:코스닥
+      const { market = '0000' } = req.query;
 
-      const headers = {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${token}`,
-        'appkey': APP_KEY,
-        'appsecret': APP_SECRET,
-        'tr_id': 'FHPTJ04400000',
-        'custtype': 'P'
-      };
-
-      // 외국인(1)과 기관(2) 각각 호출
-      const [fRes, iRes] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`, { headers }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=2&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`, { headers })
-      ]);
-
-      const fData = await fRes.json();
-      const iData = await iRes.json();
-
-      // 외국인 데이터 기준으로 기관 데이터 병합
-      const fList = fData.output || [];
-      const iList = iData.output || [];
-
-      // 기관 데이터를 종목코드 기준 맵으로 변환
-      const iMap = {};
-      iList.forEach(s => { iMap[s.mksc_shrn_iscd] = s; });
-
-      // 외국인 리스트에 기관 순매수 병합
-      const merged = fList.map(s => {
-        const inst = iMap[s.mksc_shrn_iscd];
-        return {
-          ...s,
-          orgn_ntby_tr_pbmn: inst ? inst.orgn_ntby_tr_pbmn : '0'
-        };
-      });
-
-      // 기관 데이터에만 있는 종목 추가
-      const fIscdSet = new Set(fList.map(f => f.mksc_shrn_iscd));
-      iList.forEach(s => {
-        if (!fIscdSet.has(s.mksc_shrn_iscd)) {
-          merged.push({ ...s, frgn_ntby_tr_pbmn: '0' });
+      // FID_DIV_CLS_CODE=1(외국인) 호출 시 frgn_ntby_tr_pbmn(외국인)+orgn_ntby_tr_pbmn(기관) 모두 포함
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`,
+        {
+          headers: {
+            'content-type': 'application/json',
+            'authorization': `Bearer ${token}`,
+            'appkey': APP_KEY,
+            'appsecret': APP_SECRET,
+            'tr_id': 'FHPTJ04400000',
+            'custtype': 'P'
+          }
         }
-      });
-
-      return res.status(200).json({ output: merged, foreign: fData, institution: iData });
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
