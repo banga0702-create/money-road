@@ -2369,10 +2369,12 @@ window.reverseFetch = async () => {
     const iBuyMap  = {}; // 종목명 → iBuy
     fiList.forEach(s => {
       const name = s.hts_kor_isnm;
-      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 10) / 10; // 0.1억 단위
-      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 10) / 10;
-      if(fBuy > 0) fBuyMap[name] = fBuy;
-      if(iBuy > 0) iBuyMap[name] = iBuy;
+      const fRaw = parseFloat(s.frgn_ntby_tr_pbmn);
+      const iRaw = parseFloat(s.orgn_ntby_tr_pbmn);
+      const fBuy = Math.round(fRaw / 10) / 10; // 0.1억 단위
+      const iBuy = Math.round(iRaw / 10) / 10;
+      if(fRaw > 0) fBuyMap[name] = fBuy || 0.1; // 0.1억 미만도 저장
+      if(iRaw > 0) iBuyMap[name] = iBuy || 0.1;
     });
 
     // 거래대금 1000억↑ + 하락 종목 필터
