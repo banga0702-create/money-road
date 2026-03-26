@@ -561,6 +561,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="kisTopFetch()" id="kisTopBtn">⚡ KIS 자동불러오기</button>
       </div>
       <div id="kisTopMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <!-- 날짜 탭 -->
+      <div id="kisDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
 
       <!-- 3열 가로 레이아웃 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 16px 12px">
@@ -1839,8 +1841,7 @@ window.addEventListener('load',()=>{
   const _mt=document.getElementById('memoTxt');if(_mt&&S.memo)_mt.textContent=S.memo;
   if(S.cfg.total) document.getElementById('cfgTotal').value=S.cfg.total;
   if(S.cfg.avgVol) document.getElementById('cfgAvg').value=S.cfg.avgVol;
-  // 특징주 탭 데이터 자동 로드
-  setTimeout(()=>kisTopFetch(), 1000);
+  // 특징주 탭 데이터 자동 로드 (로그인 후 처리됨)
 
   if(S.market.up){
     document.getElementById('mUp').value=S.market.up||'';
@@ -1860,7 +1861,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
          signInWithRedirect, getRedirectResult, deleteUser, updateProfile }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, onSnapshot }
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -2049,6 +2050,22 @@ window.kisTopFetch = async () => {
     msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
     setTimeout(() => { msg.style.display='none'; }, 4000);
 
+    // Firestore에 오늘 데이터 저장
+    try {
+      const user = window._curUser;
+      if(user) {
+        const today = new Date().toISOString().slice(0,10);
+        await setDoc(doc(db, 'users', user.uid, 'kisHistory', today), {
+          date: today,
+          fi: fi.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
+          f:  f.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
+          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
+          savedAt: Date.now()
+        });
+        await renderKisDateTabs(user.uid);
+      }
+    } catch(e2) { console.warn('KIS 히스토리 저장 실패:', e2); }
+
   } catch(e) {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
@@ -2056,6 +2073,113 @@ window.kisTopFetch = async () => {
     btn.textContent = '⚡ KIS 자동불러오기';
     btn.disabled = false;
   }
+};
+
+// KIS 히스토리 날짜 탭 렌더링
+window.renderKisDateTabs = async (uid) => {
+  const tabEl = document.getElementById('kisDateTabs');
+  if(!tabEl) return;
+  try {
+    const histCol = collection(db, 'users', uid, 'kisHistory');
+    const snap = await getDocs(histCol);
+    const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8); // 최근 8일
+    if(!dates.length) { tabEl.innerHTML = ''; return; }
+
+    const today = new Date().toISOString().slice(0,10);
+    tabEl.innerHTML = dates.map(d => {
+      const label = d === today ? '오늘' : d.slice(5).replace('-','/');
+      return `<button class="btn btn-sm" id="kisDateBtn-${d}"
+        style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)"
+        onclick="loadKisHistory('${d}','${uid}')">${label}</button>`;
+    }).join('');
+
+    // 일주일 통계 버튼
+    tabEl.innerHTML += `<button class="btn btn-sm"
+      style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)"
+      onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
+  } catch(e) { console.warn('날짜탭 렌더 실패:', e); }
+};
+
+// 과거 날짜 데이터 불러오기
+window.loadKisHistory = async (date, uid) => {
+  // 탭 활성화 표시
+  document.querySelectorAll('[id^="kisDateBtn-"]').forEach(b => {
+    b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
+  });
+  const activeBtn = document.getElementById('kisDateBtn-' + date);
+  if(activeBtn) { activeBtn.style.background = 'var(--pr)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--pr)'; }
+
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'kisHistory', date));
+    if(!snap.exists()) return;
+    const data = snap.data();
+    window._kisRows = {};
+    let _rowIdx2 = 0;
+
+    const fiNames2 = new Set((data.fi||[]).map(s=>s.name));
+    const fNames2  = new Set((data.f||[]).map(s=>s.name));
+    const iNames2  = new Set((data.inst||[]).map(s=>s.name));
+    const triple2  = new Set([...fiNames2].filter(n => fNames2.has(n) && iNames2.has(n)));
+
+    const makeRow2 = (s, i) => {
+      const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
+      const key = 'h_' + (++_rowIdx2);
+      window._kisRows[key] = s;
+      const isTriple = triple2.has(s.name);
+      const bg = isTriple
+        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + '</div>';
+    };
+
+    document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i)=>makeRow2(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListI').innerHTML  = (data.inst||[]).length? data.inst.map((s,i)=>makeRow2(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+  } catch(e) { console.warn('히스토리 로드 실패:', e); }
+};
+
+// 7일 통계
+window.loadKisWeekly = async (uid) => {
+  document.querySelectorAll('[id^="kisDateBtn-"]').forEach(b => {
+    b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
+  });
+  try {
+    const snap = await getDocs(collection(db, 'users', uid, 'kisHistory'));
+    const docs = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7);
+    const counter = {};
+    docs.forEach(d => {
+      const data = d.data();
+      const allNames = new Set([
+        ...(data.fi||[]).map(s=>s.name),
+        ...(data.f||[]).map(s=>s.name),
+        ...(data.inst||[]).map(s=>s.name)
+      ]);
+      allNames.forEach(n => { counter[n] = (counter[n]||0) + 1; });
+    });
+    const ranked = Object.entries(counter).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    const maxCount = docs.length;
+
+    const makeWeekRow = ([name, cnt], i) => {
+      const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
+      const pct = Math.round(cnt/maxCount*100);
+      const isHot = cnt >= maxCount;
+      const bg = isHot
+        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
+      return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;' + bg + '">'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<span style="font-size:11px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name + '</span>'
+        + '<span style="font-size:10px;color:var(--ac);font-weight:800;flex-shrink:0">' + cnt + '/' + maxCount + '일</span>'
+        + '</div>';
+    };
+
+    document.getElementById('topListFI').innerHTML = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">📊 7일간 전체 등장 빈도</div>' + ranked.map((r,i)=>makeWeekRow(r,i)).join('');
+    document.getElementById('topListF').innerHTML  = '<div class="empty" style="padding:16px"><p>7일 통계는<br>전체 탭 확인</p></div>';
+    document.getElementById('topListI').innerHTML  = '<div class="empty" style="padding:16px"><p>7일 통계는<br>전체 탭 확인</p></div>';
+  } catch(e) { console.warn('주간통계 실패:', e); }
 };
 
 // 종목 행 클릭 핸들러
@@ -2249,6 +2373,7 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('menuEmail').textContent   = user.email;
 
     const userDoc = doc(db, 'users', user.uid);
+    window._curUser = user;
     if(_unsubFirestore) _unsubFirestore();
     _unsubFirestore = onSnapshot(userDoc, (snap) => {
       if(snap.exists()) {
@@ -2268,6 +2393,12 @@ onAuthStateChanged(auth, async (user) => {
         await setDoc(doc(db, 'users', user.uid), { appState: S }, { merge: true });
       } catch(e) { console.warn('Firestore 저장 실패:', e); }
     };
+
+    // 로그인 후 KIS 자동불러오기 + 날짜탭 렌더링
+    setTimeout(async () => {
+      await kisTopFetch();
+      await renderKisDateTabs(user.uid);
+    }, 1000);
 
   } else {
     document.getElementById('authScreen').classList.remove('hidden');
