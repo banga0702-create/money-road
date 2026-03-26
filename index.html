@@ -552,6 +552,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
       <div class="ftab" onclick="showFTab('ETF',this)">ETF 흐름</div>
       <div class="ftab" onclick="showFTab('기준봉',this)">기준봉</div>
+      <div class="ftab" onclick="showFTab('역발상',this);if(!document.getElementById('reverseList').children.length)reverseFetch()">역발상</div>
     </div>
 
     <!-- 순매수 TOP -->
@@ -618,6 +619,29 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div class="tog-row"><span class="tog-lbl">외국인 + 기관 동시 매수</span><div class="tog" id="etFI" onclick="this.classList.toggle('on')"></div></div>
         </div>
         <button class="btn btn-pr" style="margin-top:10px" onclick="addEtf()">추가</button>
+      </div>
+    </div>
+
+    <!-- 역발상 매집 -->
+    <div class="fpanel" id="fp-역발상">
+      <div class="sh">
+        <span class="sh-title">역발상 매집</span>
+        <button class="btn btn-ac btn-sm" onclick="reverseFetch()" id="reverseBtn">⚡ 불러오기</button>
+      </div>
+      <div id="reverseMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">
+        📉 거래대금 1000억↑ 하락종목 중 외국인/기관 순매수 종목
+      </div>
+      <!-- 2열 레이아웃 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 16px 12px">
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px">📈 외국인 매수</div>
+          <div id="reverseListF" style="display:flex;flex-direction:column;gap:3px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:var(--dn);margin-bottom:6px">🔥 외+기 동시</div>
+          <div id="reverseList" style="display:flex;flex-direction:column;gap:3px"></div>
+        </div>
       </div>
     </div>
 
@@ -2198,6 +2222,99 @@ window.loadKisWeekly = async (uid) => {
 };
 
 // 종목 행 클릭 핸들러
+// ── 역발상 매집 - 거래대금 1000억↑ 하락종목 중 외국인/기관 순매수
+window.reverseFetch = async () => {
+  const btn = document.getElementById('reverseBtn');
+  const msg = document.getElementById('reverseMsg');
+  btn.textContent = '⏳ 불러오는 중...';
+  btn.disabled = true;
+  msg.style.display = 'block';
+  msg.style.color = 'var(--ac)';
+  msg.textContent = '🔍 거래대금 순위 + 수급 데이터 교차 분석 중...';
+
+  try {
+    // 거래대금 순위 + 외국인/기관 수급 동시 호출
+    const [volRes, fiRes] = await Promise.all([
+      fetch('/api/kis?action=vol_rank'),
+      fetch('/api/kis?action=foreign_inst')
+    ]);
+    const volData = await volRes.json();
+    const fiData  = await fiRes.json();
+
+    if(volData.error) throw new Error('거래대금 조회 실패: ' + volData.error);
+    if(fiData.error)  throw new Error('수급 조회 실패: ' + fiData.error);
+
+    const volList = volData.output || [];
+    const fiList  = fiData.output  || [];
+
+    // 외국인/기관 순매수 종목명 셋
+    const fBuyMap  = {}; // 종목명 → fBuy
+    const iBuyMap  = {}; // 종목명 → iBuy
+    fiList.forEach(s => {
+      const name = s.hts_kor_isnm;
+      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
+      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+      if(fBuy > 0) fBuyMap[name] = fBuy;
+      if(iBuy > 0) iBuyMap[name] = iBuy;
+    });
+
+    // 거래대금 1000억↑ + 하락 종목 필터
+    // prdy_vrss_sign: 4=하한, 5=하락
+    // acml_tr_pbmn: 누적거래대금 (단위: 원)
+    const downBig = volList.filter(s => {
+      const sign = s.prdy_vrss_sign;
+      const trPbmn = parseFloat(s.acml_tr_pbmn) / 100000000; // 원 → 억
+      return (sign === '4' || sign === '5') && trPbmn >= 1000;
+    });
+
+    // 외국인 순매수 교차
+    const fResult  = downBig.filter(s => fBuyMap[s.hts_kor_isnm])
+      .sort((a,b) => (fBuyMap[b.hts_kor_isnm]||0) - (fBuyMap[a.hts_kor_isnm]||0));
+
+    // 외+기 동시 순매수 교차
+    const fiResult = downBig.filter(s => fBuyMap[s.hts_kor_isnm] && iBuyMap[s.hts_kor_isnm])
+      .sort((a,b) => ((fBuyMap[b.hts_kor_isnm]||0)+(iBuyMap[b.hts_kor_isnm]||0)) - ((fBuyMap[a.hts_kor_isnm]||0)+(iBuyMap[a.hts_kor_isnm]||0)));
+
+    const makeRevRow = (s, type) => {
+      const name = s.hts_kor_isnm;
+      const chg  = parseFloat(s.prdy_ctrt).toFixed(2);
+      const trPbmn = Math.round(parseFloat(s.acml_tr_pbmn) / 100000000);
+      const fBuy = fBuyMap[name] || 0;
+      const iBuy = iBuyMap[name] || 0;
+      const isFI = type === 'fi';
+      const bg = isFI
+        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="alert('' + name + '\n거래대금: ' + trPbmn + '억\n등락률: ' + chg + '%\n외국인: ' + fBuy + '억\n기관: ' + iBuy + '억')">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between">'
+        + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
+        + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + chg + '%</span>'
+        + '</div>'
+        + '<div style="display:flex;gap:6px;margin-top:2px">'
+        + '<span style="font-size:9px;color:var(--tx3)">' + trPbmn + '억</span>'
+        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
+        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
+        + '</div>'
+        + '</div>';
+    };
+
+    const emptyHtml = '<div class="empty" style="padding:16px"><p>해당 종목 없음</p></div>';
+    document.getElementById('reverseListF').innerHTML = fResult.length  ? fResult.map(s=>makeRevRow(s,'f')).join('') : emptyHtml;
+    document.getElementById('reverseList').innerHTML  = fiResult.length ? fiResult.map(s=>makeRevRow(s,'fi')).join('') : emptyHtml;
+
+    const total = downBig.length;
+    msg.textContent = `✓ 완료! 거래대금 1000억↑ 하락종목 ${total}개 중 외국인매수 ${fResult.length}개 / 외+기 ${fiResult.length}개`;
+    setTimeout(() => { msg.style.display='none'; }, 5000);
+
+  } catch(e) {
+    msg.style.color = 'var(--up)';
+    msg.textContent = '❌ 오류: ' + e.message;
+  } finally {
+    btn.textContent = '⚡ 불러오기';
+    btn.disabled = false;
+  }
+};
+
 window.kisRowClick = (key) => {
   const s = window._kisRows && window._kisRows[key];
   if(!s) return;
