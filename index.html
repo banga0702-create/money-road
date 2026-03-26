@@ -2340,19 +2340,29 @@ window.reverseFetch = async () => {
   msg.textContent = '🔍 거래대금 순위 + 수급 데이터 교차 분석 중...';
 
   try {
-    // 거래대금 순위 + 외국인/기관 수급 동시 호출
-    const [volRes, fiRes] = await Promise.all([
+    // 거래대금 순위 + 등락률 순위 + 수급 동시 호출
+    const [volRes, priceRes, fiRes] = await Promise.all([
       fetch('/api/kis?action=vol_rank'),
+      fetch('/api/kis?action=price_rank'),
       fetch('/api/kis?action=foreign_inst')
     ]);
-    const volData = await volRes.json();
-    const fiData  = await fiRes.json();
+    const volData   = await volRes.json();
+    const priceData = await priceRes.json();
+    const fiData    = await fiRes.json();
 
-    if(volData.error) throw new Error('거래대금 조회 실패: ' + volData.error);
-    if(fiData.error)  throw new Error('수급 조회 실패: ' + fiData.error);
+    if(fiData.error) throw new Error('수급 조회 실패: ' + fiData.error);
 
-    const volList = volData.output || [];
-    const fiList  = fiData.output  || [];
+    // 두 리스트 합치고 종목코드 기준 중복 제거
+    const volList   = volData.output   || [];
+    const priceList = priceData.output || [];
+    const seen = new Set();
+    const combined = [...volList, ...priceList].filter(s => {
+      const key = s.mksc_shrn_iscd || s.hts_kor_isnm;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const fiList = fiData.output || [];
 
     // 외국인/기관 순매수 종목명 셋
     const fBuyMap  = {}; // 종목명 → fBuy
@@ -2370,7 +2380,7 @@ window.reverseFetch = async () => {
     // acml_tr_pbmn: 누적거래대금 (단위: 원)
     const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO','SMART','PLUS'];
     const isETFName = (name) => ETF_KW.some(k => name.toUpperCase().includes(k));
-    const downBig = volList.filter(s => {
+    const downBig = combined.filter(s => {
       const sign = s.prdy_vrss_sign;
       const trPbmn = parseFloat(s.acml_tr_pbmn) / 100000000; // 원 → 억
       return (sign === '4' || sign === '5') && trPbmn >= 1000 && !isETFName(s.hts_kor_isnm);
