@@ -2121,7 +2121,6 @@ window.kisTopFetch = async () => {
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
-      const rankOverride = ''; // 히스토리뷰에서는 기본 색상
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
@@ -2233,7 +2232,6 @@ window.loadKisHistory = async (date, uid) => {
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
-      const rankOverride = ''; // 히스토리뷰에서는 기본 색상
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
