@@ -2102,7 +2102,7 @@ window.kisTopFetch = async () => {
       const bg = isTriple
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
         : 'background:var(--sf);border:1px solid var(--bd)';
-      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(2) + '%' : '';
+      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
@@ -2113,7 +2113,10 @@ window.kisTopFetch = async () => {
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
-        + '<div style="display:flex;gap:4px;margin-top:1px">'        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')        + (contStr ? '<span style="font-size:9px;color:var(--tx3)">' + contStr + '</span>' : '')        + (contDays > 1 ? '<span style="font-size:9px;color:var(--pr);font-weight:700">' + contDays + '일연속</span>' : '')        + '</div>'
+        + '<div style="display:flex;gap:4px;margin-top:1px">'
+        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')
+        + (contStr ? '<span style="font-size:9px;color:var(--tx3)">' + contStr + '</span>' : '')
+        + '</div>'
         + '</div>'
         + '</div>';
     };
@@ -2211,7 +2214,7 @@ window.loadKisHistory = async (date, uid) => {
       const bg = isTriple
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
         : 'background:var(--sf);border:1px solid var(--bd)';
-      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(2) + '%' : '';
+      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
@@ -2222,7 +2225,10 @@ window.loadKisHistory = async (date, uid) => {
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
-        + '<div style="display:flex;gap:4px;margin-top:1px">'        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')        + (contStr ? '<span style="font-size:9px;color:var(--tx3)">' + contStr + '</span>' : '')        + (contDays > 1 ? '<span style="font-size:9px;color:var(--pr);font-weight:700">' + contDays + '일연속</span>' : '')        + '</div>'
+        + '<div style="display:flex;gap:4px;margin-top:1px">'
+        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')
+        + (contStr ? '<span style="font-size:9px;color:var(--tx3)">' + contStr + '</span>' : '')
+        + '</div>'
         + '</div>'
         + '</div>';
     };
