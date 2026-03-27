@@ -2081,18 +2081,21 @@ window.kisTopFetch = async () => {
     // 외+기 합산 순매수 높은 순 (동시매수만)
     const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
-    // 외국인+기관 동시매수, 외국인 순매수 높은 순
-    const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
+    // 외국인+기관 동시매수, 외국인 순매수 높은 순 (fi 중복 제거)
+    const fiNameSet = new Set(fi.map(s => s.name));
+    const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0 && !fiNameSet.has(s.name))
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
-    // 외국인 단독 (기관 무관, 외국인 순매수만)
-    const inst = all.filter(s => s.fBuy > 0)
+    // 외국인 단독 (기관 무관, fi/f 중복 제거)
+    const fNameSet = new Set(f.map(s => s.name));
+    const inst = all.filter(s => s.fBuy > 0 && !fiNameSet.has(s.name) && !fNameSet.has(s.name))
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
 
     // 3개 리스트 모두 등장하는 종목 → 노란색 하이라이트
     const fiNames = new Set(fi.map(s => s.name));
     const fNames  = new Set(f.map(s => s.name));
     const iNames  = new Set(inst.map(s => s.name));
-    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n) && iNames.has(n)));
+    // fi 전체가 외+기 동시매수이므로 fi 자체를 하이라이트 기준으로 사용
+    const tripleNames = fiNames;
 
     const makeRowHL = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
@@ -2106,12 +2109,16 @@ window.kisTopFetch = async () => {
       const bg = isTriple
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
         : 'background:var(--sf);border:1px solid var(--bd)';
+      // 칸별 순위 배지 색상 커스터마이징
+      const rankOverride = i < 3 ? '' :
+        fiNames.has(s.name) ? 'background:rgba(0,212,170,0.2);color:var(--ac);border:1px solid rgba(0,212,170,0.4)' :
+        fNames.has(s.name)  ? 'background:rgba(79,99,232,0.2);color:var(--pr);border:1px solid rgba(79,99,232,0.4)' : '';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
@@ -2223,7 +2230,7 @@ window.loadKisHistory = async (date, uid) => {
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
@@ -2287,7 +2294,7 @@ window.loadKisWeekly = async (uid) => {
         : 'background:var(--sf);border:1px solid var(--bd)';
       const cntColor = isTriple ? 'color:#FFB400' : 'color:var(--ac)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;' + bg + '">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<span style="font-size:11px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name + '</span>'
         + '<span style="font-size:10px;font-weight:800;flex-shrink:0;' + cntColor + '">' + cnt + '/' + maxCount + '일</span>'
         + '</div>';
