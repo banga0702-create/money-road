@@ -646,6 +646,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="reverseFetch()" id="reverseBtn">⚡ 불러오기</button>
       </div>
       <div id="reverseMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div id="reverseDateTabs" style="display:flex;gap:6px;padding:0 16px 6px;overflow-x:auto"></div>
       <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">
         📉 거래대금 1000억↑ 하락종목 중 외국인/기관 순매수 종목
       </div>
@@ -2104,6 +2105,7 @@ window.kisTopFetch = async () => {
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
+      await renderReverseDateTabs(user.uid);
       }
     } catch(e2) { console.warn('KIS 히스토리 저장 실패:', e2); }
 
@@ -2257,7 +2259,7 @@ window.etfReverseFetch = async () => {
     const volData = await volRes.json();
     const fiData  = await fiRes.json();
 
-    if(volData.error) throw new Error(volData.error);
+    if(volData.error) console.warn('vol_rank 오류:', volData.error);
     if(fiData.error)  throw new Error(fiData.error);
 
     const volList = volData.output || [];
@@ -2404,7 +2406,11 @@ window.reverseFetch = async () => {
       const bg = isFI
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
         : 'background:var(--sf);border:1px solid var(--bd)';
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px">'
+      // kisRowClick 연결
+      const key = 'rv_' + name.replace(/\s/g,'');
+      window._kisRows = window._kisRows || {};
+      window._kisRows[key] = { name, fBuy, iBuy };
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="kisRowClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(chg).toFixed(2) + '%</span>'
@@ -2424,6 +2430,21 @@ window.reverseFetch = async () => {
     msg.textContent = `✓ 완료! 외국인매수 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
     setTimeout(() => { msg.style.display='none'; }, 5000);
 
+    // Firestore에 역발상 히스토리 저장
+    try {
+      const user = window._curUser;
+      if(user && (fResult.length > 0 || fiResult.length > 0)) {
+        const today = new Date().toISOString().slice(0,10);
+        await setDoc(doc(db, 'users', user.uid, 'reverseHistory', today), {
+          date: today,
+          fResult: fResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0})),
+          fiResult: fiResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0})),
+          savedAt: Date.now()
+        });
+        await renderReverseDateTabs(user.uid);
+      }
+    } catch(e2) { console.warn('역발상 히스토리 저장 실패:', e2); }
+
   } catch(e) {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
@@ -2431,6 +2452,63 @@ window.reverseFetch = async () => {
     btn.textContent = '⚡ 불러오기';
     btn.disabled = false;
   }
+};
+
+// 역발상 날짜탭 렌더링
+window.renderReverseDateTabs = async (uid) => {
+  const tabEl = document.getElementById('reverseDateTabs');
+  if(!tabEl) return;
+  try {
+    const snap = await getDocs(collection(db, 'users', uid, 'reverseHistory'));
+    const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
+    if(!dates.length) { tabEl.innerHTML = ''; return; }
+    const today = new Date().toISOString().slice(0,10);
+    tabEl.innerHTML = dates.map(d => {
+      const label = d === today ? '오늘' : d.slice(5).replace('-','/');
+      return `<button class="btn btn-sm" id="revDateBtn-${d}"
+        style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)"
+        onclick="loadReverseHistory('${d}','${uid}')">${label}</button>`;
+    }).join('');
+  } catch(e) { console.warn('역발상 날짜탭 실패:', e); }
+};
+
+// 역발상 과거 데이터 불러오기
+window.loadReverseHistory = async (date, uid) => {
+  document.querySelectorAll('[id^="revDateBtn-"]').forEach(b => {
+    b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
+  });
+  const activeBtn = document.getElementById('revDateBtn-' + date);
+  if(activeBtn) { activeBtn.style.background = 'var(--pr)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--pr)'; }
+
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'reverseHistory', date));
+    if(!snap.exists()) return;
+    const data = snap.data();
+
+    const makeHistRow = (s, isFI) => {
+      const bg = isFI
+        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
+      const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g, '');
+      window._kisRows = window._kisRows || {};
+      window._kisRows[key] = { name: s.name, fBuy: s.fBuy, iBuy: s.iBuy };
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="kisRowClick('' + key + '')">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between">'
+        + '<span style="font-size:11px;font-weight:700">' + s.name + '</span>'
+        + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(s.chg).toFixed(2) + '%</span>'
+        + '</div>'
+        + '<div style="display:flex;gap:6px;margin-top:2px">'
+        + '<span style="font-size:9px;color:var(--tx3)">' + Math.round(s.trPbmn) + '억</span>'
+        + (s.fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + s.fBuy + '억</span>' : '')
+        + (s.iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + s.iBuy + '억</span>' : '')
+        + '</div>'
+        + '</div>';
+    };
+
+    const emptyHtml = '<div class="empty" style="padding:16px"><p>해당 종목 없음</p></div>';
+    document.getElementById('reverseListF').innerHTML = (data.fResult||[]).length ? data.fResult.map(s=>makeHistRow(s,false)).join('') : emptyHtml;
+    document.getElementById('reverseList').innerHTML  = (data.fiResult||[]).length ? data.fiResult.map(s=>makeHistRow(s,true)).join('') : emptyHtml;
+  } catch(e) { console.warn('역발상 히스토리 로드 실패:', e); }
 };
 
 window.kisRowClick = (key) => {
@@ -2648,6 +2726,7 @@ onAuthStateChanged(auth, async (user) => {
     setTimeout(async () => {
       await kisTopFetch();
       await renderKisDateTabs(user.uid);
+      await renderReverseDateTabs(user.uid);
     }, 1000);
 
   } else {
