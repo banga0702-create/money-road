@@ -60,46 +60,21 @@ export default async function handler(req, res) {
       const token = await getToken();
       const { market = '0000' } = req.query;
 
-      const headers = {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${token}`,
-        'appkey': APP_KEY,
-        'appsecret': APP_SECRET,
-        'tr_id': 'FHPTJ04400000',
-        'custtype': 'P'
-      };
-
-      // 외국인(1) + 기관(2) 동시 호출
-      const [fRes, iRes] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`, { headers }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=2&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`, { headers })
-      ]);
-
-      const fData = await fRes.json();
-      const iData = await iRes.json();
-
-      const fList = fData.output || [];
-      const iList = iData.output || [];
-
-      // 기관 데이터 맵 (종목코드 기준)
-      const iMap = {};
-      iList.forEach(s => { iMap[s.mksc_shrn_iscd] = s; });
-
-      // 외국인 리스트에 기관 순매수 병합
-      const merged = fList.map(s => ({
-        ...s,
-        orgn_ntby_tr_pbmn: iMap[s.mksc_shrn_iscd]?.orgn_ntby_tr_pbmn || s.orgn_ntby_tr_pbmn || '0'
-      }));
-
-      // 기관 리스트에만 있는 종목 추가 (외국인 순매수는 0으로)
-      const fIscdSet = new Set(fList.map(s => s.mksc_shrn_iscd));
-      iList.forEach(s => {
-        if(!fIscdSet.has(s.mksc_shrn_iscd)) {
-          merged.push({ ...s, frgn_ntby_tr_pbmn: '0' });
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`,
+        {
+          headers: {
+            'content-type': 'application/json',
+            'authorization': `Bearer ${token}`,
+            'appkey': APP_KEY,
+            'appsecret': APP_SECRET,
+            'tr_id': 'FHPTJ04400000',
+            'custtype': 'P'
+          }
         }
-      });
-
-      return res.status(200).json({ output: merged, _fCount: fList.length, _iCount: iList.length });
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
     }
 
     // 거래대금 상위 종목 (하락 필터 가능)
