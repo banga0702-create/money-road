@@ -2036,9 +2036,29 @@ window.kisTopFetch = async () => {
 
     const all = data.output.map(s => ({
       name: s.hts_kor_isnm,
+      code: s.mksc_shrn_iscd,
       fBuy: Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100),
       iBuy: Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100),
     }));
+
+    // 종목코드로 거래대금/등락률 조회
+    const codes = all.map(s => s.code).filter(Boolean).join(',');
+    let priceMap = {};
+    try {
+      const pr = await fetch('/api/kis?action=stock_price&codes=' + codes);
+      const pd = await pr.json();
+      (pd.output || []).forEach(s => { priceMap[s.code] = s; });
+    } catch(e) { console.warn('시세 조회 실패:', e); }
+
+    // 거래대금/등락률/수급비중 추가
+    all.forEach(s => {
+      const p = priceMap[s.code];
+      if(p) {
+        s.trPbmn = Math.round(parseFloat(p.acml_tr_pbmn) / 100000000); // 억
+        s.chg = parseFloat(p.prdy_ctrt); // 등락률
+        s.ratio = s.trPbmn > 0 ? +((s.fBuy + s.iBuy) / s.trPbmn * 100).toFixed(1) : 0; // 수급비중%
+      }
+    });
 
     // 종목 행 생성 함수 (콤팩트 - 종목명+순위만)
     // 클릭용 임시 데이터 저장소
@@ -2073,14 +2093,28 @@ window.kisTopFetch = async () => {
     const makeRowHL = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'k_' + (++_rowIdx);
-      window._kisRows[key] = s;
+      // 수급지속 계산 (7일 히스토리에서 해당 종목 등장 횟수)
+      const contDays = window._kisHistory7 ? window._kisHistory7.filter(d =>
+        (d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)
+      ).length : 0;
+      window._kisRows[key] = { ...s, contDays };
       const isTriple = tripleNames.has(s.name);
       const bg = isTriple
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
         : 'background:var(--sf);border:1px solid var(--bd)';
+      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(2) + '%' : '';
+      const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
+      const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
+      const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
+        + '</div>'
+        + '<div style="display:flex;gap:4px;margin-top:1px">'        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')        + (contStr ? '<span style="font-size:9px;color:var(--tx3)">' + contStr + '</span>' : '')        + (contDays > 1 ? '<span style="font-size:9px;color:var(--pr);font-weight:700">' + contDays + '일연속</span>' : '')        + '</div>'
+        + '</div>'
         + '</div>';
     };
 
@@ -2105,6 +2139,11 @@ window.kisTopFetch = async () => {
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
+      // 7일 히스토리 미리 로드 (수급지속 계산용)
+      try {
+        const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
+        window._kisHistory7 = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>d.data());
+      } catch(e) { window._kisHistory7 = []; }
       await renderReverseDateTabs(user.uid);
       }
     } catch(e2) { console.warn('KIS 히스토리 저장 실패:', e2); }
@@ -2172,9 +2211,19 @@ window.loadKisHistory = async (date, uid) => {
       const bg = isTriple
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
         : 'background:var(--sf);border:1px solid var(--bd)';
+      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + s.chg.toFixed(2) + '%' : '';
+      const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
+      const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
+      const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
+        + '</div>'
+        + '<div style="display:flex;gap:4px;margin-top:1px">'        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')        + (contStr ? '<span style="font-size:9px;color:var(--tx3)">' + contStr + '</span>' : '')        + (contDays > 1 ? '<span style="font-size:9px;color:var(--pr);font-weight:700">' + contDays + '일연속</span>' : '')        + '</div>'
+        + '</div>'
         + '</div>';
     };
 
@@ -2726,6 +2775,11 @@ onAuthStateChanged(auth, async (user) => {
     setTimeout(async () => {
       await kisTopFetch();
       await renderKisDateTabs(user.uid);
+      // 7일 히스토리 미리 로드 (수급지속 계산용)
+      try {
+        const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
+        window._kisHistory7 = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>d.data());
+      } catch(e) { window._kisHistory7 = []; }
       await renderReverseDateTabs(user.uid);
     }, 1000);
 
