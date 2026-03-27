@@ -553,6 +553,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">ETF 흐름</div>
       <div class="ftab" onclick="showFTab('기준봉',this)">기준봉</div>
       <div class="ftab" onclick="showFTab('역발상',this);if(!document.getElementById('reverseList').children.length)reverseFetch()">역발상</div>
+      <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length)upSudFetch()">상승수급</div>
     </div>
 
     <!-- 순매수 TOP -->
@@ -640,6 +641,19 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
 
     <!-- 역발상 매집 -->
+    <!-- 상승수급 - 거래대금 2000억↑ 상승 + 외+기 동시매수 -->
+    <div class="fpanel" id="fp-상승수급">
+      <div class="sh">
+        <span class="sh-title">상승수급</span>
+        <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 불러오기</button>
+      </div>
+      <div id="upSudMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div style="margin:0 16px 8px;font-size:10px;color:var(--tx3)">
+        📈 거래대금 2000억↑ 상승종목 중 외+기 동시매수
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin:0 16px 12px" id="upSudList"></div>
+    </div>
+
     <div class="fpanel" id="fp-역발상">
       <div class="sh">
         <span class="sh-title">역발상 매집</span>
@@ -2391,6 +2405,110 @@ window.etfReverseFetch = async () => {
 };
 
 // ── 역발상 매집 - 거래대금 1000억↑ 하락종목 중 외국인/기관 순매수
+// ── 상승수급 - 거래대금 2000억↑ 상승종목 중 외+기 동시매수
+window.upSudFetch = async () => {
+  const btn = document.getElementById('upSudBtn');
+  const msg = document.getElementById('upSudMsg');
+  btn.textContent = '⏳ 불러오는 중...';
+  btn.disabled = true;
+  msg.style.display = 'block';
+  msg.style.color = 'var(--ac)';
+  msg.textContent = '🔍 거래대금 상위 + 수급 교차 분석 중...';
+
+  try {
+    const [volRes, priceRes, fiRes] = await Promise.all([
+      fetch('/api/kis?action=vol_rank'),
+      fetch('/api/kis?action=price_rank'),
+      fetch('/api/kis?action=foreign_inst')
+    ]);
+    const volData   = await volRes.json();
+    const priceData = await priceRes.json();
+    const fiData    = await fiRes.json();
+
+    if(fiData.error) throw new Error(fiData.error);
+
+    // 코스피+코스닥 합치기
+    const seen = new Set();
+    const combined = [...(volData.output||[]), ...(priceData.output||[])].filter(s => {
+      const key = s.mksc_shrn_iscd || s.hts_kor_isnm;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // 외국인/기관 순매수 맵
+    const fBuyMap = {}, iBuyMap = {};
+    (fiData.output||[]).forEach(s => {
+      const name = s.hts_kor_isnm;
+      const fRaw = parseFloat(s.frgn_ntby_tr_pbmn);
+      const iRaw = parseFloat(s.orgn_ntby_tr_pbmn);
+      if(fRaw > 0) fBuyMap[name] = Math.round(fRaw / 100);
+      if(iRaw > 0) iBuyMap[name] = Math.round(iRaw / 100);
+    });
+
+    // ETF 제외
+    const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO'];
+    const isETF = (n) => ETF_KW.some(k => n.toUpperCase().includes(k));
+
+    // 거래대금 2000억↑ + 상승 + 외+기 동시매수
+    const result = combined.filter(s => {
+      const sign = s.prdy_vrss_sign;
+      const tr = parseFloat(s.acml_tr_pbmn) / 100000000;
+      const name = s.hts_kor_isnm;
+      return (sign === '1' || sign === '2') && tr >= 2000 && !isETF(name)
+        && fBuyMap[name] && iBuyMap[name];
+    }).sort((a,b) => {
+      const na = a.hts_kor_isnm, nb = b.hts_kor_isnm;
+      return ((fBuyMap[nb]||0)+(iBuyMap[nb]||0)) - ((fBuyMap[na]||0)+(iBuyMap[na]||0));
+    });
+
+    const listEl = document.getElementById('upSudList');
+    if(!result.length) {
+      listEl.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">📈</div><p>해당 종목 없음</p></div>';
+    } else {
+      listEl.innerHTML = result.map((s, i) => {
+        const name = s.hts_kor_isnm;
+        const chg = parseFloat(s.prdy_ctrt).toFixed(2);
+        const tr = Math.round(parseFloat(s.acml_tr_pbmn) / 100000000);
+        const fBuy = fBuyMap[name] || 0;
+        const iBuy = iBuyMap[name] || 0;
+        const ratio = tr > 0 ? +((fBuy+iBuy)/tr*100).toFixed(1) : 0;
+        const rankCls = i < 3 ? ['r1','r2','r3'][i] : 'b-gr';
+        const key = 'us_' + name.replace(/[^a-zA-Z0-9가-힣]/g,'');
+        window._kisRows = window._kisRows || {};
+        window._kisRows[key] = { name, fBuy, iBuy };
+        return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="kisRowClick(\'' + key + '\')">'
+          + '<div style="display:flex;align-items:center;gap:6px">'
+          + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between">'
+          + '<span style="font-size:12px;font-weight:700">' + name + '</span>'
+          + '<span style="font-size:10px;color:var(--up);font-weight:800">+' + chg + '%</span>'
+          + '</div>'
+          + '<div style="display:flex;gap:6px;margin-top:2px">'
+          + '<span style="font-size:9px;color:var(--tx3)">' + tr + '억</span>'
+          + '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>'
+          + '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>'
+          + (ratio > 0 ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratio + '%</span>' : '')
+          + '</div>'
+          + '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    msg.textContent = '✓ 완료! 거래대금 2000억↑ 상승종목 중 외+기 동시매수 ' + result.length + '개';
+    setTimeout(() => { msg.style.display='none'; }, 4000);
+
+  } catch(e) {
+    msg.style.color = 'var(--up)';
+    msg.textContent = '❌ 오류: ' + e.message;
+  } finally {
+    btn.textContent = '⚡ 불러오기';
+    btn.disabled = false;
+  }
+};
+
 window.reverseFetch = async () => {
   const btn = document.getElementById('reverseBtn');
   const msg = document.getElementById('reverseMsg');
