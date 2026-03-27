@@ -2058,10 +2058,10 @@ window.kisTopFetch = async () => {
     const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
     // 외국인 TOP
-    const f = all.filter(s => s.fBuy > 0)
+    const f = all.filter(s => s.fBuy > 0 && s.iBuy >= 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
     // 기관 TOP
-    const inst = all.filter(s => s.iBuy > 0)
+    const inst = all.filter(s => s.iBuy > 0 && s.fBuy >= 0)
       .sort((a,b) => b.iBuy - a.iBuy).slice(0,15);
 
     // 3개 리스트 모두 등장하는 종목 → 노란색 하이라이트
