@@ -2337,84 +2337,80 @@ window.reverseFetch = async () => {
   btn.disabled = true;
   msg.style.display = 'block';
   msg.style.color = 'var(--ac)';
-  msg.textContent = '🔍 거래대금 순위 + 수급 데이터 교차 분석 중...';
+  msg.textContent = '🔍 외국인/기관 매수 종목 → 하락+거래대금 필터 중...';
 
   try {
-    // 거래대금 순위 + 등락률 순위 + 수급 동시 호출
-    const [volRes, priceRes, fiRes] = await Promise.all([
-      fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=price_rank'),
-      fetch('/api/kis?action=foreign_inst')
-    ]);
-    const volData   = await volRes.json();
-    const priceData = await priceRes.json();
-    const fiData    = await fiRes.json();
-
+    // 1단계: foreign_inst로 외국인/기관 순매수 종목 가져오기
+    const fiRes = await fetch('/api/kis?action=foreign_inst');
+    const fiData = await fiRes.json();
     if(fiData.error) throw new Error('수급 조회 실패: ' + fiData.error);
 
-    // 두 리스트 합치고 종목코드 기준 중복 제거
-    const volList   = volData.output   || [];
-    const priceList = priceData.output || [];
-    const seen = new Set();
-    const combined = [...volList, ...priceList].filter(s => {
-      const key = s.mksc_shrn_iscd || s.hts_kor_isnm;
-      if(seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
     const fiList = fiData.output || [];
+    const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO','SMART','PLUS'];
+    const isETFName = (name) => ETF_KW.some(k => name.toUpperCase().includes(k));
 
-    // 외국인/기관 순매수 종목명 셋 (소수점 1자리, 0.1억 이상)
-    const fBuyMap  = {}; // 종목명 → fBuy
-    const iBuyMap  = {}; // 종목명 → iBuy
+    // 외국인/기관 순매수 맵 + ETF 제외
+    const fBuyMap = {}, iBuyMap = {}, codeMap = {};
     fiList.forEach(s => {
       const name = s.hts_kor_isnm;
+      if(isETFName(name)) return;
       const fRaw = parseFloat(s.frgn_ntby_tr_pbmn);
       const iRaw = parseFloat(s.orgn_ntby_tr_pbmn);
-      const fBuy = Math.round(fRaw / 10) / 10; // 0.1억 단위
+      const fBuy = Math.round(fRaw / 10) / 10;
       const iBuy = Math.round(iRaw / 10) / 10;
-      if(fRaw > 0) fBuyMap[name] = fBuy || 0.1; // 0.1억 미만도 저장
+      if(fRaw > 0) { fBuyMap[name] = fBuy || 0.1; codeMap[name] = s.mksc_shrn_iscd; }
       if(iRaw > 0) iBuyMap[name] = iBuy || 0.1;
     });
 
-    // 거래대금 1000억↑ + 하락 종목 필터
-    // prdy_vrss_sign: 4=하한, 5=하락
-    // acml_tr_pbmn: 누적거래대금 (단위: 원)
-    const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO','SMART','PLUS'];
-    const isETFName = (name) => ETF_KW.some(k => name.toUpperCase().includes(k));
-    const downBig = combined.filter(s => {
-      const sign = s.prdy_vrss_sign;
-      const trPbmn = parseFloat(s.acml_tr_pbmn) / 100000000; // 원 → 억
-      return (sign === '4' || sign === '5') && trPbmn >= 1000 && !isETFName(s.hts_kor_isnm);
-    });
+    // 2단계: 외국인 매수 종목들 현재가/거래대금 조회
+    const fNames = Object.keys(fBuyMap);
+    const codes = fNames.map(n => codeMap[n]).filter(Boolean).join(',');
 
-    // 외국인 순매수 교차
-    const fResult  = downBig.filter(s => fBuyMap[s.hts_kor_isnm])
-      .sort((a,b) => (fBuyMap[b.hts_kor_isnm]||0) - (fBuyMap[a.hts_kor_isnm]||0));
+    msg.textContent = `🔍 ${fNames.length}개 종목 시세 조회 중...`;
 
-    // 외+기 동시 순매수 교차
-    const fiResult = downBig.filter(s => fBuyMap[s.hts_kor_isnm] && iBuyMap[s.hts_kor_isnm])
-      .sort((a,b) => ((fBuyMap[b.hts_kor_isnm]||0)+(iBuyMap[b.hts_kor_isnm]||0)) - ((fBuyMap[a.hts_kor_isnm]||0)+(iBuyMap[a.hts_kor_isnm]||0)));
+    const priceRes = await fetch('/api/kis?action=stock_price&codes=' + codes);
+    const priceData = await priceRes.json();
+    const priceList = priceData.output || [];
 
-    const makeRevRow = (s, type) => {
-      const name = s.hts_kor_isnm;
-      const chg  = parseFloat(s.prdy_ctrt).toFixed(2);
-      const trPbmn = Math.round(parseFloat(s.acml_tr_pbmn) / 100000000);
+    // 종목코드 → 시세 맵
+    const priceMap = {};
+    priceList.forEach(s => { if(s.code) priceMap[s.code] = s; });
+
+    // 3단계: 하락 + 거래대금 1000억↑ 필터
+    const downBig = fNames.map(name => {
+      const code = codeMap[name];
+      const price = priceMap[code];
+      if(!price) return null;
+      const sign = price.prdy_vrss_sign;
+      const trPbmn = parseFloat(price.acml_tr_pbmn) / 100000000;
+      if((sign === '4' || sign === '5') && trPbmn >= 1000) {
+        return { name, code, sign, trPbmn, chg: price.prdy_ctrt };
+      }
+      return null;
+    }).filter(Boolean);
+
+    // 외국인 매수
+    const fResult = downBig.sort((a,b) => (fBuyMap[b.name]||0) - (fBuyMap[a.name]||0));
+    // 외+기 동시
+    const fiResult = downBig.filter(s => iBuyMap[s.name])
+      .sort((a,b) => ((fBuyMap[b.name]||0)+(iBuyMap[b.name]||0)) - ((fBuyMap[a.name]||0)+(iBuyMap[a.name]||0)));
+
+    const makeRevRow = (s, isFI) => {
+      const { name, chg, trPbmn } = s;
       const fBuy = fBuyMap[name] || 0;
       const iBuy = iBuyMap[name] || 0;
-      const fBuyStr = fBuy >= 1 ? fBuy + '억' : (fBuy > 0 ? fBuy + '억' : '');
-      const iBuyStr = iBuy >= 1 ? iBuy + '억' : (iBuy > 0 ? iBuy + '억' : '');
-      const isFI = type === 'fi';
+      const fBuyStr = fBuy + '억';
+      const iBuyStr = iBuy + '억';
       const bg = isFI
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
         : 'background:var(--sf);border:1px solid var(--bd)';
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="alert(\'' + name + '\\n거래대금: ' + trPbmn + '억\\n등락률: ' + chg + '%\\n외국인: ' + fBuy + '억\\n기관: ' + iBuy + '억\')">'
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
-        + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + chg + '%</span>'
+        + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(chg).toFixed(2) + '%</span>'
         + '</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px">'
-        + '<span style="font-size:9px;color:var(--tx3)">' + trPbmn + '억</span>'
+        + '<span style="font-size:9px;color:var(--tx3)">' + Math.round(trPbmn) + '억</span>'
         + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuyStr + '</span>' : '')
         + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuyStr + '</span>' : '')
         + '</div>'
@@ -2422,11 +2418,10 @@ window.reverseFetch = async () => {
     };
 
     const emptyHtml = '<div class="empty" style="padding:16px"><p>해당 종목 없음</p></div>';
-    document.getElementById('reverseListF').innerHTML = fResult.length  ? fResult.map(s=>makeRevRow(s,'f')).join('') : emptyHtml;
-    document.getElementById('reverseList').innerHTML  = fiResult.length ? fiResult.map(s=>makeRevRow(s,'fi')).join('') : emptyHtml;
+    document.getElementById('reverseListF').innerHTML = fResult.length  ? fResult.map(s=>makeRevRow(s,false)).join('') : emptyHtml;
+    document.getElementById('reverseList').innerHTML  = fiResult.length ? fiResult.map(s=>makeRevRow(s,true)).join('')  : emptyHtml;
 
-    const total = downBig.length;
-    msg.textContent = `✓ 완료! 거래대금 1000억↑ 하락종목 ${total}개 중 외국인매수 ${fResult.length}개 / 외+기 ${fiResult.length}개`;
+    msg.textContent = `✓ 완료! 외국인매수 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
     setTimeout(() => { msg.style.display='none'; }, 5000);
 
   } catch(e) {
