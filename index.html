@@ -567,24 +567,18 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div id="kisDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
 
       <!-- 3열 가로 레이아웃 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 16px 12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 16px 12px">
 
-        <!-- 외+기 동시 -->
+        <!-- 외+기 합산 순매수 높은 순 -->
         <div>
-          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">🔥 외+기</div>
+          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">🔥 외+기 합산</div>
           <div id="topListFI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
-        <!-- 외국인 -->
+        <!-- 외국인 순매수 높은 순 (기관도 매수) -->
         <div>
-          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">📈 외국인</div>
+          <div style="font-size:10px;font-weight:800;color:var(--ac);margin-bottom:6px;display:flex;align-items:center;gap:3px">📈 외국인+기관매수</div>
           <div id="topListF" style="display:flex;flex-direction:column;gap:3px"></div>
-        </div>
-
-        <!-- 기관 -->
-        <div>
-          <div style="font-size:10px;font-weight:800;color:var(--dn);margin-bottom:6px;display:flex;align-items:center;gap:3px">🏦 기관</div>
-          <div id="topListI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
       </div>
@@ -2093,20 +2087,20 @@ window.kisTopFetch = async () => {
     };
 
     // 외+기 동시 순매수 (합산 기준)
+    // 외+기 합산 순매수 높은 순 (동시매수만)
     const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
-    // 외국인 TOP
-    const f = all.filter(s => s.fBuy > 0 && s.iBuy >= 0)
+    // 외국인 순매수 높은 순 (기관도 매수인 것만)
+    const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
-    // 기관 TOP
-    const inst = all.filter(s => s.iBuy > 0 && s.fBuy >= 0)
-      .sort((a,b) => b.iBuy - a.iBuy).slice(0,15);
+    // 기관 칸 제거 (빈 배열)
+    const inst = [];
 
     // 3개 리스트 모두 등장하는 종목 → 노란색 하이라이트
     const fiNames = new Set(fi.map(s => s.name));
     const fNames  = new Set(f.map(s => s.name));
-    const iNames  = new Set(inst.map(s => s.name));
-    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n) && iNames.has(n)));
+    // 두 칸 모두 등장하는 종목 하이라이트
+    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n)));
 
     const makeRowHL = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
@@ -2141,7 +2135,7 @@ window.kisTopFetch = async () => {
 
     document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRowHL(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // topListI 제거됨
 
     msg.style.color = 'var(--ac)';
     msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
@@ -2156,7 +2150,7 @@ window.kisTopFetch = async () => {
           date: today,
           fi: fi.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
           f:  f.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
-          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
+          inst: [],
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
@@ -2253,7 +2247,7 @@ window.loadKisHistory = async (date, uid) => {
 
     document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i)=>makeRow2(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListI').innerHTML  = (data.inst||[]).length? data.inst.map((s,i)=>makeRow2(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // topListI 제거됨
   } catch(e) { console.warn('히스토리 로드 실패:', e); }
 };
 
@@ -2307,9 +2301,8 @@ window.loadKisWeekly = async (uid) => {
         + '</div>';
     };
 
-    document.getElementById('topListFI').innerHTML = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">🔥 7일간 전체 등장 빈도</div>' + ranked.map((r,i)=>makeWeekRow(r,i)).join('');
+    document.getElementById('topListFI').innerHTML = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">🔥 7일간 외+기 합산 빈도</div>' + ranked.map((r,i)=>makeWeekRow(r,i)).join('');
     document.getElementById('topListF').innerHTML  = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">📈 7일간 외국인 빈도</div>'  + fRanked.map((r,i)=>makeWeekRow(r,i)).join('');
-    document.getElementById('topListI').innerHTML  = '<div style="font-size:10px;color:var(--tx3);padding:4px 2px 6px;font-weight:700">🏦 7일간 기관 빈도</div>'    + iRanked.map((r,i)=>makeWeekRow(r,i)).join('');
   } catch(e) { console.warn('주간통계 실패:', e); }
 };
 
