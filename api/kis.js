@@ -128,6 +128,32 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // 종목코드 목록으로 현재가/등락률/거래대금 일괄 조회
+    if (action === 'stock_price') {
+      const token = await getToken();
+      const { codes } = req.query; // 쉼표로 구분된 종목코드 목록
+      if (!codes) return res.status(400).json({ error: 'codes 파라미터 필요' });
+
+      const codeList = codes.split(',').slice(0, 30); // 최대 30개
+
+      const results = await Promise.all(
+        codeList.map(code =>
+          fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code.trim()}`, {
+            headers: {
+              'content-type': 'application/json',
+              'authorization': `Bearer ${token}`,
+              'appkey': APP_KEY,
+              'appsecret': APP_SECRET,
+              'tr_id': 'FHKST01010100',
+              'custtype': 'P'
+            }
+          }).then(r => r.json()).then(d => ({ code: code.trim(), ...d.output })).catch(() => ({ code: code.trim() }))
+        )
+      );
+
+      return res.status(200).json({ output: results });
+    }
+
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
