@@ -2077,40 +2077,6 @@ window.kisTopFetch = async () => {
       }
     });
 
-    // ── 업종 → 테마 변환 테이블 ──
-    const sectorTransform = {
-      '전기·전자':'반도체/IT', '반도체':'반도체/IT', '전자부품':'반도체/IT',
-      'IT 서비스':'AI/플랫폼', '소프트웨어':'AI/플랫폼', '인터넷':'AI/플랫폼',
-      '기계·장비':'로봇/기계', '일반기계':'로봇/기계',
-      '화학':'2차전지/화학', '비금속광물':'2차전지/화학',
-      '의료·정밀기기':'바이오/헬스', '의약품':'바이오/헬스', '서비스업':'바이오/헬스',
-      '증권':'금융', '은행':'금융', '보험':'금융', '기타금융':'금융',
-      '운송·창고':'물류/운송', '해운':'물류/운송',
-      '유통':'소비/유통', '음식료품':'소비/유통',
-      '오락·문화':'엔터/미디어', '방송통신':'엔터/미디어',
-      '전기·가스':'에너지', '건설':'건설/부동산'
-    };
-    const getTheme = s => sectorTransform[s.sector] || s.sector || '기타';
-
-    // ── 테마별 그룹핑 & 렌더 함수 ──
-    const groupByTheme = (stocks) => {
-      const map = {};
-      stocks.forEach(s => {
-        const t = getTheme(s);
-        if(!map[t]) map[t] = [];
-        map[t].push(s);
-      });
-      return map;
-    };
-
-    // 테마 아이콘
-    const themeIcon = {
-      '반도체/IT':'💾', 'AI/플랫폼':'🤖', '로봇/기계':'⚙️',
-      '2차전지/화학':'🔋', '바이오/헬스':'💊', '금융':'🏦',
-      '물류/운송':'🚢', '소비/유통':'🛒', '엔터/미디어':'🎬',
-      '에너지':'⚡', '건설/부동산':'🏗️', '기타':'📦'
-    };
-
     // 클릭용 임시 데이터 저장소
     window._kisRows = {};
     let _rowIdx = 0;
@@ -2144,47 +2110,25 @@ window.kisTopFetch = async () => {
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
+      const isTriple = tripleNames.has(s.name);
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
-        + (tripleNames.has(s.name) ? '<span style="font-size:9px;line-height:1;flex-shrink:0">⭐</span>' : '')
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (isTriple ? '⭐' : (i+1)) + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
-        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + getTheme(s) + '</span>' : '<span></span>')
+        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + s.sector + '</span>' : '<span></span>')
         + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
         + '</div>';
     };
 
-    // 테마 그룹 헤더 + 종목 목록 HTML 생성
-    const renderGrouped = (stocks) => {
-      if(!stocks.length) return '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-      const groups = groupByTheme(stocks);
-      // 종목 수 많은 테마부터 정렬
-      const sorted = Object.entries(groups).sort((a,b) => b[1].length - a[1].length);
-      return sorted.map(([theme, list]) => {
-        const icon = themeIcon[theme] || '📌';
-        const totalRatio = list.reduce((s,x) => s + (x.ratio||0), 0).toFixed(1);
-        const header = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 2px 3px;margin-top:4px">'
-          + '<span style="font-size:9px;font-weight:900;color:var(--tx2)">' + icon + ' ' + theme + ' <span style="color:var(--tx3);font-weight:700">(' + list.length + ')</span></span>'
-          + '<span style="font-size:8px;color:var(--ac);font-weight:700">합산 ' + totalRatio + '%</span>'
-          + '</div>';
-        // 각 컬럼 내 순위는 전체 순위(i) 기준 유지
-        const rows = list.map((s) => {
-          const globalIdx = stocks.indexOf(s);
-          return makeRowHL(s, globalIdx);
-        }).join('');
-        return header + rows;
-      }).join('');
-    };
-
-    document.getElementById('topListFI').innerHTML = renderGrouped(fi);
-    document.getElementById('topListF').innerHTML  = renderGrouped(f);
-    document.getElementById('topListI').innerHTML  = renderGrouped(inst);
+    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRowHL(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
 
     msg.style.color = 'var(--ac)';
     msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
