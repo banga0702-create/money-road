@@ -2244,7 +2244,8 @@ window.loadKisHistory = async (date, uid) => {
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
-      const rankOverride = 'background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)';
+      // 4위 이상 숫자 잘 보이도록
+      const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
