@@ -2162,9 +2162,9 @@ window.kisTopFetch = async () => {
         const today = new Date().toISOString().slice(0,10);
         await setDoc(doc(db, 'users', user.uid, 'kisHistory', today), {
           date: today,
-          fi: fi.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
-          f:  f.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
-          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy})),
+          fi: fi.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy,chg:s.chg,trPbmn:s.trPbmn,ratio:s.ratio})),
+          f:  f.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy,chg:s.chg,trPbmn:s.trPbmn,ratio:s.ratio})),
+          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy,iBuy:s.iBuy,chg:s.chg,trPbmn:s.trPbmn,ratio:s.ratio})),
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
