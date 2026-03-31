@@ -2118,9 +2118,7 @@ window.kisTopFetch = async () => {
       ).length : 0;
       window._kisRows[key] = { ...s, contDays };
       const isTriple = tripleNames.has(s.name);
-      const bg = isTriple
-        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
-        : 'background:var(--sf);border:1px solid var(--bd)';
+      const bg = 'background:var(--sf);border:1px solid var(--bd)';
       // 순위 배지: 기본 흰색, 외+기 합산에도 있는 종목은 민트, 외국인+기관에도 있는 종목은 퍼플
       const isInFI = fiNames.has(s.name);
       const isInF  = fNames.has(s.name);
@@ -2572,11 +2570,13 @@ window.reverseFetch = async () => {
       return null;
     }).filter(Boolean);
 
-    // 외국인 매수
-    const fResult = downBig.sort((a,b) => (fBuyMap[b.name]||0) - (fBuyMap[a.name]||0));
-    // 외+기 동시
+    // 외+기 동시 (기관도 매수)
     const fiResult = downBig.filter(s => iBuyMap[s.name])
       .sort((a,b) => ((fBuyMap[b.name]||0)+(iBuyMap[b.name]||0)) - ((fBuyMap[a.name]||0)+(iBuyMap[a.name]||0)));
+    // 외국인 단독 (외+기 동시 종목 제외)
+    const fiNameSet2 = new Set(fiResult.map(s => s.name));
+    const fResult = downBig.filter(s => !fiNameSet2.has(s.name))
+      .sort((a,b) => (fBuyMap[b.name]||0) - (fBuyMap[a.name]||0));
 
     const makeRevRow = (s, isFI) => {
       const { name, chg, trPbmn } = s;
