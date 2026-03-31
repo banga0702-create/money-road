@@ -2073,6 +2073,7 @@ window.kisTopFetch = async () => {
         s.trPbmn = Math.round(parseFloat(p.acml_tr_pbmn) / 100000000); // 억
         s.chg = parseFloat(p.prdy_ctrt); // 등락률
         s.ratio = s.trPbmn > 0 ? +((s.fBuy + s.iBuy) / s.trPbmn * 100).toFixed(1) : 0; // 수급비중%
+        s.sector = p.bstp_kor_isnm || ''; // 업종(섹터)
       }
     });
 
@@ -2133,8 +2134,9 @@ window.kisTopFetch = async () => {
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
-        + '<div style="display:flex;gap:4px;margin-top:1px">'
-        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
+        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + s.sector + '</span>' : '<span></span>')
+        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
         + '</div>';
