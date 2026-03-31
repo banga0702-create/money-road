@@ -2116,7 +2116,7 @@ window.kisTopFetch = async () => {
         ? 'background:rgba(0,212,170,0.25);color:var(--ac);border:1px solid rgba(0,212,170,0.5)'
         : isInF
         ? 'background:rgba(79,99,232,0.25);color:var(--pr);border:1px solid rgba(79,99,232,0.5)'
-        : 'background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3)';
+        : i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
