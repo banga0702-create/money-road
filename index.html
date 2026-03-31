@@ -2122,11 +2122,7 @@ window.kisTopFetch = async () => {
       // 순위 배지: 기본 흰색, 외+기 합산에도 있는 종목은 민트, 외국인+기관에도 있는 종목은 퍼플
       const isInFI = fiNames.has(s.name);
       const isInF  = fNames.has(s.name);
-      const rankOverride = isInFI
-        ? 'background:rgba(0,212,170,0.25);color:var(--ac);border:1px solid rgba(0,212,170,0.5)'
-        : isInF
-        ? 'background:rgba(79,99,232,0.25);color:var(--pr);border:1px solid rgba(79,99,232,0.5)'
-        : i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
+      const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
