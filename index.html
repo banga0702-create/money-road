@@ -2104,8 +2104,8 @@ window.kisTopFetch = async () => {
     const fiNames = new Set(fi.map(s => s.name));
     const fNames  = new Set(f.map(s => s.name));
     const iNames  = new Set(inst.map(s => s.name));
-    // fi 전체가 외+기 동시매수이므로 fi 자체를 하이라이트 기준으로 사용
-    const tripleNames = fiNames;
+    // 3개 리스트 모두 등장하는 종목 세트
+    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n) && iNames.has(n)));
 
     const makeRowHL = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
@@ -2127,6 +2127,7 @@ window.kisTopFetch = async () => {
       const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
+        + (tripleNames.has(s.name) ? '<span style="font-size:9px;line-height:1;flex-shrink:0">⭐</span>' : '')
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
