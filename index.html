@@ -2427,14 +2427,18 @@ window.upSudFetch = async () => {
   msg.textContent = '🔍 거래대금 상위 + 수급 교차 분석 중...';
 
   try {
-    const [volRes, priceRes, fiRes] = await Promise.all([
+    const [volRes, fiRes] = await Promise.all([
       fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=price_rank'),
       fetch('/api/kis?action=foreign_inst')
     ]);
-    const volData   = await volRes.json();
-    const priceData = await priceRes.json();
-    const fiData    = await fiRes.json();
+    const volData = await volRes.json();
+    const fiData  = await fiRes.json();
+    // price_rank(코스닥)는 실패해도 계속 진행
+    let priceData = { output: [] };
+    try {
+      const priceRes = await fetch('/api/kis?action=price_rank');
+      if(priceRes.ok) priceData = await priceRes.json();
+    } catch(e) { console.warn('price_rank 실패, 코스피만 사용:', e); }
 
     if(fiData.error) throw new Error(fiData.error);
 
