@@ -988,7 +988,7 @@ function switchTab(tab){
   }
   if(tab==='feat'){
     renderFeat();
-    if(!document.getElementById('topListFI').children.length) setTimeout(()=>kisTopFetch(), 800);
+    // KIS 자동불러오기는 버튼으로만
   }
   if(tab==='analysis') renderAnalysis();
   if(tab==='track') renderTrack();
@@ -2890,9 +2890,8 @@ onAuthStateChanged(auth, async (user) => {
       } catch(e) { console.warn('Firestore 저장 실패:', e); }
     };
 
-    // 로그인 후 KIS 자동불러오기 + 날짜탭 렌더링
+    // 로그인 후 날짜탭 렌더링 (KIS 자동불러오기는 수동으로)
     setTimeout(async () => {
-      await kisTopFetch();
       await renderKisDateTabs(user.uid);
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
