@@ -647,7 +647,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 불러오기</button>
       </div>
       <div id="upSudMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
-      <div style="margin:0 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 1500억↑ 상승종목 중 외+기 동시매수</div>
+      <div style="margin:0 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 1500억↑ 상승종목 (거래대금 순)</div>
       <div style="display:flex;flex-direction:column;gap:4px;margin:0 16px 12px" id="upSudList"></div>
     </div>
 
@@ -2427,20 +2427,14 @@ window.upSudFetch = async () => {
   msg.textContent = '🔍 거래대금 상위 + 수급 교차 분석 중...';
 
   try {
-    const [volRes, fiRes] = await Promise.all([
-      fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst')
-    ]);
+    const volRes = await fetch('/api/kis?action=vol_rank');
     const volData = await volRes.json();
-    const fiData  = await fiRes.json();
     // price_rank(코스닥)는 실패해도 계속 진행
     let priceData = { output: [] };
     try {
       const priceRes = await fetch('/api/kis?action=price_rank');
       if(priceRes.ok) priceData = await priceRes.json();
     } catch(e) { console.warn('price_rank 실패, 코스피만 사용:', e); }
-
-    if(fiData.error) throw new Error(fiData.error);
 
     const seen = new Set();
     const combined = [...(volData.output||[]), ...(priceData.output||[])].filter(s => {
@@ -2450,15 +2444,6 @@ window.upSudFetch = async () => {
       return true;
     });
 
-    const fBuyMap = {}, iBuyMap = {};
-    (fiData.output||[]).forEach(s => {
-      const name = s.hts_kor_isnm;
-      const fRaw = parseFloat(s.frgn_ntby_tr_pbmn);
-      const iRaw = parseFloat(s.orgn_ntby_tr_pbmn);
-      if(fRaw > 0) fBuyMap[name] = Math.round(fRaw / 100);
-      if(iRaw > 0) iBuyMap[name] = Math.round(iRaw / 100);
-    });
-
     const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO'];
     const isETF = (n) => ETF_KW.some(k => n.toUpperCase().includes(k));
 
@@ -2466,11 +2451,11 @@ window.upSudFetch = async () => {
       const sign = s.prdy_vrss_sign;
       const tr = parseFloat(s.acml_tr_pbmn) / 100000000;
       const name = s.hts_kor_isnm;
-      return (sign === '1' || sign === '2') && tr >= 1500 && !isETF(name)
-        && fBuyMap[name] && iBuyMap[name];
+      return (sign === '1' || sign === '2') && tr >= 1500 && !isETF(name);
     }).sort((a,b) => {
-      const na = a.hts_kor_isnm, nb = b.hts_kor_isnm;
-      return ((fBuyMap[nb]||0)+(iBuyMap[nb]||0)) - ((fBuyMap[na]||0)+(iBuyMap[na]||0));
+      const tra = parseFloat(a.acml_tr_pbmn);
+      const trb = parseFloat(b.acml_tr_pbmn);
+      return trb - tra; // 거래대금 높은 순
     });
 
     const listEl = document.getElementById('upSudList');
@@ -2497,10 +2482,7 @@ window.upSudFetch = async () => {
           + '<span style="font-size:10px;color:var(--up);font-weight:800">+' + chg + '%</span>'
           + '</div>'
           + '<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">'
-          + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
-          + '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>'
-          + '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>'
-          + (ratio > 0 ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratio + '%</span>' : '')
+          + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰 ' + tr + '억</span>'
           + '</div>'
           + '</div>'
           + '</div>'
@@ -2508,7 +2490,7 @@ window.upSudFetch = async () => {
       }).join('');
     }
 
-    msg.textContent = '✓ 완료! 거래대금 1500억↑ 상승종목 중 외+기 동시매수 ' + result.length + '개';
+    msg.textContent = '✓ 완료! 거래대금 1500억↑ 상승종목 ' + result.length + '개';
     setTimeout(() => { msg.style.display='none'; }, 4000);
 
   } catch(e) {
