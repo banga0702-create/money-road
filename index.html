@@ -2093,13 +2093,11 @@ window.kisTopFetch = async () => {
     // 외+기 합산 순매수 높은 순 (동시매수만)
     const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
-    // 외국인+기관 동시매수, 외국인 순매수 높은 순 (fi 중복 제거)
-    const fiNameSet = new Set(fi.map(s => s.name));
-    const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0 && !fiNameSet.has(s.name))
+    // 외국인+기관 동시매수, 외국인 순매수 높은 순 (중복 제거 없음)
+    const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
-    // 외국인 단독 (기관 무관, fi/f 중복 제거)
-    const fNameSet = new Set(f.map(s => s.name));
-    const inst = all.filter(s => s.fBuy > 0 && !fiNameSet.has(s.name) && !fNameSet.has(s.name))
+    // 외국인 단독 (기관 무관)
+    const inst = all.filter(s => s.fBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
 
     // 3개 리스트 모두 등장하는 종목 → 노란색 하이라이트
