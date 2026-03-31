@@ -2110,6 +2110,21 @@ window.kisTopFetch = async () => {
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
+      // 업종 → 테마 변환
+      const sectorMap = {
+        '전기·전자':'반도체/IT', '반도체':'반도체/IT', '전자부품':'반도체/IT', '전자':'반도체/IT',
+        'IT 서비스':'AI/플랫폼', '소프트웨어':'AI/플랫폼', '인터넷':'AI/플랫폼',
+        '기계·장비':'로봇/기계', '일반기계':'로봇/기계', '기계·장비':'로봇/기계',
+        '화학':'2차전지/화학', '비금속광물':'2차전지/화학',
+        '의료·정밀기기':'바이오', '의약품':'바이오', '제약':'바이오',
+        '증권':'금융', '은행':'금융', '보험':'금융', '기타금융':'금융',
+        '운송·창고':'물류/운송', '해운':'물류/운송',
+        '유통':'소비/유통', '음식료품':'소비/유통',
+        '오락·문화':'엔터', '방송통신':'엔터',
+        '전기·가스':'에너지', '건설':'건설',
+        '금속':'소재/금속', '철강':'소재/금속',
+      };
+      const displaySector = s.sector ? (sectorMap[s.sector] || s.sector) : '';
       const isTriple = tripleNames.has(s.name);
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (isTriple ? '⭐' : (i+1)) + '</div>'
@@ -2119,7 +2134,7 @@ window.kisTopFetch = async () => {
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
-        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + s.sector + '</span>' : '<span></span>')
+        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + displaySector + '</span>' : '<span></span>')
         + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
