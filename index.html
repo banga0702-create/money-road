@@ -3218,8 +3218,9 @@ window.drawMiniChart = async (svgId, code) => {
     const W = 90, H = 44, pad = 2;
 
     // 전일 종가: output1에서 가져오기
-    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || data.output1?.stck_sdpr || prices[0]);
-    console.log(`[차트] ${svgId} 전일종가:`, prevClose, '현재가:', prices[prices.length-1]);
+    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
+    const currentPrice = parseFloat(data.output1?.stck_prpr || prices[prices.length-1]);
+    console.log(`[차트] ${svgId} 전일종가:`, prevClose, '현재가:', currentPrice);
     const allVals = [...prices, prevClose];
     const min = Math.min(...allVals) * 0.9995;
     const max = Math.max(...allVals) * 1.0005;
@@ -3231,7 +3232,7 @@ window.drawMiniChart = async (svgId, code) => {
     // 전일종가 기준선 Y
     const baseY = toY(prevClose);
     const lastPrice = prices[prices.length-1];
-    const isUp = lastPrice >= prevClose;
+    const isUp = currentPrice >= prevClose;
     const upColor = '#FF4757', dnColor = '#3B82F6';
 
     // 좌표 생성
