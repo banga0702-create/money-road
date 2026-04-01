@@ -1426,6 +1426,7 @@ function switchHist(mode, el){
 function renderHistView(){
   const weekView  = document.getElementById('histWeekView');
   const monthView = document.getElementById('histMonthView');
+  if(!weekView || !monthView) return; // 히스토리 UI 없으면 스킵
   if(histMode === 'week'){
     weekView.style.display  = 'block';
     monthView.style.display = 'none';
