@@ -647,7 +647,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 불러오기</button>
       </div>
       <div id="upSudMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
-      <div style="margin:0 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 2000억↑ 상승종목 (거래대금 순)</div>
+      <div id="upSudDateTabs" style="display:flex;gap:6px;padding:0 16px 6px;overflow-x:auto"></div>
+      <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 2000억↑ 상승종목 (거래대금 순)</div>
       <div style="display:flex;flex-direction:column;gap:4px;margin:0 16px 12px" id="upSudList"></div>
     </div>
 
@@ -756,7 +757,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 <button class="fab" id="fabBtn" onclick="openStockMo()">＋</button>
 
 <!-- ── 메모 모달 ── -->
-<div class="mo" id="moKisDetail" onclick="if(event.target===this)closeMo('moKisDetail')">
+<div class="mo" id="moDatePicker" onclick="if(event.target===this)closeMo('moDatePicker')">
+  <div class="mo-box">
+    <div class="mo-handle"></div>
+    <div style="font-size:14px;font-weight:800;margin-bottom:14px">📅 날짜 선택</div>
+    <div id="datePickerList" style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<div class="mo" id="moKisDetail"  onclick="if(event.target===this)closeMo('moKisDetail')">
   <div class="mo-box">
     <div class="mo-handle"></div>
     <div id="moKisDetailBody"></div>
@@ -2177,6 +2186,7 @@ window.kisTopFetch = async () => {
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
+      await renderUpSudDateTabs(user.uid);
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
@@ -2206,19 +2216,17 @@ window.renderKisDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    tabEl.innerHTML = dates.map(d => {
-      const label = d === today ? '오늘' : d.slice(5).replace('-','/');
-      return `<button class="btn btn-sm" id="kisDateBtn-${d}"
-        style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)"
-        onclick="loadKisHistory('${d}','${uid}')">${label}</button>`;
-    }).join('');
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
 
-    // 일주일 통계 버튼
-    tabEl.innerHTML += `<button class="btn btn-sm"
-      style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)"
-      onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
+    // 오늘/어제 버튼 + 달력 버튼
+    let tabHtml = '';
+    if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${today}','${uid}')">오늘</button>`;
+    if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${yesterday}','${uid}')">어제</button>`;
+    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'kis','${uid}')">📅</button>`;
+    tabHtml += `<button class="btn btn-sm" style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)" onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
+    tabEl.innerHTML = tabHtml;
 
-    // 가장 최근 날짜 자동 로드 (오늘 데이터 없으면 최근 저장일 표시)
+    // 가장 최근 날짜 자동 로드
     const latestDate = dates[0];
     await loadKisHistory(latestDate, uid);
     const latestBtn = document.getElementById('kisDateBtn-' + latestDate);
@@ -2525,6 +2533,26 @@ window.upSudFetch = async () => {
     msg.textContent = '✓ 완료! 거래대금 2000억↑ 상승종목 ' + result.length + '개';
     setTimeout(() => { msg.style.display='none'; }, 4000);
 
+    // Firestore에 오늘 상승수급 저장
+    try {
+      const user = window._curUser;
+      if(user && result.length > 0) {
+        const today = new Date().toISOString().slice(0,10);
+        const saveData = result.map(s => ({
+          name: s.hts_kor_isnm,
+          chg: parseFloat(s.prdy_ctrt)||0,
+          trPbmn: Math.round(parseFloat(s.acml_tr_pbmn)/100000000)||0,
+          fBuy: fBuyMap[s.hts_kor_isnm]||0,
+          iBuy: iBuyMap[s.hts_kor_isnm]||0,
+          code: s.mksc_shrn_iscd||''
+        }));
+        await setDoc(doc(db, 'users', user.uid, 'upSudHistory', today), {
+          date: today, list: saveData, savedAt: Date.now()
+        });
+        await renderUpSudDateTabs(user.uid);
+      }
+    } catch(e2) { console.warn('상승수급 히스토리 저장 실패:', e2); }
+
   } catch(e) {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
@@ -2605,25 +2633,23 @@ window.reverseFetch = async () => {
       const { name, chg, trPbmn } = s;
       const fBuy = fBuyMap[name] || 0;
       const iBuy = iBuyMap[name] || 0;
-      const fBuyStr = fBuy + '억';
-      const iBuyStr = iBuy + '억';
       const bg = isFI
         ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45)'
         : 'background:var(--sf);border:1px solid var(--bd)';
-      // kisRowClick 연결
       const key = 'rv_' + name.replace(/\s/g,'');
       window._kisRows = window._kisRows || {};
       window._kisRows[key] = { name, fBuy, iBuy, code: codeMap[name] || '' };
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="kisRowClick(\'' + key + '\')">'
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(chg).toFixed(2) + '%</span>'
         + '</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px">'
         + '<span style="font-size:9px;color:var(--tx3)">' + Math.round(trPbmn) + '억</span>'
-        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuyStr + '</span>' : '')
-        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuyStr + '</span>' : '')
+        + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
+        + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
         + '</div>'
+        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(128,128,128,0.2);display:none"></div>'
         + '</div>';
     };
 
@@ -2659,6 +2685,84 @@ window.reverseFetch = async () => {
 };
 
 // 역발상 날짜탭 렌더링
+// 상승수급 날짜탭 렌더링
+window.renderUpSudDateTabs = async (uid) => {
+  const tabEl = document.getElementById('upSudDateTabs');
+  if(!tabEl) return;
+  try {
+    const snap = await getDocs(collection(db, 'users', uid, 'upSudHistory'));
+    const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
+    if(!dates.length) { tabEl.innerHTML = ''; return; }
+
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+    let tabHtml = '';
+    if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${today}','${uid}')">오늘</button>`;
+    if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${yesterday}','${uid}')">어제</button>`;
+    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'upsud','${uid}')">📅</button>`;
+    tabEl.innerHTML = tabHtml;
+
+    // 가장 최근 날짜 자동 로드
+    const latestDate = dates[0];
+    await loadUpSudHistory(latestDate, uid);
+    const latestBtn = document.getElementById('upSudDateBtn-' + latestDate);
+    if(latestBtn) {
+      latestBtn.style.background = 'var(--pr)';
+      latestBtn.style.color = '#fff';
+      latestBtn.style.borderColor = 'var(--pr)';
+    }
+  } catch(e) { console.warn('상승수급 날짜탭 렌더 실패:', e); }
+};
+
+// 상승수급 히스토리 로드
+window.loadUpSudHistory = async (date, uid) => {
+  document.querySelectorAll('[id^="upSudDateBtn-"]').forEach(b => {
+    b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
+  });
+  const activeBtn = document.getElementById('upSudDateBtn-' + date);
+  if(activeBtn) { activeBtn.style.background = 'var(--pr)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--pr)'; }
+
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'upSudHistory', date));
+    if(!snap.exists()) return;
+    const data = snap.data();
+    const list = data.list || [];
+    const listEl = document.getElementById('upSudList');
+    if(!listEl) return;
+
+    window._kisRows = window._kisRows || {};
+    if(!list.length) {
+      listEl.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">📈</div><p>해당 종목 없음</p></div>';
+      return;
+    }
+
+    listEl.innerHTML = list.map((s, i) => {
+      const rankCls = i < 3 ? ['r1','r2','r3'][i] : 'b-gr';
+      const key = 'usd_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'') + '_' + i;
+      window._kisRows[key] = { name: s.name, code: s.code||'', fBuy: s.fBuy||0, iBuy: s.iBuy||0 };
+      const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
+      return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
+        + '<div style="display:flex;align-items:center;gap:6px">'
+        + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between">'
+        + '<span style="font-size:12px;font-weight:700">' + s.name + '</span>'
+        + '<span style="font-size:10px;color:var(--up);font-weight:800">' + chgStr + '</span>'
+        + '</div>'
+        + '<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">'
+        + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰 ' + (s.trPbmn||0) + '억</span>'
+        + (s.fBuy > 0 ? '<span style="font-size:9px;color:var(--up)">외 +' + s.fBuy + '억</span>' : '')
+        + (s.iBuy > 0 ? '<span style="font-size:9px;color:var(--dn)">기 +' + s.iBuy + '억</span>' : '')
+        + '</div>'
+        + '</div>'
+        + '</div>'
+        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,71,87,0.2);display:none"></div>'
+        + '</div>';
+    }).join('');
+  } catch(e) { console.warn('상승수급 히스토리 로드 실패:', e); }
+};
+
 window.renderReverseDateTabs = async (uid) => {
   const tabEl = document.getElementById('reverseDateTabs');
   if(!tabEl) return;
@@ -2667,12 +2771,13 @@ window.renderReverseDateTabs = async (uid) => {
     const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
     if(!dates.length) { tabEl.innerHTML = ''; return; }
     const today = new Date().toISOString().slice(0,10);
-    tabEl.innerHTML = dates.map(d => {
-      const label = d === today ? '오늘' : d.slice(5).replace('-','/');
-      return `<button class="btn btn-sm" id="revDateBtn-${d}"
-        style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)"
-        onclick="loadReverseHistory('${d}','${uid}')">${label}</button>`;
-    }).join('');
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+    let tabHtml = '';
+    if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${today}','${uid}')">오늘</button>`;
+    if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${yesterday}','${uid}')">어제</button>`;
+    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'rev','${uid}')">📅</button>`;
+    tabEl.innerHTML = tabHtml;
   } catch(e) { console.warn('역발상 날짜탭 실패:', e); }
 };
 
@@ -2696,7 +2801,7 @@ window.loadReverseHistory = async (date, uid) => {
       const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g, '');
       window._kisRows = window._kisRows || {};
       window._kisRows[key] = { name: s.name, fBuy: s.fBuy, iBuy: s.iBuy, code: '' };
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="kisRowClick(\'' + key + '\')">' 
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">' 
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + s.name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(s.chg).toFixed(2) + '%</span>'
@@ -2706,6 +2811,7 @@ window.loadReverseHistory = async (date, uid) => {
         + (s.fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + s.fBuy + '억</span>' : '')
         + (s.iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + s.iBuy + '억</span>' : '')
         + '</div>'
+        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(128,128,128,0.2);display:none"></div>'
         + '</div>';
     };
 
@@ -2716,6 +2822,87 @@ window.loadReverseHistory = async (date, uid) => {
 };
 
 // 상승수급 종목 클릭 - 연속 매수/매도 일수 조회
+// 역발상 종목 클릭 - 인라인 연속일수 표시
+// 날짜 피커 바텀시트
+window.openDatePicker = (dates, type, uid) => {
+  const listEl = document.getElementById('datePickerList');
+  if(!listEl) return;
+
+  const loadFn = type === 'kis' ? 'loadKisHistory'
+    : type === 'upsud' ? 'loadUpSudHistory'
+    : 'loadReverseHistory';
+
+  const today = new Date().toISOString().slice(0,10);
+  listEl.innerHTML = dates.map(d => {
+    const isToday = d === today;
+    const label = isToday ? `오늘 (${d})` : d.replace(/-/g, '/');
+    return `<button onclick="${loadFn}('${d}','${uid}');closeMo('moDatePicker')"
+      style="width:100%;text-align:left;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:${isToday?'800':'600'};color:${isToday?'var(--pr)':'var(--tx)'};cursor:pointer">
+      ${isToday ? '📌 ' : ''}${label}
+    </button>`;
+  }).join('');
+
+  document.getElementById('moDatePicker').classList.add('show');
+};
+
+window.revRowClick = async (key) => {
+  const s = window._kisRows && window._kisRows[key];
+  if(!s) return;
+  const invEl = document.getElementById('inv_' + key);
+  if(!invEl) return;
+
+  if(invEl.style.display !== 'none') {
+    invEl.style.display = 'none';
+    return;
+  }
+
+  invEl.style.display = 'block';
+  invEl.textContent = '📊 연속 매수/매도 조회 중...';
+
+  if(!s.code) {
+    invEl.innerHTML = '<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/kis?action=investor&code=' + s.code);
+    const data = await r.json();
+    const rows = (data.output2 || data.output || []).slice(0, 5);
+
+    const calcStreak = (f1, f2) => {
+      let streak = 0;
+      for(let i = 0; i < rows.length; i++) {
+        const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
+        if(i === 0) { streak = v >= 0 ? 1 : -1; }
+        else {
+          const sign = streak > 0 ? 1 : -1;
+          if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign;
+          else break;
+        }
+      }
+      return streak;
+    };
+
+    const fStreak = rows.length ? calcStreak('frgn_ntby_qty', 'frgn_ntby_tr_pbmn') : 0;
+    const iStreak = rows.length ? calcStreak('orgn_ntby_qty', 'orgn_ntby_tr_pbmn') : 0;
+
+    const fTag = fStreak > 0
+      ? '<span style="color:var(--up);font-weight:800">외국인 +' + fStreak + '일 연속매수 📈</span>'
+      : '<span style="color:var(--dn);font-weight:800">외국인 ' + fStreak + '일 연속매도 📉</span>';
+    const iTag = iStreak !== 0
+      ? (iStreak > 0
+        ? '<span style="color:var(--up);font-weight:800">기관 +' + iStreak + '일 연속매수 📈</span>'
+        : '<span style="color:var(--dn);font-weight:800">기관 ' + iStreak + '일 연속매도 📉</span>')
+      : '';
+
+    invEl.innerHTML = fTag + (iTag ? '&nbsp;&nbsp;' + iTag : '')
+      + '&nbsp;&nbsp;<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
+
+  } catch(e) {
+    invEl.innerHTML = '조회 실패 &nbsp;<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
+  }
+};
+
 window.upSudClick = async (key) => {
   const s = window._kisRows && window._kisRows[key];
   if(!s) return;
