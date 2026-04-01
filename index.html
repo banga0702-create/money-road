@@ -3205,7 +3205,7 @@ window.drawMiniChart = async (svgId, code) => {
   try {
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    const items = [...(data.output2 || [])].reverse(); // 과거→현재 순 정렬
+    const items = [...(data.output2 || [])].reverse(); // 과거→현재 순
     if(!items.length) return;
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
@@ -3213,33 +3213,60 @@ window.drawMiniChart = async (svgId, code) => {
 
     const svg = document.getElementById(svgId);
     if(!svg) return;
-    const W = 70, H = 36, pad = 2;
-    const min = Math.min(...prices), max = Math.max(...prices);
+    const W = 70, H = 40, pad = 2;
+
+    // 전일 종가 기준
+    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
+    const allVals = [...prices, prevClose];
+    const min = Math.min(...allVals) * 0.9995;
+    const max = Math.max(...allVals) * 1.0005;
     const range = max - min || 1;
-    const isUp = prices[prices.length-1] >= prices[0];
-    const color = isUp ? 'var(--up)' : 'var(--dn)';
 
-    const pts = prices.map((v, i) => {
-      const x = pad + (i / (prices.length-1)) * (W - pad*2);
-      const y = pad + (1 - (v-min)/range) * (H - pad*2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
+    const toY = v => pad + (1 - (v - min) / range) * (H - pad*2);
+    const toX = i => pad + (i / (prices.length-1)) * (W - pad*2);
 
-    // 채우기용 폴리곤
-    const first = prices[0], last = prices[prices.length-1];
-    const fx = pad, fy = pad + (1-(first-min)/range)*(H-pad*2);
-    const lx = W-pad, ly = pad + (1-(last-min)/range)*(H-pad*2);
-    const fillPts = `${fx},${H} ${pts} ${lx},${H}`;
+    // 전일종가 기준선 Y
+    const baseY = toY(prevClose);
+    const lastPrice = prices[prices.length-1];
+    const isUp = lastPrice >= prevClose;
+    const upColor = '#FF4757', dnColor = '#3B82F6';
 
+    // 좌표 생성
+    const pts = prices.map((v,i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+    const firstX = toX(0), lastX = toX(prices.length-1);
+
+    // 클립 영역: 기준선 위(상승), 아래(하락)
+    const uid = svgId;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = `
       <defs>
-        <linearGradient id="g${svgId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${isUp?'#FF4757':'#3B82F6'}" stop-opacity="0.3"/>
-          <stop offset="100%" stop-color="${isUp?'#FF4757':'#3B82F6'}" stop-opacity="0"/>
-        </linearGradient>
+        <clipPath id="clipUp${uid}">
+          <rect x="0" y="0" width="${W}" height="${baseY.toFixed(1)}"/>
+        </clipPath>
+        <clipPath id="clipDn${uid}">
+          <rect x="0" y="${baseY.toFixed(1)}" width="${W}" height="${H}"/>
+        </clipPath>
       </defs>
-      <polygon points="${fillPts}" fill="url(#g${svgId})"/>
-      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+
+      <!-- 기준선 위 채우기(빨강) -->
+      <polygon points="${firstX},${baseY.toFixed(1)} ${pts} ${lastX},${baseY.toFixed(1)}"
+        fill="${upColor}" fill-opacity="0.15" clip-path="url(#clipUp${uid})"/>
+      <!-- 기준선 아래 채우기(파랑) -->
+      <polygon points="${firstX},${baseY.toFixed(1)} ${pts} ${lastX},${baseY.toFixed(1)}"
+        fill="${dnColor}" fill-opacity="0.15" clip-path="url(#clipDn${uid})"/>
+
+      <!-- 전일종가 기준 점선 -->
+      <line x1="${pad}" y1="${baseY.toFixed(1)}" x2="${W-pad}" y2="${baseY.toFixed(1)}"
+        stroke="#888" stroke-width="0.6" stroke-dasharray="2,2"/>
+
+      <!-- 가격선: 기준선 위(빨강) -->
+      <polyline points="${pts}" fill="none"
+        stroke="${upColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
+        clip-path="url(#clipUp${uid})"/>
+      <!-- 가격선: 기준선 아래(파랑) -->
+      <polyline points="${pts}" fill="none"
+        stroke="${dnColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
+        clip-path="url(#clipDn${uid})"/>
     `;
   } catch(e) { console.warn('분봉 차트 실패:', e); }
 };
