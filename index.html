@@ -3174,10 +3174,10 @@ window.fetchMarketIndex = async () => {
       return `<span style="color:${color};font-size:10px;font-weight:700">${sign}${n.toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>`;
     };
 
-    const kpIndv = parseFloat(kp?.indv_ntby_tr_pbmn)||0;
+    const kpIndv = parseFloat(kp?.prsn_ntby_tr_pbmn)||0;
     const kpFrgn = parseFloat(kp?.frgn_ntby_tr_pbmn)||0;
     const kpOrgn = parseFloat(kp?.orgn_ntby_tr_pbmn)||0;
-    const kqIndv = parseFloat(kq?.indv_ntby_tr_pbmn)||0;
+    const kqIndv = parseFloat(kq?.prsn_ntby_tr_pbmn)||0;
     const kqFrgn = parseFloat(kq?.frgn_ntby_tr_pbmn)||0;
     const kqOrgn = parseFloat(kq?.orgn_ntby_tr_pbmn)||0;
 
@@ -3344,11 +3344,11 @@ window.kisAutoFetch = async () => {
     const kosdaqIdx = data.kosdaq?.output2 || data.kosdaq?.output1;
 
     // 개인/외국인/기관 코스피
-    const kpIndv = parseFloat(kp?.indv_ntby_tr_pbmn)||0;
+    const kpIndv = parseFloat(kp?.prsn_ntby_tr_pbmn)||0;
     const kpFrgn = parseFloat(kp?.frgn_ntby_tr_pbmn)||0;
     const kpOrgn = parseFloat(kp?.orgn_ntby_tr_pbmn)||0;
     // 코스닥
-    const kqIndv = parseFloat(kq?.indv_ntby_tr_pbmn)||0;
+    const kqIndv = parseFloat(kq?.prsn_ntby_tr_pbmn)||0;
     const kqFrgn = parseFloat(kq?.frgn_ntby_tr_pbmn)||0;
     const kqOrgn = parseFloat(kq?.orgn_ntby_tr_pbmn)||0;
 
