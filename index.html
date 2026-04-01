@@ -418,7 +418,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">합산</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">증권사</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvSum">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnSum">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnSum">—</div>
@@ -3188,9 +3188,9 @@ window.fetchMarketIndex = async () => {
     setEl('mktKosdaqIdx', fmtIdx(kq?.bstp_nmix_prpr));
     setEl('mktKosdaqChg', fmtChg(kq?.bstp_nmix_prdy_vrss, kq?.bstp_nmix_prdy_ctrt));
 
-    setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv)); setEl('mktIndvSum',  fmt(kpIndv+kqIndv));
-    setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn)); setEl('mktFrgnSum',  fmt(kpFrgn+kqFrgn));
-    setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn)); setEl('mktOrgnSum',  fmt(kpOrgn+kqOrgn));
+    setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv)); setEl('mktIndvSum',  fmt(parseFloat(kp?.scrt_ntby_tr_pbmn)||0));
+    setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn)); setEl('mktFrgnSum',  fmt(parseFloat(kq?.scrt_ntby_tr_pbmn)||0));
+    setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn)); setEl('mktOrgnSum',  fmt((parseFloat(kp?.scrt_ntby_tr_pbmn)||0)+(parseFloat(kq?.scrt_ntby_tr_pbmn)||0)));
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
@@ -3355,11 +3355,11 @@ window.kisAutoFetch = async () => {
     const setEl = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
 
     setEl('mktIndvKp', fmt(kpIndv)); setEl('mktIndvKq', fmt(kqIndv));
-    setEl('mktIndvSum', fmt(kpIndv+kqIndv));
+    setEl('mktIndvSum', fmt(parseFloat(kp?.scrt_ntby_tr_pbmn)||0));
     setEl('mktFrgnKp', fmt(kpFrgn)); setEl('mktFrgnKq', fmt(kqFrgn));
-    setEl('mktFrgnSum', fmt(kpFrgn+kqFrgn));
+    setEl('mktFrgnSum', fmt(parseFloat(kq?.scrt_ntby_tr_pbmn)||0));
     setEl('mktOrgnKp', fmt(kpOrgn)); setEl('mktOrgnKq', fmt(kqOrgn));
-    setEl('mktOrgnSum', fmt(kpOrgn+kqOrgn));
+    setEl('mktOrgnSum', fmt((parseFloat(kp?.scrt_ntby_tr_pbmn)||0)+(parseFloat(kq?.scrt_ntby_tr_pbmn)||0)));
 
     // 코스피/코스닥 지수는 market_investor API에서 직접 가져옴
     setEl('mktKospiIdx', fmtIdx(kp?.bstp_nmix_prpr || 0));
