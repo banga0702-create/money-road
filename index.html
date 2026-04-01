@@ -2217,6 +2217,16 @@ window.renderKisDateTabs = async (uid) => {
     tabEl.innerHTML += `<button class="btn btn-sm"
       style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)"
       onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
+
+    // 가장 최근 날짜 자동 로드 (오늘 데이터 없으면 최근 저장일 표시)
+    const latestDate = dates[0];
+    await loadKisHistory(latestDate, uid);
+    const latestBtn = document.getElementById('kisDateBtn-' + latestDate);
+    if(latestBtn) {
+      latestBtn.style.background = 'var(--pr)';
+      latestBtn.style.color = '#fff';
+      latestBtn.style.borderColor = 'var(--pr)';
+    }
   } catch(e) { console.warn('날짜탭 렌더 실패:', e); }
 };
 
