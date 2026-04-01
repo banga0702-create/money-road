@@ -174,7 +174,7 @@ export default async function handler(req, res) {
       // 3번 호출해서 하루치 분봉 합치기: 11시, 13시, 현재시간
       const now = new Date();
       const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
-      const times = ['110000', '130000', hhmm];
+      // 2번 호출: 현재시간 + 12시 (Vercel 타임아웃 방지)
       const fetchMinute = async (t) => {
         const r = await fetch(
           `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${t}&FID_PW_DATA_INCU_YN=Y`,
@@ -183,22 +183,21 @@ export default async function handler(req, res) {
         const d = await r.json();
         return d.output2 || [];
       };
-      const [r1, r2, r3] = await Promise.all(times.map(fetchMinute));
-      // 합치고 시간순 정렬 후 중복 제거
+      const [r1, r2] = await Promise.all([fetchMinute('120000'), fetchMinute(hhmm)]);
       const seen = new Set();
-      const combined = [...r1, ...r2, ...r3].filter(d => {
+      const combined = [...r1, ...r2].filter(d => {
         const key = d.stck_cntg_hour;
         if(seen.has(key)) return false;
         seen.add(key);
         return true;
       }).sort((a, b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
-      // output1은 첫번째 호출 결과 사용
-      const first = await fetch(
+      // 전일종가는 현재가 API에서
+      const priceRes = await fetch(
         `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}`,
         { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST01010100', 'custtype': 'P' } }
       );
-      const firstData = await first.json();
-      return res.status(200).json({ output1: firstData.output, output2: combined });
+      const priceData = await priceRes.json();
+      return res.status(200).json({ output1: priceData.output, output2: combined });
     }
 
     // 네이버 모바일 당일 차트 데이터
