@@ -166,16 +166,18 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // 코스피/코스닥 당일 분봉
+    // 코스피/코스닥 업종 분봉 (FHKUP03500100)
     if (action === 'chart_minute') {
       const token = await getToken();
-      const { code = '0001' } = req.query;
-      // 현재 시간 HHMMSS
+      const { code = '0001' } = req.query; // 0001=코스피, 1001=코스닥
       const now = new Date();
       const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
+      const today = now.getFullYear().toString() +
+        String(now.getMonth()+1).padStart(2,'0') +
+        String(now.getDate()).padStart(2,'0');
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${hhmm}&FID_PW_DATA_INCU_YN=Y`,
-        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-indexchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${hhmm}&FID_PW_DATA_INCU_YN=Y`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKUP03500100', 'custtype': 'P' } }
       );
       const data = await r.json();
       return res.status(200).json(data);
