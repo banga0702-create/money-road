@@ -172,13 +172,11 @@ export default async function handler(req, res) {
       const token = await getToken();
       const { code = '069500' } = req.query;
       const now = new Date();
-      const today = now.getFullYear().toString() +
-        String(now.getMonth()+1).padStart(2,'0') +
-        String(now.getDate()).padStart(2,'0');
-      // 시봉: FHKST03010100 + FID_PERIOD_DIV_CODE=60 (60분봉)
+      const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
+      // 60분봉: FHKST03010200 + FID_INPUT_HOUR_1=현재시간
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=${today}&FID_INPUT_DATE_2=${today}&FID_PERIOD_DIV_CODE=60&FID_ORG_ADJ_PRC=0`,
-        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010100', 'custtype': 'P' } }
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${hhmm}&FID_PW_DATA_INCU_YN=Y`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
       );
       const data = await r.json();
       return res.status(200).json(data);
