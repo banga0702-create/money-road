@@ -2339,7 +2339,7 @@ window.loadKisWeekly = async (uid) => {
         : 'background:var(--sf);border:1px solid var(--bd)';
       const cntColor = isTriple ? 'color:#FFB400' : 'color:var(--ac)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;' + bg + '">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + (i<3?'':'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)') + '">' + (i+1) + '</div>'
         + '<span style="font-size:11px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name + '</span>'
         + '<span style="font-size:10px;font-weight:800;flex-shrink:0;' + cntColor + '">' + cnt + '/' + maxCount + '일</span>'
         + '</div>';
