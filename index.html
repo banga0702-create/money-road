@@ -2427,14 +2427,26 @@ window.upSudFetch = async () => {
   msg.textContent = '🔍 거래대금 상위 + 수급 교차 분석 중...';
 
   try {
-    const volRes = await fetch('/api/kis?action=vol_rank');
+    const [volRes, fiRes] = await Promise.all([
+      fetch('/api/kis?action=vol_rank'),
+      fetch('/api/kis?action=foreign_inst')
+    ]);
     const volData = await volRes.json();
+    const fiData  = await fiRes.json();
     // price_rank(코스닥)는 실패해도 계속 진행
     let priceData = { output: [] };
     try {
       const priceRes = await fetch('/api/kis?action=price_rank');
       if(priceRes.ok) priceData = await priceRes.json();
     } catch(e) { console.warn('price_rank 실패, 코스피만 사용:', e); }
+
+    // 외국인/기관 순매수 맵
+    const fBuyMap = {}, iBuyMap = {};
+    (fiData.output||[]).forEach(s => {
+      const n = s.hts_kor_isnm;
+      fBuyMap[n] = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
+      iBuyMap[n] = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+    });
 
     const seen = new Set();
     const combined = [...(volData.output||[]), ...(priceData.output||[])].filter(s => {
@@ -2468,9 +2480,12 @@ window.upSudFetch = async () => {
         const tr = Math.round(parseFloat(s.acml_tr_pbmn) / 100000000);
         const rankCls = i < 3 ? ['r1','r2','r3'][i] : 'b-gr';
         const key = 'us_' + name.replace(/[^a-zA-Z0-9가-힣]/g,'');
+        const code = s.mksc_shrn_iscd || '';
+        const fBuy = fBuyMap[name] || 0;
+        const iBuy = iBuyMap[name] || 0;
         window._kisRows = window._kisRows || {};
-        window._kisRows[key] = { name };
-        return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="kisRowClick(\'' + key + '\')">'
+        window._kisRows[key] = { name, code, fBuy, iBuy };
+        return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:6px">'
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
           + '<div style="flex:1;min-width:0">'
@@ -2480,9 +2495,12 @@ window.upSudFetch = async () => {
           + '</div>'
           + '<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">'
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰 ' + tr + '억</span>'
+          + (fBuy > 0 ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
+          + (iBuy > 0 ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
           + '</div>'
           + '</div>'
           + '</div>'
+          + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,71,87,0.2);display:none"></div>'
           + '</div>';
       }).join('');
     }
@@ -2678,6 +2696,80 @@ window.loadReverseHistory = async (date, uid) => {
     document.getElementById('reverseListF').innerHTML = (data.fResult||[]).length ? data.fResult.map(s=>makeHistRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = (data.fiResult||[]).length ? data.fiResult.map(s=>makeHistRow(s,true)).join('') : emptyHtml;
   } catch(e) { console.warn('역발상 히스토리 로드 실패:', e); }
+};
+
+// 상승수급 종목 클릭 - 연속 매수/매도 일수 조회
+window.upSudClick = async (key) => {
+  const s = window._kisRows && window._kisRows[key];
+  if(!s) return;
+  const invEl = document.getElementById('inv_' + key);
+  if(!invEl) return;
+
+  // 이미 열려있으면 닫기
+  if(invEl.style.display !== 'none') {
+    invEl.style.display = 'none';
+    return;
+  }
+
+  invEl.style.display = 'block';
+  invEl.textContent = '📊 수급 현황 조회 중...';
+
+  // 기본 정보 표시 (코드 없어도)
+  let baseHtml = '';
+  if(s.fBuy > 0 || s.iBuy > 0) {
+    baseHtml = '<span style="color:var(--up)">외 ' + (s.fBuy > 0 ? '+' : '') + s.fBuy + '억</span> '
+             + '<span style="color:var(--dn)">기 ' + (s.iBuy > 0 ? '+' : '') + s.iBuy + '억</span>';
+  }
+
+  if(!s.code) {
+    invEl.innerHTML = baseHtml || '종목코드 없음';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/kis?action=investor&code=' + s.code);
+    const data = await r.json();
+    const rows = data.output2 || data.output || [];
+
+    if(!rows.length) {
+      invEl.innerHTML = baseHtml + (baseHtml ? '<br>' : '') + '일별 데이터 없음';
+      return;
+    }
+
+    // 최근 5일 외국인/기관 연속 매수/매도 계산
+    const days = rows.slice(0, 5);
+    let fStreak = 0, iStreak = 0;
+    for(let i = 0; i < days.length; i++) {
+      const fv = parseFloat(days[i].frgn_ntby_qty || days[i].frgn_ntby_tr_pbmn || 0);
+      if(i === 0) { fStreak = fv >= 0 ? 1 : -1; }
+      else {
+        const sign = fStreak > 0 ? 1 : -1;
+        if((fv >= 0 && sign > 0) || (fv < 0 && sign < 0)) fStreak += sign;
+        else break;
+      }
+    }
+    for(let i = 0; i < days.length; i++) {
+      const iv = parseFloat(days[i].orgn_ntby_qty || days[i].orgn_ntby_tr_pbmn || 0);
+      if(i === 0) { iStreak = iv >= 0 ? 1 : -1; }
+      else {
+        const sign = iStreak > 0 ? 1 : -1;
+        if((iv >= 0 && sign > 0) || (iv < 0 && sign < 0)) iStreak += sign;
+        else break;
+      }
+    }
+
+    const fTag = fStreak > 0
+      ? '<span style="color:var(--up);font-weight:800">외국인 +' + fStreak + '일 연속매수</span>'
+      : '<span style="color:var(--dn);font-weight:800">외국인 ' + fStreak + '일 연속매도</span>';
+    const iTag = iStreak > 0
+      ? '<span style="color:var(--up);font-weight:800">기관 +' + iStreak + '일 연속매수</span>'
+      : '<span style="color:var(--dn);font-weight:800">기관 ' + iStreak + '일 연속매도</span>';
+
+    invEl.innerHTML = fTag + ' &nbsp; ' + iTag;
+
+  } catch(e) {
+    invEl.innerHTML = baseHtml || '조회 실패';
+  }
 };
 
 window.kisRowClick = (key) => {
