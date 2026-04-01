@@ -180,7 +180,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .hist-val{font-size:10px;font-weight:800}
 .hist-item.today .hist-day{color:var(--pr)}
 
-/* ══ 탭2 수급입력 ══ */
+/* ══ 탭2 관심종목 ══ */
 .form-hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
 .form-hdr-title{font-size:14px;font-weight:800}
 .sli{margin:0 16px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
@@ -501,11 +501,11 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
   </div>
 
-  <!-- ══ 탭2: 수급입력 ══ -->
+  <!-- ══ 탭2: 관심종목 ══ -->
   <div class="page" id="pg-supply">
 
     <div class="form-hdr">
-      <span class="form-hdr-title">📋 수급 기록</span>
+      <span class="form-hdr-title">⭐ 관심종목</span>
       <span style="font-size:12px;color:var(--tx3)" id="stockCnt">0/9 종목</span>
     </div>
 
@@ -746,7 +746,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <!-- 바텀 네비 -->
   <nav class="bnav">
     <div class="bnav-item active" onclick="switchTab('home')" data-tab="home"><span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span></div>
-    <div class="bnav-item" onclick="switchTab('supply')" data-tab="supply"><span class="bnav-icon">📝</span><span class="bnav-lbl">수급입력</span></div>
+    <div class="bnav-item" onclick="switchTab('supply')" data-tab="supply"><span class="bnav-icon">📝</span><span class="bnav-lbl">관심종목</span></div>
     <div class="bnav-item" onclick="switchTab('feat')" data-tab="feat"><span class="bnav-icon">⭐</span><span class="bnav-lbl">특징주</span></div>
     <div class="bnav-item" onclick="switchTab('analysis')" data-tab="analysis"><span class="bnav-icon">📊</span><span class="bnav-lbl">분석</span></div>
     <div class="bnav-item" onclick="switchTab('track')" data-tab="track"><span class="bnav-icon">🔭</span><span class="bnav-lbl">추적</span></div>
@@ -2230,7 +2230,8 @@ window.renderKisDateTabs = async (uid) => {
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${today}','${uid}')">오늘</button>`;
     if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${yesterday}','${uid}')">어제</button>`;
-    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'kis','${uid}')">📅</button>`;
+    window._kisAllDates = dates;
+    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(window._kisAllDates,'kis','${uid}')">📅</button>`;
     tabHtml += `<button class="btn btn-sm" style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)" onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
     tabEl.innerHTML = tabHtml;
 
@@ -2701,7 +2702,8 @@ window.renderUpSudDateTabs = async (uid) => {
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${today}','${uid}')">오늘</button>`;
     if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${yesterday}','${uid}')">어제</button>`;
-    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'upsud','${uid}')">📅</button>`;
+    window._upSudAllDates = dates;
+    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(window._upSudAllDates,'upsud','${uid}')">📅</button>`;
     tabEl.innerHTML = tabHtml;
 
     // 최근 날짜 저장 (탭 진입 시 로드)
@@ -2770,7 +2772,8 @@ window.renderReverseDateTabs = async (uid) => {
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${today}','${uid}')">오늘</button>`;
     if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${yesterday}','${uid}')">어제</button>`;
-    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'rev','${uid}')">📅</button>`;
+    window._revAllDates = dates;
+    tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(window._revAllDates,'rev','${uid}')">📅</button>`;
     tabEl.innerHTML = tabHtml;
   } catch(e) { console.warn('역발상 날짜탭 실패:', e); }
 };
@@ -2963,10 +2966,12 @@ window.upSudClick = async (key) => {
       ? '<span style="color:var(--up);font-weight:800">기관 +' + iStreak + '일 연속매수</span>'
       : '<span style="color:var(--dn);font-weight:800">기관 ' + iStreak + '일 연속매도</span>';
 
-    invEl.innerHTML = fTag + ' &nbsp; ' + iTag;
+    const addBtn = '<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer;margin-left:6px">➕ 추가</button>';
+    invEl.innerHTML = fTag + ' &nbsp; ' + iTag + ' &nbsp;' + addBtn;
 
   } catch(e) {
-    invEl.innerHTML = baseHtml || '조회 실패';
+    const addBtn2 = '<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
+    invEl.innerHTML = (baseHtml || '조회 실패') + ' &nbsp;' + addBtn2;
   }
 };
 
@@ -2990,7 +2995,7 @@ window.kisRowClick = async (key) => {
     + (total ? '<span style="background:rgba(0,212,170,.12);color:var(--ac);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700">합계 +' + total + '억</span>' : '')
     + '</div>'
     + '<div id="kisDetailStreak" style="font-size:11px;color:var(--tx3);margin-bottom:14px">📊 연속 매수/매도 조회 중...</div>'
-    + '<button class="btn btn-pr" onclick="kisAddTop(\'' + s.name + '\',' + fBuy + ',' + iBuy + ');closeMo(\'moKisDetail\')">➕ 수급기록에 추가</button>';
+    + '<button class="btn btn-pr" onclick="kisAddTop(\'' + s.name + '\',' + fBuy + ',' + iBuy + ');closeMo(\'moKisDetail\')">➕ 관심종목에 추가</button>';
 
   mo.classList.add('show');
 
@@ -3038,7 +3043,7 @@ window.kisRowClick = async (key) => {
   }
 };
 
-// 종목 클릭 시 수급기록에 추가
+// 종목 클릭 시 관심종목에 추가
 window.kisAddTop = (name, fBuy, iBuy) => {
   if(!S.stocks) S.stocks = [];
   if(S.stocks.length >= 9) { alert('최대 9개 종목까지 기록 가능합니다'); return; }
@@ -3062,7 +3067,7 @@ window.kisAddTop = (name, fBuy, iBuy) => {
   S.stocks.forEach((s,i) => s.num = i+1);
   save();
   renderStockList();
-  alert('✓ ' + name + ' 수급입력에 추가됐어요!');
+  alert('✓ ' + name + ' 관심종목에 추가됐어요!');
 };
 
 // ── KIS API 시장 데이터 자동 입력
