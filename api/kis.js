@@ -166,6 +166,18 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // 코스피/코스닥 당일 분봉
+    if (action === 'chart_minute') {
+      const token = await getToken();
+      const { code = '0001' } = req.query; // 0001=코스피, 1001=코스닥
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=153000&FID_PW_DATA_INCU_YN=Y`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKUP03500100', 'custtype': 'P' } }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
