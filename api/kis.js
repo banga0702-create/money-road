@@ -187,6 +187,25 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // 네이버 모바일 당일 차트 데이터
+    if (action === 'naver_chart') {
+      const { code = '069500' } = req.query;
+      try {
+        const r = await fetch(
+          `https://m.stock.naver.com/api/stock/${code}/chartdata/day`,
+          { headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Referer': 'https://m.stock.naver.com/',
+            'Accept': 'application/json'
+          }}
+        );
+        const text = await r.text();
+        return res.status(200).send(text);
+      } catch(e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
