@@ -170,15 +170,20 @@ export default async function handler(req, res) {
     // code: 069500=코스피200ETF, 233740=코스닥150ETF
     if (action === 'chart_minute') {
       const token = await getToken();
-      const { code = '069500' } = req.query;
+      const { code = '069500', min = '30' } = req.query;
       const now = new Date();
       const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
-      // 60분봉: FHKST03010200 + FID_INPUT_HOUR_1=현재시간
+      // 분봉: FID_INPUT_HOUR_1=현재시간, min 파라미터로 분 단위 조절
       const r = await fetch(
         `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${hhmm}&FID_PW_DATA_INCU_YN=Y`,
         { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
       );
       const data = await r.json();
+      // 30분봉으로 리샘플: 30개 중 매 N번째만 추출
+      if(data.output2 && data.output2.length > 0) {
+        const step = Math.max(1, Math.floor(data.output2.length / 13));
+        data.output2_resampled = data.output2.filter((_, i) => i % step === 0);
+      }
       return res.status(200).json(data);
     }
 
