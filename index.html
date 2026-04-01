@@ -553,7 +553,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">ETF 흐름</div>
       <div class="ftab" onclick="showFTab('기준봉',this)">기준봉</div>
       <div class="ftab" onclick="showFTab('역발상',this);if(!document.getElementById('reverseList').children.length)reverseFetch()">역발상</div>
-      <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length)upSudFetch()">상승수급</div>
+      <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length){const uid=window._kisUid;if(uid&&window._upSudLatestDate)loadUpSudHistory(window._upSudLatestDate,uid).then(()=>{const b=document.getElementById('upSudDateBtn-'+window._upSudLatestDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}});}">상승수급</div>
     </div>
 
     <!-- 순매수 TOP -->
@@ -1004,7 +1004,14 @@ function switchTab(tab){
   }
   if(tab==='feat'){
     renderFeat();
-    // KIS 자동불러오기는 버튼으로만
+    // 순매수 TOP 최근 히스토리 로드
+    const uid = window._kisUid;
+    if(uid && window._kisLatestDate && !document.getElementById('topListFI').children.length) {
+      loadKisHistory(window._kisLatestDate, uid).then(() => {
+        const btn = document.getElementById('kisDateBtn-' + window._kisLatestDate);
+        if(btn) { btn.style.background='var(--pr)'; btn.style.color='#fff'; btn.style.borderColor='var(--pr)'; }
+      });
+    }
   }
   if(tab==='analysis') renderAnalysis();
   if(tab==='track') renderTrack();
@@ -2187,6 +2194,7 @@ window.kisTopFetch = async () => {
         });
         await renderKisDateTabs(user.uid);
       await renderUpSudDateTabs(user.uid);
+      window._kisUid = user.uid; // uid 저장 (탭 진입 시 사용)
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
@@ -2226,15 +2234,8 @@ window.renderKisDateTabs = async (uid) => {
     tabHtml += `<button class="btn btn-sm" style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)" onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
     tabEl.innerHTML = tabHtml;
 
-    // 가장 최근 날짜 자동 로드
-    const latestDate = dates[0];
-    await loadKisHistory(latestDate, uid);
-    const latestBtn = document.getElementById('kisDateBtn-' + latestDate);
-    if(latestBtn) {
-      latestBtn.style.background = 'var(--pr)';
-      latestBtn.style.color = '#fff';
-      latestBtn.style.borderColor = 'var(--pr)';
-    }
+    // 최근 날짜 저장 (탭 진입 시 로드)
+    window._kisLatestDate = dates[0];
   } catch(e) { console.warn('날짜탭 렌더 실패:', e); }
 };
 
@@ -2703,15 +2704,8 @@ window.renderUpSudDateTabs = async (uid) => {
     tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(${JSON.stringify(dates)},'upsud','${uid}')">📅</button>`;
     tabEl.innerHTML = tabHtml;
 
-    // 가장 최근 날짜 자동 로드
-    const latestDate = dates[0];
-    await loadUpSudHistory(latestDate, uid);
-    const latestBtn = document.getElementById('upSudDateBtn-' + latestDate);
-    if(latestBtn) {
-      latestBtn.style.background = 'var(--pr)';
-      latestBtn.style.color = '#fff';
-      latestBtn.style.borderColor = 'var(--pr)';
-    }
+    // 최근 날짜 저장 (탭 진입 시 로드)
+    window._upSudLatestDate = dates[0];
   } catch(e) { console.warn('상승수급 날짜탭 렌더 실패:', e); }
 };
 
@@ -3046,21 +3040,29 @@ window.kisRowClick = async (key) => {
 
 // 종목 클릭 시 수급기록에 추가
 window.kisAddTop = (name, fBuy, iBuy) => {
-  if(!S.topStocks) S.topStocks = [];
-  const exists = S.topStocks.find(s => s.name === name);
+  if(!S.stocks) S.stocks = [];
+  if(S.stocks.length >= 9) { alert('최대 9개 종목까지 기록 가능합니다'); return; }
+  const exists = S.stocks.find(s => s.name === name);
   if(exists) { alert(name + '은 이미 추가되어 있어요!'); return; }
-  S.topStocks.push({
+  const st = {
     id: Date.now(),
+    num: S.stocks.length + 1,
     name: name,
     sector: '',
-    fRank: 0,
-    iRank: 0,
-    ratio: 0,
-    fBuy: fBuy,
-    iBuy: iBuy
-  });
+    vol: 0, fBuy: fBuy||0, iBuy: iBuy||0,
+    fRk: 0, iRk: 0, ratio: 0,
+    price: 0, chgRate: 0,
+    strength: 0, report: 0,
+    memo: '',
+    score: (fBuy > 0 && iBuy > 0) ? 3 : 0,
+    isCapture: false, isTomorrow: false,
+  };
+  S.stocks.push(st);
+  S.stocks.sort((a,b) => b.score - a.score);
+  S.stocks.forEach((s,i) => s.num = i+1);
   save();
-  alert('✓ ' + name + ' 추가됐어요!');
+  renderStockList();
+  alert('✓ ' + name + ' 수급입력에 추가됐어요!');
 };
 
 // ── KIS API 시장 데이터 자동 입력
