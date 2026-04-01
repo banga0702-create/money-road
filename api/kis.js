@@ -166,60 +166,6 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // 네이버 금융 테마 크롤링
-    if (action === 'naver_theme') {
-      const { code } = req.query;
-      if (!code) return res.status(400).json({ error: 'code 파라미터 필요' });
-
-      try {
-        const r = await fetch(`https://finance.naver.com/item/main.naver?code=${code}`, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://finance.naver.com',
-            'Accept-Language': 'ko-KR,ko;q=0.9'
-          }
-        });
-        const html = await r.text();
-
-        // 테마 파싱 - 네이버 종목 페이지에서 업종/테마 추출
-        const themeMatch = html.match(/업종<\/th>\s*<td[^>]*>([^<]+)<\/td>/);
-        const sectorMatch = html.match(/코스[^<]*<\/[^>]+>\s*([^<
-]+)/);
-
-        // 종목명
-        const nameMatch = html.match(/<title>([^(]+)\(/);
-        const name = nameMatch ? nameMatch[1].trim() : '';
-
-        // 업종명 (여러 패턴 시도)
-        let theme = '';
-        const patterns = [
-          /class="[^"]*종목명[^"]*"[^>]*>[^<]*<\/[^>]+>\s*<[^>]+>([^<]+)</,
-          /업종<\/dt>\s*<dd[^>]*>([^<]+)/,
-          /theme[^>]*>([^<]+)/i
-        ];
-
-        // 더 정확한 파싱: 네이버 금융 종목 페이지 구조
-        const sectorIdx = html.indexOf('코스피');
-        const kosdaqIdx = html.indexOf('코스닥');
-        
-        // etf_gubun 또는 업종 정보 찾기
-        const gubunMatch = html.match(/etf_gubun[^>]*>([^<]+)/);
-        if(gubunMatch) theme = gubunMatch[1].trim();
-
-        // 종목정보 테이블에서 업종 추출
-        const infoMatch = html.match(/업종<\/em>\s*([^<
-]+)/);
-        if(infoMatch && !theme) theme = infoMatch[1].trim();
-
-        // h_rate_val 방식
-        const rateMatch = html.match(/class="[^"]*wrap_company[^"]*"[\s\S]*?<em[^>]*>([^<]+)<\/em>/);
-
-        return res.status(200).json({ code, name, theme, raw: html.slice(0, 500) });
-      } catch(e) {
-        return res.status(500).json({ error: '크롤링 실패: ' + e.message });
-      }
-    }
-
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
