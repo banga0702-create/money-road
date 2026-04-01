@@ -379,6 +379,53 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <!-- ══ 탭1: 홈 ══ -->
   <div class="page active" id="pg-home">
 
+    <!-- 코스피/코스닥 + 투자자 현황 -->
+    <div id="mktIndexCard" style="margin:12px 16px 0;display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:2px">코스피</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <div>
+              <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKospiIdx">—</div>
+              <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKospiChg">—</div>
+            </div>
+            <svg id="chartKospi" width="70" height="36" style="flex-shrink:0"></svg>
+          </div>
+        </div>
+        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
+          <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:2px">코스닥</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <div>
+              <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKosdaqIdx">—</div>
+              <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKosdaqChg">—</div>
+            </div>
+            <svg id="chartKosdaq" width="70" height="36" style="flex-shrink:0"></svg>
+          </div>
+        </div>
+      </div>
+      <!-- 투자자별 -->
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:10px 14px">
+        <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:4px;align-items:center">
+          <div style="font-size:9px;color:var(--tx3);font-weight:700"></div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">코스피</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">코스닥</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">합산</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">개인</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKp">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvSum">—</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">외국인</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKp">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnSum">—</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">기관</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKp">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnSum">—</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 시장온도 카드 -->
     <div class="temp-card">
       <div class="tc-top">
@@ -442,46 +489,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
     </div>
 
-    <!-- 코스피/코스닥 + 투자자 현황 -->
-    <div id="mktIndexCard" style="margin:10px 16px 0;display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
-          <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:4px">코스피</div>
-          <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKospiIdx">—</div>
-          <div style="font-size:11px;font-weight:700;margin-top:2px" id="mktKospiChg">—</div>
-        </div>
-        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
-          <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:4px">코스닥</div>
-          <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKosdaqIdx">—</div>
-          <div style="font-size:11px;font-weight:700;margin-top:2px" id="mktKosdaqChg">—</div>
-        </div>
-      </div>
-      <!-- 투자자별 -->
-      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:10px 14px">
-        <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:4px;align-items:center">
-          <div style="font-size:9px;color:var(--tx3);font-weight:700"></div>
-          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">코스피</div>
-          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">코스닥</div>
-          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">합산</div>
-          <!-- 개인 -->
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:4px 0">개인</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKp">—</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvSum">—</div>
-          <!-- 외국인 -->
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:4px 0">외국인</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKp">—</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnSum">—</div>
-          <!-- 기관 -->
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:4px 0">기관</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKp">—</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnSum">—</div>
-        </div>
-      </div>
-    </div>
-
     <!-- 오늘의 시장 한 줄 (자동) -->
     <div class="mkt-comment" id="mktComment">
       <div class="mkt-comment-top">
@@ -521,23 +528,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="sh"><span class="sh-title">오늘의 수급 TOP5</span><span class="sh-link" onclick="switchTab('supply')">기록 →</span></div>
     <div class="card card-p0" id="top5"></div>
 
-    <!-- 온도 히스토리 (주간/월간) -->
-    <div class="sh">
-      <span class="sh-title" id="histTitle">시장온도 히스토리</span>
-      <div class="hist-seg" id="histSeg">
-        <div class="hist-seg-btn active" onclick="switchHist('week',this)">주간</div>
-        <div class="hist-seg-btn" onclick="switchHist('month',this)">월간</div>
-      </div>
-    </div>
-    <!-- 주간 뷰 -->
-    <div id="histWeekView">
-      <div class="hist-row" id="histRow"></div>
-    </div>
-    <!-- 월간 뷰 -->
-    <div id="histMonthView" style="display:none">
-      <div class="hist-month-grid" id="histMonthGrid"></div>
-      <div class="hist-month-stats" id="histMonthStats"></div>
-    </div>
+
 
   </div>
 
@@ -3201,7 +3192,55 @@ window.fetchMarketIndex = async () => {
     setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn)); setEl('mktOrgnSum',  fmt(kpOrgn+kqOrgn));
 
     document.getElementById('mktIndexCard').style.display = 'block';
+
+    // 분봉 차트 그리기
+    drawMiniChart('chartKospi', '0001');
+    drawMiniChart('chartKosdaq', '1001');
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
+};
+
+// 미니 분봉 차트
+window.drawMiniChart = async (svgId, code) => {
+  try {
+    const r = await fetch('/api/kis?action=chart_minute&code=' + code);
+    const data = await r.json();
+    const items = (data.output2 || []).reverse(); // 시간순 정렬
+    if(!items.length) return;
+
+    const prices = items.map(d => parseFloat(d.bstp_nmix_prpr || d.stck_prpr || 0)).filter(v=>v>0);
+    if(prices.length < 2) return;
+
+    const svg = document.getElementById(svgId);
+    if(!svg) return;
+    const W = 70, H = 36, pad = 2;
+    const min = Math.min(...prices), max = Math.max(...prices);
+    const range = max - min || 1;
+    const isUp = prices[prices.length-1] >= prices[0];
+    const color = isUp ? 'var(--up)' : 'var(--dn)';
+
+    const pts = prices.map((v, i) => {
+      const x = pad + (i / (prices.length-1)) * (W - pad*2);
+      const y = pad + (1 - (v-min)/range) * (H - pad*2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+
+    // 채우기용 폴리곤
+    const first = prices[0], last = prices[prices.length-1];
+    const fx = pad, fy = pad + (1-(first-min)/range)*(H-pad*2);
+    const lx = W-pad, ly = pad + (1-(last-min)/range)*(H-pad*2);
+    const fillPts = `${fx},${H} ${pts} ${lx},${H}`;
+
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="g${svgId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${isUp?'#FF4757':'#3B82F6'}" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="${isUp?'#FF4757':'#3B82F6'}" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${fillPts}" fill="url(#g${svgId})"/>
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    `;
+  } catch(e) { console.warn('분봉 차트 실패:', e); }
 };
 
 window.kisAutoFetch = async () => {
