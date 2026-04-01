@@ -3194,9 +3194,9 @@ window.fetchMarketIndex = async () => {
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
-    // 분봉 차트 그리기
-    drawMiniChart('chartKospi', '0001');
-    drawMiniChart('chartKosdaq', '1001');
+    // 분봉 차트 그리기 (ETF 대용: 069500=코스피200, 229200=코스닥150)
+    drawMiniChart('chartKospi', '069500');
+    drawMiniChart('chartKosdaq', '229200');
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
@@ -3208,7 +3208,7 @@ window.drawMiniChart = async (svgId, code) => {
     const items = (data.output2 || []).reverse(); // 시간순 정렬
     if(!items.length) return;
 
-    const prices = items.map(d => parseFloat(d.bstp_nmix_prpr || d.stck_prpr || 0)).filter(v=>v>0);
+    const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
     if(prices.length < 2) return;
 
     const svg = document.getElementById(svgId);
