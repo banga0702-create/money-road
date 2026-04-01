@@ -577,7 +577,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
         <!-- 외국인 -->
         <div>
-          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">📈 외국인+기관</div>
+          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">📈 외국인(+기관)</div>
           <div id="topListF" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
@@ -709,13 +709,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <span class="sh-title">🎯 기관 포착 종목</span>
       <span class="badge b-ac">자동분석</span>
     </div>
-    <div id="captureList"><div class="empty"><div class="ico">🔍</div><p>조건: 2000억↑ + 외국인+기관 동시<br>외국인 순매수 TOP15</p></div></div>
+    <div id="captureList"><div class="empty"><div class="ico">🔍</div><p>조건: 2000억↑ + 외국인(+기관) 동시<br>외국인 순매수 TOP15</p></div></div>
 
     <div class="sh">
       <span class="sh-title">🚀 내일 가능성 종목</span>
       <span class="badge b-wa">자동분석</span>
     </div>
-    <div id="tomorrowList"><div class="empty"><div class="ico">📅</div><p>조건: 2000억↑ + 외국인+기관 동시<br>수급강도4 + 순매수비중 5%↑</p></div></div>
+    <div id="tomorrowList"><div class="empty"><div class="ico">📅</div><p>조건: 2000억↑ + 외국인(+기관) 동시<br>수급강도4 + 순매수비중 5%↑</p></div></div>
 
     <div class="sh">
       <span class="sh-title">🏆 주도 테마</span>
@@ -865,7 +865,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div style="margin-bottom:14px">
       <div class="tog-row"><span class="tog-lbl">오늘 외국인 매수</span><div class="tog" id="trF" onclick="this.classList.toggle('on')"></div></div>
       <div class="tog-row"><span class="tog-lbl">오늘 기관 매수</span><div class="tog" id="trI" onclick="this.classList.toggle('on')"></div></div>
-      <div class="tog-row"><span class="tog-lbl">오늘 외국인+기관 동시 매수</span><div class="tog" id="trFI" onclick="this.classList.toggle('on')"></div></div>
+      <div class="tog-row"><span class="tog-lbl">오늘 외국인(+기관) 동시 매수</span><div class="tog" id="trFI" onclick="this.classList.toggle('on')"></div></div>
     </div>
     <div class="fg" style="margin-bottom:14px">
       <label>메모</label>
@@ -1664,7 +1664,7 @@ function renderAnalysis(){
   const caps=S.stocks.filter(s=>s.isCapture);
   const capEl=document.getElementById('captureList');
   if(!caps.length){
-    capEl.innerHTML='<div class="empty"><div class="ico">🔍</div><p>조건: 2000억↑ + 외국인+기관 동시<br>외국인 순매수 TOP15</p></div>';
+    capEl.innerHTML='<div class="empty"><div class="ico">🔍</div><p>조건: 2000억↑ + 외국인(+기관) 동시<br>외국인 순매수 TOP15</p></div>';
   } else {
     capEl.innerHTML=caps.map(s=>`
       <div class="ai-item">
@@ -1689,7 +1689,7 @@ function renderAnalysis(){
   const toms=S.stocks.filter(s=>s.isTomorrow);
   const tomEl=document.getElementById('tomorrowList');
   if(!toms.length){
-    tomEl.innerHTML='<div class="empty"><div class="ico">📅</div><p>조건: 2000억↑ + 외국인+기관 동시<br>수급강도4 + 순매수비중 5%↑</p></div>';
+    tomEl.innerHTML='<div class="empty"><div class="ico">📅</div><p>조건: 2000억↑ + 외국인(+기관) 동시<br>수급강도4 + 순매수비중 5%↑</p></div>';
   } else {
     tomEl.innerHTML=toms.map(s=>`
       <div class="ai-item" style="border-color:rgba(249,115,22,.4)">
@@ -2052,7 +2052,7 @@ window.selectEmoji = (emoji) => {
 };
 
 // ── 종목코드로 현재가 불러오기
-// ── KIS 외국인+기관 순매수 상위 종목 자동불러오기
+// ── KIS 외국인(+기관) 순매수 상위 종목 자동불러오기
 window.kisTopFetch = async () => {
   const btn = document.getElementById('kisTopBtn');
   const msg = document.getElementById('kisTopMsg');
@@ -2107,7 +2107,7 @@ window.kisTopFetch = async () => {
     // 외+기 합산 순매수 높은 순 (동시매수만)
     const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
-    // 외국인+기관 동시매수, 외국인 순매수 높은 순
+    // 외국인(+기관) 동시매수, 외국인 순매수 높은 순
     const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
     // 외국인 단독 (기관 무관)
@@ -2187,9 +2187,9 @@ window.kisTopFetch = async () => {
         const today = new Date().toISOString().slice(0,10);
         await setDoc(doc(db, 'users', user.uid, 'kisHistory', today), {
           date: today,
-          fi: fi.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0})),
-          f:  f.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0})),
-          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0})),
+          fi: fi.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
+          f:  f.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
+          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
@@ -2282,8 +2282,9 @@ window.loadKisHistory = async (date, uid) => {
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
-        + '<div style="display:flex;gap:4px;margin-top:1px">'
-        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
+        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + s.sector + '</span>' : '<span></span>')
+        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
         + '</div>';
