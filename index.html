@@ -389,7 +389,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
               <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKospiIdx">—</div>
               <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKospiChg">—</div>
             </div>
-            <svg id="chartKospi" width="70" height="36" style="flex-shrink:0"></svg>
+            <svg id="chartKospi" width="90" height="44" style="flex-shrink:0"></svg>
           </div>
         </div>
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
@@ -399,7 +399,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
               <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKosdaqIdx">—</div>
               <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKosdaqChg">—</div>
             </div>
-            <svg id="chartKosdaq" width="70" height="36" style="flex-shrink:0"></svg>
+            <svg id="chartKosdaq" width="90" height="44" style="flex-shrink:0"></svg>
           </div>
         </div>
       </div>
@@ -3205,7 +3205,7 @@ window.drawMiniChart = async (svgId, code) => {
   try {
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    const items = data.output2 || []; // 이미 시간순 정렬됨
+    const items = [...(data.output2 || [])].reverse(); // 과거→현재 순
     if(!items.length) return;
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
@@ -3213,7 +3213,7 @@ window.drawMiniChart = async (svgId, code) => {
 
     const svg = document.getElementById(svgId);
     if(!svg) return;
-    const W = 70, H = 40, pad = 2;
+    const W = 90, H = 44, pad = 2;
 
     // 전일 종가 기준
     const prevClose = parseFloat(data.output1?.stck_prdy_clpr || data.output1?.stck_sdpr || prices[0]);
