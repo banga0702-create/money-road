@@ -174,30 +174,13 @@ export default async function handler(req, res) {
       // 3번 호출해서 하루치 분봉 합치기: 11시, 13시, 현재시간
       const now = new Date();
       const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
-      // 2번 호출: 현재시간 + 12시 (Vercel 타임아웃 방지)
-      const fetchMinute = async (t) => {
-        const r = await fetch(
-          `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${t}&FID_PW_DATA_INCU_YN=Y`,
-          { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
-        );
-        const d = await r.json();
-        return d.output2 || [];
-      };
-      const [r1, r2] = await Promise.all([fetchMinute('120000'), fetchMinute(hhmm)]);
-      const seen = new Set();
-      const combined = [...r1, ...r2].filter(d => {
-        const key = d.stck_cntg_hour;
-        if(seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }).sort((a, b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
-      // 전일종가는 현재가 API에서
-      const priceRes = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}`,
-        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST01010100', 'custtype': 'P' } }
+      // 1번 호출 - 현재시간 기준 30개
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${hhmm}&FID_PW_DATA_INCU_YN=Y`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
       );
-      const priceData = await priceRes.json();
-      return res.status(200).json({ output1: priceData.output, output2: combined });
+      const data = await r.json();
+      return res.status(200).json(data);
     }
 
     // 네이버 모바일 당일 차트 데이터
