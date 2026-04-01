@@ -550,10 +550,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <div class="page" id="pg-feat">
     <div class="ftabs">
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
-      <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">ETF 흐름</div>
-      <div class="ftab" onclick="showFTab('기준봉',this)">기준봉</div>
       <div class="ftab" onclick="showFTab('역발상',this);if(!document.getElementById('reverseList').children.length)reverseFetch()">역발상</div>
       <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length){const uid=window._kisUid;if(uid&&window._upSudLatestDate)loadUpSudHistory(window._upSudLatestDate,uid).then(()=>{const b=document.getElementById('upSudDateBtn-'+window._upSudLatestDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}});}">상승수급</div>
+      <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">오늘의 ETF</div>
+      <div class="ftab" onclick="showFTab('기준봉',this)">종봉 PICK</div>
     </div>
 
     <!-- 순매수 TOP -->
@@ -761,7 +761,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <div class="mo-box">
     <div class="mo-handle"></div>
     <div style="font-size:14px;font-weight:800;margin-bottom:14px">📅 날짜 선택</div>
-    <div id="datePickerList" style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto"></div>
+    <div id="datePickerCal"></div>
   </div>
 </div>
 
@@ -2822,23 +2822,66 @@ window.loadReverseHistory = async (date, uid) => {
 // 역발상 종목 클릭 - 인라인 연속일수 표시
 // 날짜 피커 바텀시트
 window.openDatePicker = (dates, type, uid) => {
-  const listEl = document.getElementById('datePickerList');
-  if(!listEl) return;
+  const calEl = document.getElementById('datePickerCal');
+  if(!calEl) return;
 
   const loadFn = type === 'kis' ? 'loadKisHistory'
     : type === 'upsud' ? 'loadUpSudHistory'
     : 'loadReverseHistory';
 
+  const dateSet = new Set(dates);
   const today = new Date().toISOString().slice(0,10);
-  listEl.innerHTML = dates.map(d => {
-    const isToday = d === today;
-    const label = isToday ? `오늘 (${d})` : d.replace(/-/g, '/');
-    return `<button onclick="${loadFn}('${d}','${uid}');closeMo('moDatePicker')"
-      style="width:100%;text-align:left;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:${isToday?'800':'600'};color:${isToday?'var(--pr)':'var(--tx)'};cursor:pointer">
-      ${isToday ? '📌 ' : ''}${label}
-    </button>`;
-  }).join('');
 
+  // 현재 표시할 연/월 (가장 최근 날짜 기준)
+  const latestDate = new Date(dates[0]);
+  let viewYear = latestDate.getFullYear();
+  let viewMonth = latestDate.getMonth(); // 0-indexed
+
+  const renderCal = () => {
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=일
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+    const monthLabel = `${viewYear}년 ${viewMonth+1}월`;
+
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button onclick="window._calPrev()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:14px;color:var(--tx)">‹</button>
+      <span style="font-size:14px;font-weight:800">${monthLabel}</span>
+      <button onclick="window._calNext()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:14px;color:var(--tx)">›</button>
+    </div>`;
+
+    // 요일 헤더
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">`;
+    ['일','월','화','수','목','금','토'].forEach((d,i) => {
+      const c = i===0?'var(--up)':i===6?'var(--dn)':'var(--tx3)';
+      html += `<div style="text-align:center;font-size:10px;font-weight:700;color:${c};padding:3px 0">${d}</div>`;
+    });
+    html += `</div>`;
+
+    // 날짜 셀
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+    for(let i=0;i<firstDay;i++) html += `<div></div>`;
+    for(let d=1;d<=daysInMonth;d++) {
+      const dStr = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const hasData = dateSet.has(dStr);
+      const isToday = dStr === today;
+      const dow = (firstDay + d - 1) % 7;
+      const isSun = dow === 0, isSat = dow === 6;
+      let bg = 'transparent', color = isSun?'var(--up)':isSat?'var(--dn)':'var(--tx)';
+      let border = '1px solid transparent', fw = '600', cursor = 'default';
+      if(hasData) { bg='var(--pr)'; color='#fff'; border='1px solid var(--pr)'; fw='800'; cursor='pointer'; }
+      if(isToday && !hasData) { border='1px solid var(--pr)'; color='var(--pr)'; fw='800'; }
+      html += `<div onclick="${hasData ? `${loadFn}('${dStr}','${uid}');closeMo('moDatePicker')` : ''}"
+        style="text-align:center;padding:7px 2px;border-radius:8px;font-size:12px;font-weight:${fw};color:${color};background:${bg};border:${border};cursor:${cursor}">
+        ${d}
+      </div>`;
+    }
+    html += `</div>`;
+    calEl.innerHTML = html;
+  };
+
+  window._calPrev = () => { viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderCal(); };
+  window._calNext = () => { viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderCal(); };
+
+  renderCal();
   document.getElementById('moDatePicker').classList.add('show');
 };
 
