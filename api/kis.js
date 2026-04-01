@@ -174,26 +174,19 @@ export default async function handler(req, res) {
       // 3번 호출해서 하루치 분봉 합치기: 11시, 13시, 현재시간
       const now = new Date();
       const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
-      // 순차 호출로 하루치 분봉 합치기
+      // 2번 병렬 호출 + output1 포함
       const fetchMin = async (t) => {
         const r = await fetch(
           `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${t}&FID_PW_DATA_INCU_YN=Y`,
           { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
         );
-        const d = await r.json();
-        return d.output2 || [];
+        return await r.json();
       };
 
-      // 순차 호출 (타임아웃 방지)
-      const d1 = await fetchMin('110000');
-      const d2 = await fetchMin(hhmm);
-
-      // 현재가 조회 (전일종가용)
-      const priceR = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}`,
-        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST01010100', 'custtype': 'P' } }
-      );
-      const priceData = await priceR.json();
+      // 병렬 호출 (현재가 호출 제거로 타임아웃 방지)
+      const [res1, res2] = await Promise.all([fetchMin('110000'), fetchMin(hhmm)]);
+      const d1 = res1.output2 || [];
+      const d2 = res2.output2 || [];
 
       // 합치고 시간순 정렬 후 중복 제거
       const seen = new Set();
@@ -203,7 +196,8 @@ export default async function handler(req, res) {
         return true;
       }).sort((a, b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
 
-      return res.status(200).json({ output1: priceData.output, output2: combined });
+      // output1은 첫번째 호출에서 가져오기
+      return res.status(200).json({ output1: res1.output1 || {}, output2: combined });
     }
 
     // 네이버 모바일 당일 차트 데이터
