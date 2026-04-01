@@ -3155,6 +3155,55 @@ window.kisAddTop = (name, fBuy, iBuy) => {
 };
 
 // ── KIS API 시장 데이터 자동 입력
+// 홈화면 시장현황 카드 자동 로드
+window.fetchMarketIndex = async () => {
+  try {
+    const r = await fetch('/api/kis?action=market_investor');
+    const data = await r.json();
+    if(data.error) return;
+
+    const kpList = data.kospi?.output || [];
+    const kqList = data.kosdaq?.output || [];
+    const kp = Array.isArray(kpList) ? kpList[0] : kpList;
+    const kq = Array.isArray(kqList) ? kqList[0] : kqList;
+    if(!kp && !kq) return;
+
+    const fmt = (v) => {
+      const n = Math.round((parseFloat(v)||0) / 100);
+      const sign = n >= 0 ? '+' : '';
+      const color = n >= 0 ? 'var(--up)' : 'var(--dn)';
+      return `<span style="color:${color}">${sign}${n.toLocaleString()}</span>`;
+    };
+    const fmtIdx = (v) => (parseFloat(v)||0).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const fmtChg = (v, r) => {
+      const n = parseFloat(v)||0, pct = parseFloat(r)||0;
+      const sign = n >= 0 ? '+' : '';
+      const color = n >= 0 ? 'var(--up)' : 'var(--dn)';
+      return `<span style="color:${color};font-size:10px;font-weight:700">${sign}${n.toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>`;
+    };
+
+    const kpIndv = parseFloat(kp?.indv_ntby_tr_pbmn)||0;
+    const kpFrgn = parseFloat(kp?.frgn_ntby_tr_pbmn)||0;
+    const kpOrgn = parseFloat(kp?.orgn_ntby_tr_pbmn)||0;
+    const kqIndv = parseFloat(kq?.indv_ntby_tr_pbmn)||0;
+    const kqFrgn = parseFloat(kq?.frgn_ntby_tr_pbmn)||0;
+    const kqOrgn = parseFloat(kq?.orgn_ntby_tr_pbmn)||0;
+
+    const setEl = (id, html) => { const el=document.getElementById(id); if(el) el.innerHTML=html; };
+
+    setEl('mktKospiIdx',  fmtIdx(kp?.bstp_nmix_prpr));
+    setEl('mktKospiChg',  fmtChg(kp?.bstp_nmix_prdy_vrss, kp?.bstp_nmix_prdy_ctrt));
+    setEl('mktKosdaqIdx', fmtIdx(kq?.bstp_nmix_prpr));
+    setEl('mktKosdaqChg', fmtChg(kq?.bstp_nmix_prdy_vrss, kq?.bstp_nmix_prdy_ctrt));
+
+    setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv)); setEl('mktIndvSum',  fmt(kpIndv+kqIndv));
+    setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn)); setEl('mktFrgnSum',  fmt(kpFrgn+kqFrgn));
+    setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn)); setEl('mktOrgnSum',  fmt(kpOrgn+kqOrgn));
+
+    document.getElementById('mktIndexCard').style.display = 'block';
+  } catch(e) { console.warn('시장현황 로드 실패:', e); }
+};
+
 window.kisAutoFetch = async () => {
   const btn = document.getElementById('kisBtn');
   const msg = document.getElementById('kisMsg');
@@ -3381,9 +3430,11 @@ onAuthStateChanged(auth, async (user) => {
       } catch(e) { console.warn('Firestore 저장 실패:', e); }
     };
 
-    // 로그인 후 날짜탭 렌더링 (KIS 자동불러오기는 수동으로)
+    // 로그인 후 날짜탭 렌더링 + 시장현황 자동 로드
     setTimeout(async () => {
       await renderKisDateTabs(user.uid);
+      // 홈화면 시장현황 카드 자동 로드
+      fetchMarketIndex();
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
