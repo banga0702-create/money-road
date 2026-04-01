@@ -3205,7 +3205,7 @@ window.drawMiniChart = async (svgId, code) => {
   try {
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    const items = [...(data.output2_resampled || data.output2 || [])].reverse(); // 과거→현재 순
+    const items = data.output2 || []; // 이미 시간순 정렬됨
     if(!items.length) return;
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
@@ -3216,7 +3216,7 @@ window.drawMiniChart = async (svgId, code) => {
     const W = 70, H = 40, pad = 2;
 
     // 전일 종가 기준
-    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
+    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || data.output1?.stck_sdpr || prices[0]);
     const allVals = [...prices, prevClose];
     const min = Math.min(...allVals) * 0.9995;
     const max = Math.max(...allVals) * 1.0005;
