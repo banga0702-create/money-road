@@ -3205,7 +3205,7 @@ window.drawMiniChart = async (svgId, code) => {
   try {
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    const items = [...(data.output2 || [])].reverse(); // 과거→현재 순
+    const items = [...(data.output2_resampled || data.output2 || [])].reverse(); // 과거→현재 순
     if(!items.length) return;
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
