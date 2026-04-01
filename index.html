@@ -3203,10 +3203,12 @@ window.fetchMarketIndex = async () => {
 // 미니 분봉 차트
 window.drawMiniChart = async (svgId, code) => {
   try {
+    console.log(`[차트] ${svgId} 호출: code=${code}`);
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
+    console.log(`[차트] ${svgId} output2 길이:`, data.output2?.length, '첫번째:', data.output2?.[0]?.stck_prpr);
     const items = [...(data.output2 || [])].reverse(); // 과거→현재 순
-    if(!items.length) return;
+    if(!items.length) { console.warn(`[차트] ${svgId} 데이터 없음`); return; }
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
     if(prices.length < 2) return;
@@ -3215,8 +3217,9 @@ window.drawMiniChart = async (svgId, code) => {
     if(!svg) return;
     const W = 90, H = 44, pad = 2;
 
-    // 전일 종가 기준
+    // 전일 종가: output1에서 가져오기
     const prevClose = parseFloat(data.output1?.stck_prdy_clpr || data.output1?.stck_sdpr || prices[0]);
+    console.log(`[차트] ${svgId} 전일종가:`, prevClose, '현재가:', prices[prices.length-1]);
     const allVals = [...prices, prevClose];
     const min = Math.min(...allVals) * 0.9995;
     const max = Math.max(...allVals) * 1.0005;
