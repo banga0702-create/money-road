@@ -647,7 +647,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 불러오기</button>
       </div>
       <div id="upSudMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
-      <div style="margin:0 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 1500억↑ 상승종목 (거래대금 순)</div>
+      <div style="margin:0 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 2000억↑ 상승종목 (거래대금 순)</div>
       <div style="display:flex;flex-direction:column;gap:4px;margin:0 16px 12px" id="upSudList"></div>
     </div>
 
@@ -2427,26 +2427,14 @@ window.upSudFetch = async () => {
   msg.textContent = '🔍 거래대금 상위 + 수급 교차 분석 중...';
 
   try {
-    const [volRes, fiRes] = await Promise.all([
-      fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst')
-    ]);
+    const volRes = await fetch('/api/kis?action=vol_rank');
     const volData = await volRes.json();
-    const fiData  = await fiRes.json();
     // price_rank(코스닥)는 실패해도 계속 진행
     let priceData = { output: [] };
     try {
       const priceRes = await fetch('/api/kis?action=price_rank');
       if(priceRes.ok) priceData = await priceRes.json();
     } catch(e) { console.warn('price_rank 실패, 코스피만 사용:', e); }
-
-    // 외국인/기관 순매수 맵 구성
-    const fBuyMap = {}, iBuyMap = {};
-    (fiData.output||[]).forEach(s => {
-      const name = s.hts_kor_isnm;
-      fBuyMap[name] = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
-      iBuyMap[name] = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
-    });
 
     const seen = new Set();
     const combined = [...(volData.output||[]), ...(priceData.output||[])].filter(s => {
@@ -2463,7 +2451,7 @@ window.upSudFetch = async () => {
       const sign = s.prdy_vrss_sign;
       const tr = parseFloat(s.acml_tr_pbmn) / 100000000;
       const name = s.hts_kor_isnm;
-      return (sign === '1' || sign === '2') && tr >= 1500 && !isETF(name);
+      return (sign === '1' || sign === '2') && tr >= 2000 && !isETF(name);
     }).sort((a,b) => {
       const tra = parseFloat(a.acml_tr_pbmn);
       const trb = parseFloat(b.acml_tr_pbmn);
@@ -2480,11 +2468,8 @@ window.upSudFetch = async () => {
         const tr = Math.round(parseFloat(s.acml_tr_pbmn) / 100000000);
         const rankCls = i < 3 ? ['r1','r2','r3'][i] : 'b-gr';
         const key = 'us_' + name.replace(/[^a-zA-Z0-9가-힣]/g,'');
-        const fBuy = fBuyMap[name] || 0;
-        const iBuy = iBuyMap[name] || 0;
-        const ratio = tr > 0 && (fBuy+iBuy) > 0 ? +((fBuy+iBuy)/tr*100).toFixed(1) : 0;
         window._kisRows = window._kisRows || {};
-        window._kisRows[key] = { name, fBuy, iBuy };
+        window._kisRows[key] = { name };
         return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="kisRowClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:6px">'
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
@@ -2495,8 +2480,6 @@ window.upSudFetch = async () => {
           + '</div>'
           + '<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">'
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰 ' + tr + '억</span>'
-          + (fBuy > 0 ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
-          + (iBuy > 0 ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
           + '</div>'
           + '</div>'
           + '</div>'
@@ -2504,7 +2487,7 @@ window.upSudFetch = async () => {
       }).join('');
     }
 
-    msg.textContent = '✓ 완료! 거래대금 1500억↑ 상승종목 ' + result.length + '개';
+    msg.textContent = '✓ 완료! 거래대금 2000억↑ 상승종목 ' + result.length + '개';
     setTimeout(() => { msg.style.display='none'; }, 4000);
 
   } catch(e) {
