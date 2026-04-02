@@ -2814,7 +2814,7 @@ window.reverseFetch = async () => {
       const key = 'rv_' + name.replace(/\s/g,'');
       window._kisRows = window._kisRows || {};
       window._kisRows[key] = { name, fBuy, iBuy, code: codeMap[name] || '' };
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">'
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(chg).toFixed(2) + '%</span>'
@@ -2824,13 +2824,20 @@ window.reverseFetch = async () => {
         + (fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + fBuy + '억</span>' : '')
         + (iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + iBuy + '억</span>' : '')
         + '</div>'
-        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(128,128,128,0.2);display:none"></div>'
+        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:3px">⏳ 조회 중...</div>'
         + '</div>';
     };
 
     const emptyHtml = '<div class="empty" style="padding:16px"><p>해당 종목 없음</p></div>';
     document.getElementById('reverseListF').innerHTML = fResult.length  ? fResult.map(s=>makeRevRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = fiResult.length ? fiResult.map(s=>makeRevRow(s,true)).join('')  : emptyHtml;
+
+    // 자동으로 연속매수/매도 조회
+    const allRevStocks = [...fResult, ...fiResult];
+    allRevStocks.forEach(s => {
+      const key = 'rv_' + s.name.replace(/\s/g,'');
+      autoLoadStreak(key, codeMap[s.name] || '');
+    });
 
     msg.textContent = `✓ 완료! 외국인매수 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
     setTimeout(() => { msg.style.display='none'; }, 5000);
@@ -2842,8 +2849,8 @@ window.reverseFetch = async () => {
         const today = new Date().toISOString().slice(0,10);
         await setDoc(doc(db, 'users', user.uid, 'reverseHistory', today), {
           date: today,
-          fResult: fResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0})),
-          fiResult: fiResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0})),
+          fResult: fResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0,code:codeMap[s.name]||''})),
+          fiResult: fiResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0,code:codeMap[s.name]||''})),
           savedAt: Date.now()
         });
         await renderReverseDateTabs(user.uid);
@@ -2970,8 +2977,8 @@ window.loadReverseHistory = async (date, uid) => {
         : 'background:var(--sf);border:1px solid var(--bd)';
       const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g, '');
       window._kisRows = window._kisRows || {};
-      window._kisRows[key] = { name: s.name, fBuy: s.fBuy, iBuy: s.iBuy, code: '' };
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">' 
+      window._kisRows[key] = { name: s.name, fBuy: s.fBuy, iBuy: s.iBuy, code: s.code||'' };
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + s.name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(s.chg).toFixed(2) + '%</span>'
@@ -2981,13 +2988,19 @@ window.loadReverseHistory = async (date, uid) => {
         + (s.fBuy ? '<span style="font-size:9px;color:var(--up)">외 +' + s.fBuy + '억</span>' : '')
         + (s.iBuy ? '<span style="font-size:9px;color:var(--dn)">기 +' + s.iBuy + '억</span>' : '')
         + '</div>'
-        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(128,128,128,0.2);display:none"></div>'
+        + '<div id="inv_' + key + '" style="font-size:9px;margin-top:3px">⏳ 조회 중...</div>'
         + '</div>';
     };
 
     const emptyHtml = '<div class="empty" style="padding:16px"><p>해당 종목 없음</p></div>';
     document.getElementById('reverseListF').innerHTML = (data.fResult||[]).length ? data.fResult.map(s=>makeHistRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = (data.fiResult||[]).length ? data.fiResult.map(s=>makeHistRow(s,true)).join('') : emptyHtml;
+
+    // 자동으로 연속매수/매도 조회
+    [...(data.fResult||[]), ...(data.fiResult||[])].forEach(s => {
+      const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'');
+      autoLoadStreak(key, s.code||'');
+    });
   } catch(e) { console.warn('역발상 히스토리 로드 실패:', e); }
 };
 
@@ -3105,6 +3118,55 @@ window.loadCandleHistory = async (date, uid) => {
     S.candles = data.candles || [];
     renderCandleFeat();
   } catch(e) { console.warn('종봉 히스토리 로드 실패:', e); }
+};
+
+
+// ── 역발상 자동 연속매수/매도 조회
+window.autoLoadStreak = async (key, code) => {
+  const invEl = document.getElementById('inv_' + key);
+  if(!invEl) return;
+
+  if(!code) {
+    invEl.textContent = '';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/kis?action=investor&code=' + code);
+    const data = await r.json();
+    const rows = (data.output2 || data.output || []).slice(0, 5);
+    if(!rows.length) { invEl.textContent = ''; return; }
+
+    const calcStreak = (f1, f2) => {
+      let streak = 0;
+      for(let i = 0; i < rows.length; i++) {
+        const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
+        if(i === 0) { streak = v >= 0 ? 1 : -1; }
+        else {
+          const sign = streak > 0 ? 1 : -1;
+          if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign;
+          else break;
+        }
+      }
+      return streak;
+    };
+
+    const fStreak = calcStreak('frgn_ntby_qty', 'frgn_ntby_tr_pbmn');
+    const iStreak = calcStreak('orgn_ntby_qty', 'orgn_ntby_tr_pbmn');
+
+    const fTag = fStreak > 0
+      ? '<span style="color:var(--up);font-weight:800">외국인 ' + fStreak + '일 매수📈</span>'
+      : '<span style="color:var(--dn);font-weight:800">외국인 ' + Math.abs(fStreak) + '일 매도📉</span>';
+    const iTag = iStreak !== 0
+      ? (iStreak > 0
+        ? ' &nbsp;<span style="color:var(--up);font-weight:800">기관 ' + iStreak + '일 매수📈</span>'
+        : ' &nbsp;<span style="color:var(--dn);font-weight:800">기관 ' + Math.abs(iStreak) + '일 매도📉</span>')
+      : '';
+
+    invEl.innerHTML = fTag + iTag;
+  } catch(e) {
+    invEl.textContent = '';
+  }
 };
 
 window.revRowClick = async (key) => {
