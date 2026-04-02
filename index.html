@@ -988,22 +988,25 @@ function switchTab(tab){
   if(tab==='feat'){
     renderFeat();
     const uid = window._kisUid;
+    const today = new Date().toISOString().slice(0,10);
     if(uid) {
-      const today = new Date().toISOString().slice(0,10);
       const loadDate = window._kisLatestDate || today;
-      // 오늘 데이터 있으면 히스토리 로드, 없으면 자동불러오기
       loadKisHistory(loadDate, uid).then((result) => {
         const btn = document.getElementById('kisDateBtn-' + loadDate);
         if(btn) { btn.style.background='var(--pr)'; btn.style.color='#fff'; btn.style.borderColor='var(--pr)'; }
-        // 데이터가 없으면(빈 상태) 자동불러오기 실행
-        const listEl = document.getElementById('topListFI');
-        if(!listEl || !listEl.children.length || listEl.querySelector('.empty')) {
+        // 로드 결과 false(데이터 없음)이면 자동불러오기
+        if(result === false) kisTopFetch();
+      }).catch(() => kisTopFetch());
+    } else {
+      // uid 없으면 잠시 후 재시도
+      setTimeout(() => {
+        const uid2 = window._kisUid;
+        if(uid2) {
+          loadKisHistory(today, uid2).then(r => { if(r === false) kisTopFetch(); }).catch(() => kisTopFetch());
+        } else {
           kisTopFetch();
         }
-      }).catch(() => {
-        // 히스토리 로드 실패시 자동불러오기
-        kisTopFetch();
-      });
+      }, 1500);
     }
   }
   if(tab==='news') { if(!document.getElementById('newsFeedPage').children.length || document.getElementById('newsFeedPage').children[0].className==='empty') fetchNewsPage(); }
@@ -3576,6 +3579,7 @@ onAuthStateChanged(auth, async (user) => {
     // 로그인 후 날짜탭 렌더링 + 시장현황 자동 로드
     setTimeout(async () => {
       await renderKisDateTabs(user.uid);
+      window._kisUid = user.uid;
       // 홈화면 시장현황 카드 자동 로드
       fetchMarketIndex();
       // 7일 히스토리 미리 로드 (수급지속 계산용)
@@ -3584,6 +3588,25 @@ onAuthStateChanged(auth, async (user) => {
         window._kisHistory7 = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>d.data());
       } catch(e) { window._kisHistory7 = []; }
       await renderReverseDateTabs(user.uid);
+      // 오늘 순매수 데이터 미리 로드 (특징주 탭 진입 대비)
+      const today = new Date().toISOString().slice(0,10);
+      try {
+        const todaySnap = await getDoc(doc(db, 'users', user.uid, 'kisHistory', today));
+        if(todaySnap.exists()) {
+          window._kisLatestDate = today;
+          // 현재 특징주 탭이 활성화되어 있으면 바로 로드
+          if(document.getElementById('pg-feat').classList.contains('active')) {
+            await loadKisHistory(today, user.uid);
+            const btn = document.getElementById('kisDateBtn-' + today);
+            if(btn) { btn.style.background='var(--pr)'; btn.style.color='#fff'; btn.style.borderColor='var(--pr)'; }
+          }
+        } else {
+          // 오늘 데이터 없으면 자동불러오기 실행 (특징주 탭 활성화시)
+          if(document.getElementById('pg-feat').classList.contains('active')) {
+            kisTopFetch();
+          }
+        }
+      } catch(e) { console.warn('오늘 데이터 확인 실패:', e); }
     }, 1000);
 
   } else {
