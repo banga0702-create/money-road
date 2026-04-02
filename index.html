@@ -2187,14 +2187,19 @@ window.kisTopFetch = async () => {
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
-      await renderUpSudDateTabs(user.uid);
-      window._kisUid = user.uid; // uid 저장 (탭 진입 시 사용)
-      // 7일 히스토리 미리 로드 (수급지속 계산용)
-      try {
-        const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
-        window._kisHistory7 = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>d.data());
-      } catch(e) { window._kisHistory7 = []; }
-      await renderReverseDateTabs(user.uid);
+        await renderUpSudDateTabs(user.uid);
+        window._kisUid = user.uid;
+        window._kisLatestDate = today;
+        // 저장 완료 후 오늘 탭 형식으로 바로 렌더링 (통일)
+        await loadKisHistory(today, user.uid);
+        const todayBtn = document.getElementById('kisDateBtn-' + today);
+        if(todayBtn) { todayBtn.style.background='var(--pr)'; todayBtn.style.color='#fff'; todayBtn.style.borderColor='var(--pr)'; }
+        // 7일 히스토리 미리 로드
+        try {
+          const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
+          window._kisHistory7 = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>d.data());
+        } catch(e) { window._kisHistory7 = []; }
+        await renderReverseDateTabs(user.uid);
       }
     } catch(e2) { console.warn('KIS 히스토리 저장 실패:', e2); }
 
