@@ -249,36 +249,29 @@ export default async function handler(req, res) {
 
 
     // 네이버 금융 뉴스 RSS
-    // 네이버 금융 뉴스 RSS 피드
+    // 구글 뉴스 RSS - 한국 증시
     if (action === 'news') {
       try {
-        // 네이버 금융 RSS - 증시 뉴스
-        const feeds = [
-          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258&rss=1',
-          'https://www.mk.co.kr/rss/30100041/',
-          'https://www.hankyung.com/feed/finance'
-        ];
+        const query = encodeURIComponent('주식 증시 코스피');
+        const url = `https://news.google.com/rss/search?q=${query}&hl=ko&gl=KR&ceid=KR:ko`;
+        const r = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+        });
+        const xml = await r.text();
 
-        // 첫 번째로 성공하는 RSS 사용
-        let items = [];
-        for(const feedUrl of feeds) {
-          try {
-            const r = await fetch(feedUrl, {
-              headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml, application/xml, text/xml' }
-            });
-            const xml = await r.text();
-
-            // RSS XML 파싱
-            const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
-            for(const item of itemMatches.slice(0, 20)) {
-              const title = (item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/) || [])[1] || '';
-              const link  = (item.match(/<link>([^<]+)<\/link>/) || item.match(/<link[^>]*href="([^"]+)"/) || [])[1] || '';
-              const pubDate = (item.match(/<pubDate>([^<]+)<\/pubDate>/) || [])[1] || '';
-              const source  = (item.match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || '';
-              if(title && link) items.push({ title: title.trim(), link: link.trim(), pubDate, source });
-            }
-            if(items.length > 0) break;
-          } catch(e2) { continue; }
+        const items = [];
+        const blocks = xml.split('<item>').slice(1);
+        for(const block of blocks.slice(0, 20)) {
+          const title = (block.match(/<title>(.*?)<\/title>/) || [])[1] || '';
+          const link  = (block.match(/<link>(.*?)<\/link>/) || [])[1] || '';
+          const pubDate = (block.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
+          const source = (block.match(/<source[^>]*>(.*?)<\/source>/) || [])[1] || '';
+          if(title) items.push({
+            title: title.replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim(),
+            link: link.trim(),
+            pubDate,
+            source: source.replace(/<[^>]*>/g,'').trim()
+          });
         }
 
         return res.status(200).json({ items, count: items.length });
