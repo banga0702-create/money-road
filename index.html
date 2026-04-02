@@ -543,32 +543,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <span style="font-size:12px;color:var(--tx3)" id="stockCnt">0/9 종목</span>
     </div>
 
-    <!-- 시장 기본 -->
-    <div class="sh" style="padding-top:14px">
-      <span class="sh-title">시장 기본 정보</span>
-      <button class="btn btn-ac btn-sm" onclick="kisAutoFetch()" id="kisBtn">⚡ KIS 자동입력</button>
-    </div>
-    <div id="kisMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
-    <div class="card">
-      <div class="f-row c2">
-        <div class="fg"><label>상승 종목 수</label><input type="number" id="mUp" placeholder="예) 800" inputmode="numeric" oninput="calcMkt()"></div>
-        <div class="fg"><label>전체 종목 수</label><input type="number" id="mTotal" placeholder="예) 2682" inputmode="numeric" oninput="calcMkt()"></div>
-      </div>
-      <div class="f-row c2">
-        <div class="fg"><label>오늘 거래대금(억)</label><input type="number" id="mVol" placeholder="예) 25000" inputmode="numeric" oninput="calcMkt()"></div>
-        <div class="fg"><label>20일 평균 거래대금(억)</label><input type="number" id="mAvg" placeholder="예) 20000" inputmode="numeric" oninput="calcMkt()"></div>
-      </div>
-      <div class="f-row c2" style="margin-bottom:8px">
-        <div class="fg"><label>외국인 시장 순매수(억)</label><input type="number" id="mFBuy" placeholder="예) 3000" inputmode="numeric" oninput="calcMkt()"></div>
-        <div class="fg"><label>기관 시장 순매수(억)</label><input type="number" id="mIBuy" placeholder="예) 1500" inputmode="numeric" oninput="calcMkt()"></div>
-      </div>
-      <div class="auto-res">
-        <div class="ar-item"><div class="ar-val" id="calcUp" style="color:var(--up)">—</div><div class="ar-lbl">상승비율</div></div>
-        <div class="ar-item"><div class="ar-val" id="calcVol" style="color:var(--ac)">—</div><div class="ar-lbl">거래대금비율</div></div>
-        <div class="ar-item"><div class="ar-val" id="calcTemp" style="color:var(--gd)">—</div><div class="ar-lbl">시장온도점수</div></div>
-      </div>
-      <button class="btn btn-pr" style="margin-top:10px" onclick="saveMkt()">✅ 시장 데이터 저장</button>
-    </div>
+
 
     <!-- 종목 목록 -->
     <div class="sh">
@@ -3183,7 +3158,7 @@ window.fetchNewsPage = async () => {
       return;
     }
     feed.innerHTML = items.map(item => {
-      const time = item.pubDate ? item.pubDate.replace(/^.*?(\d{1,2}:\d{2}).*$/, '$1') : '';
+      const time = item.displayTime || (item.pubDate ? item.pubDate.replace(/^.*?(\d{1,2}:\d{2}).*$/, '$1') : '');
       const title = item.title.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
       return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:13px 14px;cursor:pointer" onclick="window.open('${item.link}','_blank')">
         <div style="font-size:13px;font-weight:700;line-height:1.55;margin-bottom:6px;color:var(--tx)">${title}</div>
