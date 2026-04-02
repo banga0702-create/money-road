@@ -567,7 +567,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="ftabs">
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
       <div class="ftab" onclick="showFTab('역발상',this);if(!document.getElementById('reverseList').children.length)reverseFetch()">역발상</div>
-      <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length){const uid=window._kisUid;if(uid&&window._upSudLatestDate)loadUpSudHistory(window._upSudLatestDate,uid).then(()=>{const b=document.getElementById('upSudDateBtn-'+window._upSudLatestDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}});}">상승수급</div>
+      <div class="ftab" onclick="showFTab('상승수급',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('upSudList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);const loadDate=window._upSudLatestDate||today;if(uid){const r=await loadUpSudHistory(loadDate,uid);const b=document.getElementById('upSudDateBtn-'+loadDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadUpSudHistory(today,uid2).then(()=>{if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}).catch(()=>upSudFetch());}else upSudFetch();},1500);}})()">상승수급</div>
       <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">오늘의 ETF</div>
       <div class="ftab" onclick="showFTab('기준봉',this);const _cu=window._curUser;if(_cu&&window._cdLatestDate)loadCandleHistory(window._cdLatestDate,_cu.uid)">종봉 PICK</div>
     </div>
@@ -833,25 +833,36 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="mo-title">🕯️ 종봉 PICK 추가</div>
     <!-- 종목코드 검색 -->
     <div style="background:var(--sf2);border-radius:14px;padding:14px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--pr);margin-bottom:10px">🔍 종목코드로 자동입력</div>
+      <div style="font-size:12px;font-weight:700;color:var(--pr);margin-bottom:10px">🔍 종목코드로 자동 불러오기</div>
       <input type="text" id="cdCode" placeholder="종목코드 입력 (예: 000660)" inputmode="numeric" style="font-size:16px;padding:12px 14px;margin-bottom:8px">
       <button class="btn btn-pr" onclick="fetchCandlePrice()" style="font-size:14px;padding:12px">검색하기</button>
       <div id="cdCodeMsg" style="font-size:12px;margin-top:8px;min-height:16px;color:var(--ac);font-weight:600"></div>
     </div>
     <div class="f-row c2">
-      <div class="fg"><label>종목명 *</label><input type="text" id="cdName" placeholder="종목명"></div>
-      <div class="fg"><label>거래대금(억)</label><input type="number" id="cdVol" placeholder="예) 3200" inputmode="numeric"></div>
+      <div class="fg"><label>종목명 *</label><input type="text" id="cdName" placeholder="예) SK하이닉스"></div>
+      <div class="fg"><label>섹터</label><input type="text" id="cdSector" placeholder="예) 반도체"></div>
     </div>
-    <div class="f-row c3">
+    <div class="f-row c2">
+      <div class="fg"><label>현재가(원)</label><input type="number" id="cdCur" placeholder="예) 182000" inputmode="numeric" oninput="calcCandle()"></div>
+      <div class="fg"><label>등락률(%)</label><input type="number" id="cdChg" placeholder="예) 3.5" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>거래대금(억) *</label>
+      <input type="number" id="cdVol" placeholder="예) 9700" inputmode="numeric">
+    </div>
+    <div class="f-row c2">
+      <div class="fg"><label>외국인 순매수(억)</label><input type="number" id="cdFBuy" placeholder="예) 450" inputmode="numeric"></div>
+      <div class="fg"><label>기관 순매수(억)</label><input type="number" id="cdIBuy" placeholder="예) 230" inputmode="numeric"></div>
+    </div>
+    <div class="f-row c2">
       <div class="fg"><label>고가</label><input type="number" id="cdH" placeholder="고가" inputmode="numeric" oninput="calcCandle()"></div>
       <div class="fg"><label>저가</label><input type="number" id="cdL" placeholder="저가" inputmode="numeric" oninput="calcCandle()"></div>
-      <div class="fg"><label>현재가</label><input type="number" id="cdCur" placeholder="현재가" inputmode="numeric" oninput="calcCandle()"></div>
     </div>
-    <div class="fg" style="margin-bottom:10px"><label>당일 상승률 %</label><input type="number" id="cdChg" placeholder="예) 12.5" step="0.1" inputmode="decimal"></div>
     <div class="auto-res" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
       <div class="ar-item"><div class="ar-val" id="cdLine" style="color:var(--gd)">—</div><div class="ar-lbl">기준선 (고+저)/2</div></div>
       <div class="ar-item"><div class="ar-val" id="cdSt" style="color:var(--tx)">—</div><div class="ar-lbl">현재 수급 상태</div></div>
     </div>
+    <div class="fg" style="margin-bottom:14px"><label>메모</label><input type="text" id="cdMemo" placeholder="자유 메모"></div>
     <button class="btn btn-pr" onclick="addCandle()">저장</button>
   </div>
 </div>
@@ -1654,7 +1665,7 @@ function calcCandle(){
 }
 
 function openCandleMo(){
-  ['cdCode','cdName','cdVol','cdH','cdL','cdCur','cdChg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['cdCode','cdName','cdSector','cdVol','cdH','cdL','cdCur','cdChg','cdFBuy','cdIBuy','cdMemo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const lineEl=document.getElementById('cdLine');if(lineEl)lineEl.textContent='—';
   const stEl=document.getElementById('cdSt');if(stEl)stEl.textContent='—';
   const msgEl=document.getElementById('cdCodeMsg');if(msgEl)msgEl.textContent='';
@@ -1681,6 +1692,18 @@ async function fetchCandlePrice(){
     if(data.trPrc)document.getElementById('cdVol').value=Math.round(parseInt(data.trPrc)/100000000);
     if(data.fltRt)document.getElementById('cdChg').value=parseFloat(data.fltRt);
     calcCandle();
+    // KIS API로 외국인/기관 순매수 추가 조회
+    try {
+      const kisRes = await fetch('/api/kis?action=investor&code='+code);
+      const kisData = await kisRes.json();
+      const row = (kisData.output||[])[0];
+      if(row) {
+        const fBuy = Math.round((parseFloat(row.frgn_ntby_qty||0)*parseInt(data.clpr||0))/100000000);
+        const iBuy = Math.round((parseFloat(row.orgn_ntby_qty||0)*parseInt(data.clpr||0))/100000000);
+        if(fBuy) document.getElementById('cdFBuy').value = fBuy;
+        if(iBuy) document.getElementById('cdIBuy').value = iBuy;
+      }
+    } catch(e) {}
     const rate=parseFloat(data.fltRt);
     msg.style.color='var(--ac)';
     msg.textContent=`✓ ${data.itmsNm} | ${parseInt(data.clpr).toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
@@ -1691,10 +1714,17 @@ function addCandle(){
   const name=document.getElementById('cdName').value.trim();
   const h=+document.getElementById('cdH').value||0;
   const l=+document.getElementById('cdL').value||0;
-  if(!name||!h||!l){alert('종목명, 고가, 저가를 입력하세요');return;}
-  const midLine=Math.round((h+l)/2);
+  if(!name){alert('종목명을 입력하세요');return;}
+  const midLine=h&&l?Math.round((h+l)/2):0;
   const curPrice=+document.getElementById('cdCur').value||midLine;
-  const candle={id:Date.now(),name,vol:+document.getElementById('cdVol').value||0,high:h,low:l,midLine,curPrice,chg:+document.getElementById('cdChg').value||0};
+  const candle={id:Date.now(),name,
+    sector:document.getElementById('cdSector').value.trim(),
+    vol:+document.getElementById('cdVol').value||0,
+    fBuy:+document.getElementById('cdFBuy').value||0,
+    iBuy:+document.getElementById('cdIBuy').value||0,
+    high:h,low:l,midLine,curPrice,
+    chg:+document.getElementById('cdChg').value||0,
+    memo:document.getElementById('cdMemo').value.trim()};
   S.candles.push(candle);
   save();
   // Firestore에 날짜별 저장
@@ -1717,15 +1747,31 @@ function renderCandleFeat(){
   if(!S.candles.length){if(cl)cl.innerHTML='';if(ce)ce.style.display='flex';return;}
   if(ce)ce.style.display='none';
   if(cl)cl.innerHTML=S.candles.map((c,i)=>{
-    const st=c.curPrice>c.midLine?{cls:'cs-strong',txt:'🔥 수급 강함'}:
+    const hasHL = c.high && c.low && c.midLine;
+    const st = !hasHL ? null :
+      c.curPrice>c.midLine?{cls:'cs-strong',txt:'🔥 수급 강함'}:
       Math.abs(c.curPrice-c.midLine)/c.midLine<0.02?{cls:'cs-press',txt:'⚠️ 눌림 구간'}:
       {cls:'cs-weak',txt:'❄️ 수급 약화'};
-    return`<div class="candle-item">
-      <div class="c-name">${c.name} ${c.chg?`<span class="badge b-wa">+${c.chg}%</span>`:''}<button class="btn btn-sc btn-sm" style="width:auto;padding:3px 7px;margin-left:auto;font-size:10px" onclick="delCandle(${i})">✕</button></div>
-      <div class="c-row"><span class="c-key">기준선 (고+저)/2</span><span class="c-val" style="color:var(--gd)">${c.midLine.toLocaleString()}원</span></div>
-      <div class="c-row"><span class="c-key">현재가</span><span class="c-val">${c.curPrice.toLocaleString()}원</span></div>
-      <div class="c-row"><span class="c-key">거래대금</span><span class="c-val" style="color:var(--ac)">${c.vol}억</span></div>
-      <div class="c-status ${st.cls}">${st.txt}</div>
+    const chgColor = c.chg>=0?'var(--up)':'var(--dn)';
+    return`<div class="sli">
+      <div class="sli-hdr">
+        <div class="sli-num">${i+1}</div>
+        <div class="sli-name">
+          ${c.name}
+          ${c.sector?`<span class="badge b-gr">${c.sector}</span>`:''}
+          ${c.chg?`<span class="badge" style="background:${c.chg>=0?'var(--up2)':'var(--dn2)'};color:${chgColor};border:1px solid ${chgColor}">${c.chg>=0?'▲':'▼'}${Math.abs(c.chg)}%</span>`:''}
+        </div>
+        <button class="btn btn-sc btn-sm" style="width:auto;padding:4px 8px" onclick="delCandle(${i})">✕</button>
+      </div>
+      <div class="sli-body">
+        ${c.curPrice?`<span class="sli-chip" style="color:var(--tx)">${parseInt(c.curPrice).toLocaleString()}원</span>`:''}
+        ${c.vol?`<span class="sli-chip">💰 ${c.vol}억</span>`:''}
+        ${c.fBuy?`<span class="sli-chip" style="color:var(--up)">외 ${c.fBuy}억</span>`:''}
+        ${c.iBuy?`<span class="sli-chip" style="color:var(--dn)">기 ${c.iBuy}억</span>`:''}
+        ${hasHL?`<span class="sli-chip" style="color:var(--gd)">기준선 ${c.midLine.toLocaleString()}원</span>`:''}
+        ${c.memo?`<span class="sli-chip" style="color:var(--tx2)">${c.memo}</span>`:''}
+      </div>
+      ${st?`<div style="margin:4px 12px 8px;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;text-align:center" class="${st.cls}">${st.txt}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -3680,6 +3726,12 @@ onAuthStateChanged(auth, async (user) => {
       } catch(e) { window._kisHistory7 = []; }
       await renderReverseDateTabs(user.uid);
       await renderCandleDateTabs(user.uid);
+      // 오늘 상승수급 데이터 최신날짜 설정
+      try {
+        const upSnap = await getDocs(collection(db, 'users', user.uid, 'upSudHistory'));
+        const upDates = upSnap.docs.map(d=>d.id).sort().reverse();
+        if(upDates.length) window._upSudLatestDate = upDates[0];
+      } catch(e) {}
       // 오늘 순매수 데이터 미리 로드 (특징주 탭 진입 대비)
       const today = new Date().toISOString().slice(0,10);
       try {
