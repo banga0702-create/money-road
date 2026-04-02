@@ -472,13 +472,20 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         </div>
       </div>
       <!-- 비율바 -->
-      <div class="rbar"><div class="rbar-u" id="rbarU" style="flex:0"></div><div class="rbar-d" id="rbarD" style="flex:100"></div></div>
-      <div class="rbar-lbl">
-        <div class="rbar-dot" style="background:var(--up)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px">
+        <div style="text-align:left">
+          <div style="font-size:22px;font-weight:900;color:var(--up);line-height:1" id="rbarUpPct">—%</div>
+          <div style="font-size:10px;font-weight:700;color:var(--up);margin-top:2px">▲ 상승 <span id="rbarUpNum" style="font-weight:900">—</span>종목</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:var(--dn);line-height:1" id="rbarDnPct">—%</div>
+          <div style="font-size:10px;font-weight:700;color:var(--dn);margin-top:2px"><span id="rbarDnNum" style="font-weight:900">—</span>종목 ▼ 하락</div>
+        </div>
+      </div>
+      <div class="rbar" style="height:8px;border-radius:4px"><div class="rbar-u" id="rbarU" style="flex:0;border-radius:4px 0 0 4px"></div><div class="rbar-d" id="rbarD" style="flex:100;border-radius:0 4px 4px 0"></div></div>
+      <div class="rbar-lbl" style="display:none">
         <span class="rbar-t" id="rbarUpLbl">상승 —%</span>
-        <div style="flex:1"></div>
         <span class="rbar-t" id="rbarDnLbl">하락 —%</span>
-        <div class="rbar-dot" style="background:var(--dn)"></div>
       </div>
       <!-- 온도바 -->
       <div class="tbar-wrap">
@@ -1336,6 +1343,15 @@ function renderHome(){
   document.getElementById('rbarD').style.flex=dnR;
   document.getElementById('rbarUpLbl').textContent=`상승 ${upR}%`;
   document.getElementById('rbarDnLbl').textContent=`하락 ${dnR}%`;
+  // 새 비율바 요소 업데이트
+  const upPctEl = document.getElementById('rbarUpPct');
+  const dnPctEl = document.getElementById('rbarDnPct');
+  const upNumEl = document.getElementById('rbarUpNum');
+  const dnNumEl = document.getElementById('rbarDnNum');
+  if(upPctEl) upPctEl.textContent = upR + '%';
+  if(dnPctEl) dnPctEl.textContent = dnR + '%';
+  if(upNumEl) upNumEl.textContent = m.up ? m.up.toLocaleString() : '—';
+  if(dnNumEl) dnNumEl.textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
   document.getElementById('gUpCnt').textContent=m.up?m.up.toLocaleString()+'종목':'— 종목';
   document.getElementById('gDnCnt').textContent=(m.up&&m.total)?((m.total-m.up).toLocaleString()+'종목'):'— 종목';
 
@@ -3266,75 +3282,40 @@ window.fetchMarketIndex = async () => {
 // 미니 분봉 차트
 window.drawMiniChart = async (svgId, code) => {
   try {
-    console.log(`[차트] ${svgId} 호출: code=${code}`);
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    console.log(`[차트] ${svgId} output2 길이:`, data.output2?.length, '첫번째:', data.output2?.[0]?.stck_prpr);
-    const items = [...(data.output2 || [])].reverse(); // 과거→현재 순
-    if(!items.length) { console.warn(`[차트] ${svgId} 데이터 없음`); return; }
+    const items = [...(data.output2 || [])].reverse();
+    if(!items.length) return;
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
     if(prices.length < 2) return;
 
     const svg = document.getElementById(svgId);
     if(!svg) return;
-    const W = 90, H = 44, pad = 2;
+    const W = 90, H = 44, pad = 3;
 
-    // 전일 종가: output1에서 가져오기
     const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
-    const currentPrice = parseFloat(data.output1?.stck_prpr || prices[prices.length-1]);
-    console.log(`[차트] ${svgId} 전일종가:`, prevClose, '현재가:', currentPrice);
-    const allVals = [...prices, prevClose];
-    const min = Math.min(...allVals) * 0.9995;
-    const max = Math.max(...allVals) * 1.0005;
+    const currentPrice = prices[prices.length-1];
+    const isUp = currentPrice >= prevClose;
+    const lineColor = isUp ? '#FF4757' : '#3B82F6';
+    const fillColor = isUp ? 'rgba(255,71,87,0.12)' : 'rgba(59,130,246,0.12)';
+
+    const min = Math.min(...prices) * 0.999;
+    const max = Math.max(...prices) * 1.001;
     const range = max - min || 1;
 
     const toY = v => pad + (1 - (v - min) / range) * (H - pad*2);
     const toX = i => pad + (i / (prices.length-1)) * (W - pad*2);
 
-    // 전일종가 기준선 Y
-    const baseY = toY(prevClose);
-    const lastPrice = prices[prices.length-1];
-    const isUp = currentPrice >= prevClose;
-    const upColor = '#FF4757', dnColor = '#3B82F6';
-
-    // 좌표 생성
     const pts = prices.map((v,i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
-    const firstX = toX(0), lastX = toX(prices.length-1);
+    const lastX = toX(prices.length-1);
+    const lastY = toY(prices[prices.length-1]);
 
-    // 클립 영역: 기준선 위(상승), 아래(하락)
-    const uid = svgId;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.innerHTML = `
-      <defs>
-        <clipPath id="clipUp${uid}">
-          <rect x="0" y="0" width="${W}" height="${baseY.toFixed(1)}"/>
-        </clipPath>
-        <clipPath id="clipDn${uid}">
-          <rect x="0" y="${baseY.toFixed(1)}" width="${W}" height="${H}"/>
-        </clipPath>
-      </defs>
-
-      <!-- 기준선 위 채우기(빨강) -->
-      <polygon points="${firstX},${baseY.toFixed(1)} ${pts} ${lastX},${baseY.toFixed(1)}"
-        fill="${upColor}" fill-opacity="0.15" clip-path="url(#clipUp${uid})"/>
-      <!-- 기준선 아래 채우기(파랑) -->
-      <polygon points="${firstX},${baseY.toFixed(1)} ${pts} ${lastX},${baseY.toFixed(1)}"
-        fill="${dnColor}" fill-opacity="0.15" clip-path="url(#clipDn${uid})"/>
-
-      <!-- 전일종가 기준 점선 -->
-      <line x1="${pad}" y1="${baseY.toFixed(1)}" x2="${W-pad}" y2="${baseY.toFixed(1)}"
-        stroke="#888" stroke-width="0.6" stroke-dasharray="2,2"/>
-
-      <!-- 가격선: 기준선 위(빨강) -->
-      <polyline points="${pts}" fill="none"
-        stroke="${upColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
-        clip-path="url(#clipUp${uid})"/>
-      <!-- 가격선: 기준선 아래(파랑) -->
-      <polyline points="${pts}" fill="none"
-        stroke="${dnColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"
-        clip-path="url(#clipDn${uid})"/>
-    `;
+    svg.innerHTML =
+      `<polygon points="${toX(0).toFixed(1)},${H} ${pts} ${lastX.toFixed(1)},${H}" fill="${fillColor}"/>` +
+      `<polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>` +
+      `<circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2" fill="${lineColor}"/>`;
   } catch(e) { console.warn('분봉 차트 실패:', e); }
 };
 
