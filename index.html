@@ -421,7 +421,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">선물</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">K200ETF</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFutIndv">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFutFrgn">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFutOrgn">—</div>
@@ -3194,21 +3194,20 @@ window.fetchMarketIndex = async () => {
     setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv));
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
     setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn));
-    // 코스피200 선물 투자자별 순매수
+    // 코스피200 ETF 투자자별 순매수 (선물 방향 참고용)
     try {
       const futRes = await fetch('/api/kis?action=future_investor');
       const futData = await futRes.json();
-      const futRows = futData.output2 || futData.output1 || futData.output || [];
-      const fut = Array.isArray(futRows) ? futRows[0] : futRows;
+      const fut = (futData.output || [])[0] || {};
       const fmtFut = (v) => {
         const n = parseInt(v)||0;
         const sign = n >= 0 ? '+' : '';
         const color = n >= 0 ? 'var(--up)' : 'var(--dn)';
         return `<span style="color:${color}">${sign}${n.toLocaleString()}</span>`;
       };
-      setEl('mktFutIndv', fmtFut(fut?.prsn_ntby_qty || fut?.prsn_fake_ntby_qty || 0));
-      setEl('mktFutFrgn', fmtFut(fut?.frgn_ntby_qty || fut?.frgn_fake_ntby_qty || 0));
-      setEl('mktFutOrgn', fmtFut(fut?.orgn_ntby_qty || fut?.orgn_fake_ntby_qty || 0));
+      setEl('mktFutIndv', fmtFut(fut.prsn_ntby_qty || 0));
+      setEl('mktFutFrgn', fmtFut(fut.frgn_ntby_qty || 0));
+      setEl('mktFutOrgn', fmtFut(fut.orgn_ntby_qty || 0));
     } catch(e) { console.warn('선물 투자자 조회 실패:', e); }
 
     document.getElementById('mktIndexCard').style.display = 'block';
@@ -3376,21 +3375,20 @@ window.kisAutoFetch = async () => {
     setEl('mktIndvKp', fmt(kpIndv)); setEl('mktIndvKq', fmt(kqIndv));
     setEl('mktFrgnKp', fmt(kpFrgn)); setEl('mktFrgnKq', fmt(kqFrgn));
     setEl('mktOrgnKp', fmt(kpOrgn)); setEl('mktOrgnKq', fmt(kqOrgn));
-    // 코스피200 선물 투자자별 순매수
+    // 코스피200 ETF 투자자별 순매수 (선물 방향 참고용)
     try {
       const futRes2 = await fetch('/api/kis?action=future_investor');
       const futData2 = await futRes2.json();
-      const futRows2 = futData2.output2 || futData2.output1 || futData2.output || [];
-      const fut2 = Array.isArray(futRows2) ? futRows2[0] : futRows2;
+      const fut2 = (futData2.output || [])[0] || {};
       const fmtFut2 = (v) => {
         const n = parseInt(v)||0;
         const sign = n >= 0 ? '+' : '';
         const color = n >= 0 ? 'var(--up)' : 'var(--dn)';
         return `<span style="color:${color}">${sign}${n.toLocaleString()}</span>`;
       };
-      setEl('mktFutIndv', fmtFut2(fut2?.prsn_ntby_qty || fut2?.prsn_fake_ntby_qty || 0));
-      setEl('mktFutFrgn', fmtFut2(fut2?.frgn_ntby_qty || fut2?.frgn_fake_ntby_qty || 0));
-      setEl('mktFutOrgn', fmtFut2(fut2?.orgn_ntby_qty || fut2?.orgn_fake_ntby_qty || 0));
+      setEl('mktFutIndv', fmtFut2(fut2.prsn_ntby_qty || 0));
+      setEl('mktFutFrgn', fmtFut2(fut2.frgn_ntby_qty || 0));
+      setEl('mktFutOrgn', fmtFut2(fut2.orgn_ntby_qty || 0));
     } catch(e) { console.warn('선물 투자자 조회 실패:', e); }
 
     // 코스피/코스닥 지수는 market_investor API에서 직접 가져옴
