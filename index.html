@@ -3135,9 +3135,7 @@ window.autoLoadStreak = async (key, code) => {
     const r = await fetch('/api/kis?action=investor&code=' + code);
     const data = await r.json();
     // output1=오늘, output2=과거 일별 → 오늘 포함해서 계산
-    const todayRow = data.output1 ? [data.output1] : [];
-    const histRows = (data.output2 || data.output || []).slice(0, 4);
-    const rows = [...todayRow, ...histRows];
+    const rows = (data.output || data.output2 || []).slice(0, 5);
     if(!rows.length) { invEl.textContent = ''; return; }
 
     const calcStreak = (f1, f2) => {
@@ -3194,9 +3192,7 @@ window.revRowClick = async (key) => {
   try {
     const r = await fetch('/api/kis?action=investor&code=' + s.code);
     const data = await r.json();
-    const _todayRow = data.output1 ? [data.output1] : [];
-    const _histRows = (data.output2 || data.output || []).slice(0, 4);
-    const rows = [..._todayRow, ..._histRows];
+    const rows = (data.output || data.output2 || []).slice(0, 5);
 
     const calcStreak = (f1, f2) => {
       let streak = 0;
@@ -3262,9 +3258,7 @@ window.upSudClick = async (key) => {
   try {
     const r = await fetch('/api/kis?action=investor&code=' + s.code);
     const data = await r.json();
-    const _todayRowU = data.output1 ? [data.output1] : [];
-    const _histRowsU = (data.output2 || data.output || []).slice(0, 4);
-    const rows = [..._todayRowU, ..._histRowsU];
+    const rows = (data.output || data.output2 || []).slice(0, 5);
 
     if(!rows.length) {
       invEl.innerHTML = baseHtml + (baseHtml ? '<br>' : '') + '일별 데이터 없음';
@@ -3272,10 +3266,9 @@ window.upSudClick = async (key) => {
     }
 
     // 최근 5일 외국인/기관 연속 매수/매도 계산 (오늘 포함)
-    const days = rows.slice(0, 5);
     let fStreak = 0, iStreak = 0;
-    for(let i = 0; i < days.length; i++) {
-      const fv = parseFloat(days[i].frgn_ntby_qty || days[i].frgn_ntby_tr_pbmn || 0);
+    for(let i = 0; i < rows.length; i++) {
+      const fv = parseFloat(rows[i].frgn_ntby_qty || rows[i].frgn_ntby_tr_pbmn || 0);
       if(i === 0) { fStreak = fv >= 0 ? 1 : -1; }
       else {
         const sign = fStreak > 0 ? 1 : -1;
@@ -3283,8 +3276,8 @@ window.upSudClick = async (key) => {
         else break;
       }
     }
-    for(let i = 0; i < days.length; i++) {
-      const iv = parseFloat(days[i].orgn_ntby_qty || days[i].orgn_ntby_tr_pbmn || 0);
+    for(let i = 0; i < rows.length; i++) {
+      const iv = parseFloat(rows[i].orgn_ntby_qty || rows[i].orgn_ntby_tr_pbmn || 0);
       if(i === 0) { iStreak = iv >= 0 ? 1 : -1; }
       else {
         const sign = iStreak > 0 ? 1 : -1;
@@ -3338,9 +3331,7 @@ window.kisRowClick = async (key) => {
     try {
       const r = await fetch('/api/kis?action=investor&code=' + s.code);
       const data = await r.json();
-      const _todayRow = data.output1 ? [data.output1] : [];
-    const _histRows = (data.output2 || data.output || []).slice(0, 4);
-    const rows = [..._todayRow, ..._histRows];
+      const rows = (data.output || data.output2 || []).slice(0, 5);
       const streakEl = document.getElementById('kisDetailStreak');
       if(!rows.length || !streakEl) return;
 
