@@ -588,7 +588,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length){const uid=window._kisUid;if(uid&&window._upSudLatestDate)loadUpSudHistory(window._upSudLatestDate,uid).then(()=>{const b=document.getElementById('upSudDateBtn-'+window._upSudLatestDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}});}">상승수급</div>
       <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">오늘의 ETF</div>
       <div class="ftab" onclick="showFTab('기준봉',this)">종봉 PICK</div>
-      <div class="ftab" onclick="showFTab('뉴스',this);if(!document.getElementById('newsFeed').children.length)fetchNews()">📰 뉴스</div>
     </div>
 
     <!-- 순매수 TOP -->
@@ -725,17 +724,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
   </div>
 
-
-    <!-- 뉴스 피드 -->
-    <div class="fpanel" id="fp-뉴스">
-      <div class="sh">
-        <span class="sh-title">📰 증시 뉴스</span>
-        <button class="btn btn-ac btn-sm" onclick="fetchNews()" id="newsBtn">🔄 새로고침</button>
-      </div>
-      <div id="newsMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
-      <div id="newsFeed" style="margin:0 16px 12px;display:flex;flex-direction:column;gap:8px"></div>
-      <div style="height:20px"></div>
-    </div>
   <!-- ══ 탭4: 증시뉴스 ══ -->
   <div class="page" id="pg-news">
     <div class="form-hdr">
