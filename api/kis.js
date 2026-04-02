@@ -56,24 +56,19 @@ export default async function handler(req, res) {
       return res.status(200).json({ kospi, kosdaq });
     }
 
-    // ── 코스피200 선물 투자자별 순매수
+    // ── 코스피200 ETF(069500) 투자자별 순매수 (선물 대용)
     if (action === 'future_investor') {
       const token = await getToken();
-      const today = new Date();
-      const dateStr = today.getFullYear().toString() +
-        String(today.getMonth()+1).padStart(2,'0') +
-        String(today.getDate()).padStart(2,'0');
-
-      // 선물 시장 투자자별 매매동향 (FID_COND_MRKT_DIV_CODE=F: 선물)
+      // 069500: KODEX 200 ETF - 코스피200 선물과 방향성 동일
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=F&FID_INPUT_ISCD=0&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=0`,
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=069500`,
         {
           headers: {
             'content-type': 'application/json',
             'authorization': `Bearer ${token}`,
             'appkey': APP_KEY,
             'appsecret': APP_SECRET,
-            'tr_id': 'FHPTJ04040000',
+            'tr_id': 'FHKST01010900',
             'custtype': 'P'
           }
         }
@@ -81,7 +76,9 @@ export default async function handler(req, res) {
       const text = await r.text();
       try {
         const data = JSON.parse(text);
-        return res.status(200).json(data);
+        // output 배열의 첫번째(오늘) 데이터 반환
+        const today = (data.output || [])[0] || {};
+        return res.status(200).json({ output: [today], raw: data });
       } catch(e) {
         return res.status(500).json({ error: 'JSON parse error', raw: text.slice(0, 200) });
       }
