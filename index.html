@@ -987,12 +987,22 @@ function switchTab(tab){
   }
   if(tab==='feat'){
     renderFeat();
-    // 순매수 TOP 최근 히스토리 로드
     const uid = window._kisUid;
-    if(uid && window._kisLatestDate && !document.getElementById('topListFI').children.length) {
-      loadKisHistory(window._kisLatestDate, uid).then(() => {
-        const btn = document.getElementById('kisDateBtn-' + window._kisLatestDate);
+    if(uid) {
+      const today = new Date().toISOString().slice(0,10);
+      const loadDate = window._kisLatestDate || today;
+      // 오늘 데이터 있으면 히스토리 로드, 없으면 자동불러오기
+      loadKisHistory(loadDate, uid).then((result) => {
+        const btn = document.getElementById('kisDateBtn-' + loadDate);
         if(btn) { btn.style.background='var(--pr)'; btn.style.color='#fff'; btn.style.borderColor='var(--pr)'; }
+        // 데이터가 없으면(빈 상태) 자동불러오기 실행
+        const listEl = document.getElementById('topListFI');
+        if(!listEl || !listEl.children.length || listEl.querySelector('.empty')) {
+          kisTopFetch();
+        }
+      }).catch(() => {
+        // 히스토리 로드 실패시 자동불러오기
+        kisTopFetch();
       });
     }
   }
@@ -2235,7 +2245,7 @@ window.loadKisHistory = async (date, uid) => {
 
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'kisHistory', date));
-    if(!snap.exists()) return;
+    if(!snap.exists()) return false;
     const data = snap.data();
     window._kisRows = {};
     let _rowIdx2 = 0;
