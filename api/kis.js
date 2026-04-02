@@ -261,7 +261,7 @@ export default async function handler(req, res) {
 
         const items = [];
         const blocks = xml.split('<item>').slice(1);
-        for(const block of blocks.slice(0, 20)) {
+        for(const block of blocks.slice(0, 50)) {
           const title = (block.match(/<title>(.*?)<\/title>/) || [])[1] || '';
           const link  = (block.match(/<link>(.*?)<\/link>/) || [])[1] || '';
           const pubDate = (block.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
@@ -270,11 +270,31 @@ export default async function handler(req, res) {
             title: title.replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim(),
             link: link.trim(),
             pubDate,
+            pubTs: pubDate ? new Date(pubDate).getTime() : 0,
             source: source.replace(/<[^>]*>/g,'').trim()
           });
         }
 
-        return res.status(200).json({ items, count: items.length });
+        // 최신순 정렬 후 20개
+        items.sort((a, b) => b.pubTs - a.pubTs);
+        const sorted = items.slice(0, 20).map(item => {
+          // 한국 시간으로 날짜/시간 포맷
+          let displayTime = '';
+          if(item.pubTs) {
+            const d = new Date(item.pubTs);
+            const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+            const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+            const isToday = kst.toISOString().slice(0,10) === now.toISOString().slice(0,10);
+            const mm = String(kst.getUTCMonth()+1).padStart(2,'0');
+            const dd = String(kst.getUTCDate()).padStart(2,'0');
+            const hh = String(kst.getUTCHours()).padStart(2,'0');
+            const mi = String(kst.getUTCMinutes()).padStart(2,'0');
+            displayTime = isToday ? `${hh}:${mi}` : `${mm}/${dd} ${hh}:${mi}`;
+          }
+          return { ...item, displayTime };
+        });
+
+        return res.status(200).json({ items: sorted, count: sorted.length });
       } catch(e) {
         return res.status(500).json({ error: e.message });
       }
