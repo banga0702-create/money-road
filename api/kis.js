@@ -64,21 +64,27 @@ export default async function handler(req, res) {
         String(today.getMonth()+1).padStart(2,'0') +
         String(today.getDate()).padStart(2,'0');
 
+      // 선물 시장 투자자별 매매동향 (FID_COND_MRKT_DIV_CODE=F: 선물)
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-futureoption/v1/quotations/inquire-investor?FID_COND_MRKT_DIV_CODE=F&FID_INPUT_ISCD=101W09&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_DATE_2=${dateStr}`,
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=F&FID_INPUT_ISCD=0&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=0`,
         {
           headers: {
             'content-type': 'application/json',
             'authorization': `Bearer ${token}`,
             'appkey': APP_KEY,
             'appsecret': APP_SECRET,
-            'tr_id': 'FHKST03030100',
+            'tr_id': 'FHPTJ04040000',
             'custtype': 'P'
           }
         }
       );
-      const data = await r.json();
-      return res.status(200).json(data);
+      const text = await r.text();
+      try {
+        const data = JSON.parse(text);
+        return res.status(200).json(data);
+      } catch(e) {
+        return res.status(500).json({ error: 'JSON parse error', raw: text.slice(0, 200) });
+      }
     }
 
     if (action === 'foreign_inst') {
