@@ -249,40 +249,36 @@ export default async function handler(req, res) {
 
 
     // 네이버 금융 뉴스 RSS
-    // 네이버 금융 뉴스 RSS
+    // 네이버 금융 뉴스 RSS 피드
     if (action === 'news') {
       try {
-        // 네이버 금융 증시 뉴스 RSS
-        const r = await fetch(
-          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258',
-          { headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)', 'Referer': 'https://finance.naver.com/' } }
-        );
-        const html = await r.text();
+        // 네이버 금융 RSS - 증시 뉴스
+        const feeds = [
+          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258&rss=1',
+          'https://www.mk.co.kr/rss/30100041/',
+          'https://www.hankyung.com/feed/finance'
+        ];
 
-        // 제목+링크 파싱
-        const items = [];
-        const titleRe = /class="[^"]*tit[^"]*"[^>]*>\s*<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
-        const altRe = /<a[^>]+href="(\/news\/news_read[^"]+)"[^>]*>\s*<strong[^>]*>([^<]+)<\/strong>/g;
-        const sourceRe = /<span[^>]+class="[^"]*press[^"]*"[^>]*>([^<]+)<\/span>/g;
-        const timeRe = /<span[^>]+class="[^"]*wdate[^"]*"[^>]*>([^<]+)<\/span>/g;
+        // 첫 번째로 성공하는 RSS 사용
+        let items = [];
+        for(const feedUrl of feeds) {
+          try {
+            const r = await fetch(feedUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml, application/xml, text/xml' }
+            });
+            const xml = await r.text();
 
-        let sources = [], times = [], sm, tm;
-        while((sm = sourceRe.exec(html)) !== null) sources.push(sm[1].trim());
-        while((tm = timeRe.exec(html)) !== null) times.push(tm[1].trim());
-
-        let m, idx = 0;
-        while((m = titleRe.exec(html)) !== null && idx < 25) {
-          const link = m[1].startsWith('http') ? m[1] : 'https://finance.naver.com' + m[1];
-          items.push({ link, title: m[2].trim(), source: sources[idx]||'', pubDate: times[idx]||'' });
-          idx++;
-        }
-
-        // 폴백: 다른 패턴 시도
-        if(!items.length) {
-          while((m = altRe.exec(html)) !== null && items.length < 25) {
-            const link = 'https://finance.naver.com' + m[1];
-            items.push({ link, title: m[2].trim(), source: '', pubDate: '' });
-          }
+            // RSS XML 파싱
+            const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
+            for(const item of itemMatches.slice(0, 20)) {
+              const title = (item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/) || [])[1] || '';
+              const link  = (item.match(/<link>([^<]+)<\/link>/) || item.match(/<link[^>]*href="([^"]+)"/) || [])[1] || '';
+              const pubDate = (item.match(/<pubDate>([^<]+)<\/pubDate>/) || [])[1] || '';
+              const source  = (item.match(/<source[^>]*>([^<]+)<\/source>/) || [])[1] || '';
+              if(title && link) items.push({ title: title.trim(), link: link.trim(), pubDate, source });
+            }
+            if(items.length > 0) break;
+          } catch(e2) { continue; }
         }
 
         return res.status(200).json({ items, count: items.length });
