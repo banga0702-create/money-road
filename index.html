@@ -588,6 +588,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab" onclick="showFTab('상승수급',this);if(!document.getElementById('upSudList').children.length){const uid=window._kisUid;if(uid&&window._upSudLatestDate)loadUpSudHistory(window._upSudLatestDate,uid).then(()=>{const b=document.getElementById('upSudDateBtn-'+window._upSudLatestDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}});}">상승수급</div>
       <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">오늘의 ETF</div>
       <div class="ftab" onclick="showFTab('기준봉',this)">종봉 PICK</div>
+      <div class="ftab" onclick="showFTab('뉴스',this);if(!document.getElementById('newsFeed').children.length)fetchNews()">📰 뉴스</div>
     </div>
 
     <!-- 순매수 TOP -->
@@ -736,6 +737,16 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
   </div>
 
+
+    <!-- 뉴스 피드 -->
+    <div class="fpanel" id="fp-뉴스">
+      <div class="sh">
+        <span class="sh-title">📰 증시 뉴스</span>
+        <button class="btn btn-ac btn-sm" onclick="fetchNews()" id="newsBtn">🔄 새로고침</button>
+      </div>
+      <div id="newsMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div id="newsFeed" style="margin:0 16px 12px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
   <!-- ══ 탭4: 분석 ══ -->
   <div class="page" id="pg-analysis">
 
@@ -3147,6 +3158,47 @@ window.kisAddTop = (name, fBuy, iBuy) => {
   save();
   renderStockList();
   alert('✓ ' + name + ' 관심종목에 추가됐어요!');
+};
+
+
+// ── 네이버 금융 뉴스 피드
+window.fetchNews = async () => {
+  const btn = document.getElementById('newsBtn');
+  const msg = document.getElementById('newsMsg');
+  const feed = document.getElementById('newsFeed');
+  if(btn) btn.textContent = '⏳ 불러오는 중...';
+  if(msg) { msg.style.display='block'; msg.textContent='뉴스 불러오는 중...'; }
+
+  try {
+    const r = await fetch('/api/kis?action=news');
+    const data = await r.json();
+    if(data.error) throw new Error(data.error);
+
+    const items = data.items || [];
+    if(!items.length) {
+      feed.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">📰</div><p>뉴스를 불러올 수 없어요</p></div>';
+      return;
+    }
+
+    feed.innerHTML = items.map(item => {
+      const time = item.pubDate ? new Date(item.pubDate).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'}) : '';
+      const title = item.title.replace(/<[^>]*>/g, '').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#39;/g,"'");
+      return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;cursor:pointer;transition:background .12s;active:background:var(--sf2)" onclick="window.open('${item.link}','_blank')">
+        <div style="font-size:12px;font-weight:700;line-height:1.5;margin-bottom:6px;color:var(--tx)">${title}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;color:var(--tx3)">${item.source || '네이버금융'}</span>
+          ${time ? `<span style="font-size:10px;color:var(--tx3)">·</span><span style="font-size:10px;color:var(--tx3)">${time}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    if(msg) { msg.textContent = `✓ ${items.length}개 뉴스 로드 완료`; setTimeout(()=>{ msg.style.display='none'; }, 2000); }
+  } catch(e) {
+    if(msg) { msg.style.color='var(--up)'; msg.textContent='❌ 오류: ' + e.message; }
+    feed.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">📰</div><p>뉴스를 불러올 수 없어요</p></div>';
+  } finally {
+    if(btn) btn.textContent = '🔄 새로고침';
+  }
 };
 
 // ── KIS API 시장 데이터 자동 입력
