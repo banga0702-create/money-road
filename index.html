@@ -2697,9 +2697,16 @@ window.upSudFetch = async () => {
           + '</div>'
           + '</div>'
           + '</div>'
-          + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,71,87,0.2);display:none"></div>'
+          + '<div id="inv_' + key + '" style="font-size:9px;margin-top:3px">⏳ 조회 중...</div>'
           + '</div>';
       }).join('');
+
+      // 자동으로 연속매수/매도 조회 (foreign_inst 기준 fBuy/iBuy 전달)
+      result.forEach(s => {
+        const n = s.hts_kor_isnm;
+        const k = 'us_' + n.replace(/[^a-zA-Z0-9가-힣]/g,'');
+        autoLoadStreak(k, s.mksc_shrn_iscd||'', fBuyMap[n]||0, iBuyMap[n]||0);
+      });
     }
 
     msg.textContent = '✓ 완료! 거래대금 2000억↑ 상승종목 ' + result.length + '개';
@@ -2832,11 +2839,13 @@ window.reverseFetch = async () => {
     document.getElementById('reverseListF').innerHTML = fResult.length  ? fResult.map(s=>makeRevRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = fiResult.length ? fiResult.map(s=>makeRevRow(s,true)).join('')  : emptyHtml;
 
-    // 자동으로 연속매수/매도 조회
+    // 자동으로 연속매수/매도 조회 (foreign_inst의 정확한 순매수 값 전달)
     const allRevStocks = [...fResult, ...fiResult];
     allRevStocks.forEach(s => {
       const key = 'rv_' + s.name.replace(/\s/g,'');
-      autoLoadStreak(key, codeMap[s.name] || '');
+      const todayF = fBuyMap[s.name] || 0;  // foreign_inst 기준 외국인 순매수
+      const todayI = iBuyMap[s.name] || 0;  // foreign_inst 기준 기관 순매수
+      autoLoadStreak(key, codeMap[s.name] || '', todayF, todayI);
     });
 
     msg.textContent = `✓ 완료! 외국인매수 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
@@ -2933,9 +2942,15 @@ window.loadUpSudHistory = async (date, uid) => {
         + '</div>'
         + '</div>'
         + '</div>'
-        + '<div id="inv_' + key + '" style="font-size:9px;color:var(--tx3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,71,87,0.2);display:none"></div>'
+        + '<div id="inv_' + key + '" style="font-size:9px;margin-top:3px">⏳ 조회 중...</div>'
         + '</div>';
     }).join('');
+
+    // 자동으로 연속매수/매도 조회 (저장된 fBuy/iBuy 전달)
+    list.forEach((s, i) => {
+      const k = 'usd_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'') + '_' + i;
+      autoLoadStreak(k, s.code||'', s.fBuy||0, s.iBuy||0);
+    });
   } catch(e) { console.warn('상승수급 히스토리 로드 실패:', e); }
 };
 
@@ -2996,10 +3011,10 @@ window.loadReverseHistory = async (date, uid) => {
     document.getElementById('reverseListF').innerHTML = (data.fResult||[]).length ? data.fResult.map(s=>makeHistRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = (data.fiResult||[]).length ? data.fiResult.map(s=>makeHistRow(s,true)).join('') : emptyHtml;
 
-    // 자동으로 연속매수/매도 조회
+    // 자동으로 연속매수/매도 조회 (저장된 fBuy/iBuy 값 전달)
     [...(data.fResult||[]), ...(data.fiResult||[])].forEach(s => {
       const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'');
-      autoLoadStreak(key, s.code||'');
+      autoLoadStreak(key, s.code||'', s.fBuy||0, s.iBuy||0);
     });
   } catch(e) { console.warn('역발상 히스토리 로드 실패:', e); }
 };
@@ -3122,38 +3137,55 @@ window.loadCandleHistory = async (date, uid) => {
 
 
 // ── 역발상 자동 연속매수/매도 조회
-window.autoLoadStreak = async (key, code) => {
+// todayFBuy, todayIBuy: foreign_inst API의 오늘 순매수 금액 (정확한 값)
+window.autoLoadStreak = async (key, code, todayFBuy, todayIBuy) => {
   const invEl = document.getElementById('inv_' + key);
   if(!invEl) return;
 
   if(!code) {
-    invEl.textContent = '';
+    // 코드 없으면 오늘 매수/매도만 표시
+    if(todayFBuy !== undefined) {
+      const fTag = todayFBuy >= 0
+        ? '<span style="color:var(--up);font-weight:800">외국인 1일 매수📈</span>'
+        : '<span style="color:var(--dn);font-weight:800">외국인 1일 매도📉</span>';
+      const iTag = todayIBuy !== undefined
+        ? (todayIBuy >= 0
+          ? ' &nbsp;<span style="color:var(--up);font-weight:800">기관 1일 매수📈</span>'
+          : ' &nbsp;<span style="color:var(--dn);font-weight:800">기관 1일 매도📉</span>')
+        : '';
+      invEl.innerHTML = fTag + iTag;
+    } else {
+      invEl.textContent = '';
+    }
     return;
   }
 
   try {
     const r = await fetch('/api/kis?action=investor&code=' + code);
     const data = await r.json();
-    // output1=오늘, output2=과거 일별 → 오늘 포함해서 계산
-    const rows = (data.output || data.output2 || []).slice(0, 5);
-    if(!rows.length) { invEl.textContent = ''; return; }
+    // output[0]이 오늘이지만 foreign_inst와 기준이 달라 부정확
+    // → 오늘은 foreign_inst 값(todayFBuy/todayIBuy) 사용, 과거는 investor API 사용
+    const histRows = (data.output || data.output2 || []).slice(1, 5); // 어제부터 4일
 
-    const calcStreak = (f1, f2) => {
-      let streak = 0;
-      for(let i = 0; i < rows.length; i++) {
-        const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
-        if(i === 0) { streak = v >= 0 ? 1 : -1; }
-        else {
-          const sign = streak > 0 ? 1 : -1;
-          if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign;
-          else break;
-        }
+    const calcHistStreak = (todayVal, f1, f2) => {
+      // 오늘 방향 결정 (foreign_inst 기준)
+      const todaySign = todayVal >= 0 ? 1 : -1;
+      let streak = todaySign; // 오늘 1일
+      for(let i = 0; i < histRows.length; i++) {
+        const v = parseFloat(histRows[i][f1] || histRows[i][f2] || 0);
+        const sign = v >= 0 ? 1 : -1;
+        if(sign === todaySign) streak += todaySign;
+        else break;
       }
       return streak;
     };
 
-    const fStreak = calcStreak('frgn_ntby_qty', 'frgn_ntby_tr_pbmn');
-    const iStreak = calcStreak('orgn_ntby_qty', 'orgn_ntby_tr_pbmn');
+    // 오늘 값: todayFBuy/todayIBuy 있으면 사용, 없으면 investor API output[0] 사용
+    const todayF = todayFBuy !== undefined ? todayFBuy : parseFloat((data.output||[])[0]?.frgn_ntby_tr_pbmn || 0);
+    const todayI = todayIBuy !== undefined ? todayIBuy : parseFloat((data.output||[])[0]?.orgn_ntby_tr_pbmn || 0);
+
+    const fStreak = calcHistStreak(todayF, 'frgn_ntby_qty', 'frgn_ntby_tr_pbmn');
+    const iStreak = calcHistStreak(todayI, 'orgn_ntby_qty', 'orgn_ntby_tr_pbmn');
 
     const fTag = fStreak > 0
       ? '<span style="color:var(--up);font-weight:800">외국인 ' + fStreak + '일 매수📈</span>'
