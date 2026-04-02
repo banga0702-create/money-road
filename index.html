@@ -598,23 +598,23 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div id="kisDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
 
       <!-- 3열 가로 레이아웃 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:8px 16px 12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:8px 8px 12px">
 
         <!-- 외+기 동시 -->
-        <div>
-          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">🔥 외+기 합산</div>
+        <div style="min-width:0">
+          <div style="font-size:9px;font-weight:800;color:var(--up);margin-bottom:6px">🔥 외+기 합산</div>
           <div id="topListFI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
         <!-- 외국인 -->
-        <div>
-          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px;display:flex;align-items:center;gap:3px">📈 외국인(+기관)</div>
+        <div style="min-width:0">
+          <div style="font-size:9px;font-weight:800;color:var(--up);margin-bottom:6px">📈 외국인(+기관)</div>
           <div id="topListF" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
-        <!-- 기관 -->
-        <div>
-          <div style="font-size:10px;font-weight:800;color:var(--dn);margin-bottom:6px;display:flex;align-items:center;gap:3px">🌊 외국인단독</div>
+        <!-- 외국인단독 -->
+        <div style="min-width:0">
+          <div style="font-size:9px;font-weight:800;color:var(--dn);margin-bottom:6px">🌊 외국인단독</div>
           <div id="topListI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
@@ -2193,12 +2193,12 @@ window.kisTopFetch = async () => {
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (isTriple ? '⭐' : (i+1)) + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
-        + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
-        + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
+        + '<span style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + (chgStr ? '<span style="font-size:8px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:2px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
-        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + displaySector + '</span>' : '<span></span>')
-        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
+        + (s.sector ? '<span style="font-size:8px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%">' + displaySector + '</span>' : '<span></span>')
+        + (ratioStr ? '<span style="font-size:8px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
         + '</div>';
