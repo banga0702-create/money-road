@@ -284,12 +284,11 @@ export default async function handler(req, res) {
             const d = new Date(item.pubTs);
             const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
             const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
-            const isToday = kst.toISOString().slice(0,10) === now.toISOString().slice(0,10);
             const mm = String(kst.getUTCMonth()+1).padStart(2,'0');
             const dd = String(kst.getUTCDate()).padStart(2,'0');
             const hh = String(kst.getUTCHours()).padStart(2,'0');
             const mi = String(kst.getUTCMinutes()).padStart(2,'0');
-            displayTime = isToday ? `${hh}:${mi}` : `${mm}/${dd} ${hh}:${mi}`;
+            displayTime = `${mm}/${dd} ${hh}:${mi}`;
           }
           return { ...item, displayTime };
         });
