@@ -2722,6 +2722,9 @@ window.upSudFetch = async () => {
           date: today, list: saveData, savedAt: Date.now()
         });
         await renderUpSudDateTabs(user.uid);
+        // 오늘 탭 활성화
+        const upTodayBtn = document.getElementById('upSudDateBtn-' + today);
+        if(upTodayBtn) { upTodayBtn.style.background='var(--pr)'; upTodayBtn.style.color='#fff'; upTodayBtn.style.borderColor='var(--pr)'; }
       }
     } catch(e2) { console.warn('상승수급 히스토리 저장 실패:', e2); }
 
@@ -3770,12 +3773,7 @@ onAuthStateChanged(auth, async (user) => {
       } catch(e) { window._kisHistory7 = []; }
       await renderReverseDateTabs(user.uid);
       await renderCandleDateTabs(user.uid);
-      // 오늘 상승수급 데이터 최신날짜 설정
-      try {
-        const upSnap = await getDocs(collection(db, 'users', user.uid, 'upSudHistory'));
-        const upDates = upSnap.docs.map(d=>d.id).sort().reverse();
-        if(upDates.length) window._upSudLatestDate = upDates[0];
-      } catch(e) {}
+      await renderUpSudDateTabs(user.uid);
       // 오늘 순매수 데이터 미리 로드 (특징주 탭 진입 대비)
       const today = new Date().toISOString().slice(0,10);
       try {
