@@ -56,34 +56,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ kospi, kosdaq });
     }
 
-    // ── 코스피200 ETF(069500) 투자자별 순매수 (선물 대용)
-    if (action === 'future_investor') {
-      const token = await getToken();
-      // 069500: KODEX 200 ETF - 코스피200 선물과 방향성 동일
-      const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=069500`,
-        {
-          headers: {
-            'content-type': 'application/json',
-            'authorization': `Bearer ${token}`,
-            'appkey': APP_KEY,
-            'appsecret': APP_SECRET,
-            'tr_id': 'FHKST01010900',
-            'custtype': 'P'
-          }
-        }
-      );
-      const text = await r.text();
-      try {
-        const data = JSON.parse(text);
-        // output 배열의 첫번째(오늘) 데이터 반환
-        const today = (data.output || [])[0] || {};
-        return res.status(200).json({ output: [today], raw: data });
-      } catch(e) {
-        return res.status(500).json({ error: 'JSON parse error', raw: text.slice(0, 200) });
-      }
-    }
-
     if (action === 'foreign_inst') {
       const token = await getToken();
       const { market = '0000' } = req.query;
@@ -211,10 +183,23 @@ export default async function handler(req, res) {
         return await r.json();
       };
 
-      // 병렬 호출 (현재가 호출 제거로 타임아웃 방지)
-      const [res1, res2] = await Promise.all([fetchMin('110000'), fetchMin(hhmm)]);
+      // 순차 호출 (병렬 호출 시 토큰 제한 오류 방지)
+      const res1 = await fetchMin('110000');
+      if(res1.rt_cd && res1.rt_cd !== '0') {
+        return res.status(200).json({ output1: {}, output2: [] });
+      }
       const d1 = res1.output2 || [];
-      const d2 = res2.output2 || [];
+
+      // 현재 시간이 11시 이후면 2차 호출
+      let d2 = [];
+      let output1 = res1.output1 || {};
+      if(now.getHours() >= 11) {
+        try {
+          const res2 = await fetchMin(hhmm);
+          d2 = res2.output2 || [];
+          if(res2.output1) output1 = res2.output1;
+        } catch(e) { /* 2차 호출 실패시 무시 */ }
+      }
 
       // 합치고 시간순 정렬 후 중복 제거
       const seen = new Set();
@@ -224,8 +209,7 @@ export default async function handler(req, res) {
         return true;
       }).sort((a, b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
 
-      // output1은 첫번째 호출에서 가져오기
-      return res.status(200).json({ output1: res1.output1 || {}, output2: combined });
+      return res.status(200).json({ output1, output2: combined });
     }
 
     // 네이버 모바일 당일 차트 데이터
@@ -242,58 +226,6 @@ export default async function handler(req, res) {
         );
         const text = await r.text();
         return res.status(200).send(text);
-      } catch(e) {
-        return res.status(500).json({ error: e.message });
-      }
-    }
-
-
-    // 네이버 금융 뉴스 RSS
-    // 구글 뉴스 RSS - 한국 증시
-    if (action === 'news') {
-      try {
-        const query = encodeURIComponent('주식 증시 코스피');
-        const url = `https://news.google.com/rss/search?q=${query}&hl=ko&gl=KR&ceid=KR:ko`;
-        const r = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-        });
-        const xml = await r.text();
-
-        const items = [];
-        const blocks = xml.split('<item>').slice(1);
-        for(const block of blocks.slice(0, 50)) {
-          const title = (block.match(/<title>(.*?)<\/title>/) || [])[1] || '';
-          const link  = (block.match(/<link>(.*?)<\/link>/) || [])[1] || '';
-          const pubDate = (block.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
-          const source = (block.match(/<source[^>]*>(.*?)<\/source>/) || [])[1] || '';
-          if(title) items.push({
-            title: title.replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim(),
-            link: link.trim(),
-            pubDate,
-            pubTs: pubDate ? new Date(pubDate).getTime() : 0,
-            source: source.replace(/<[^>]*>/g,'').trim()
-          });
-        }
-
-        // 최신순 정렬 후 20개
-        items.sort((a, b) => b.pubTs - a.pubTs);
-        const sorted = items.slice(0, 20).map(item => {
-          // 한국 시간으로 날짜/시간 포맷
-          let displayTime = '';
-          if(item.pubTs) {
-            const d = new Date(item.pubTs);
-            const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-            const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
-            const mm = String(kst.getUTCMonth()+1).padStart(2,'0');
-            const dd = String(kst.getUTCDate()).padStart(2,'0');
-            const hh = String(kst.getUTCHours()).padStart(2,'0');
-            const mi = String(kst.getUTCMinutes()).padStart(2,'0');
-            displayTime = `${mm}/${dd} ${hh}:${mi}`;
-          }
-          return { ...item, displayTime };
-        });
-
-        return res.status(200).json({ items: sorted, count: sorted.length });
       } catch(e) {
         return res.status(500).json({ error: e.message });
       }
