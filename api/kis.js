@@ -237,17 +237,12 @@ export default async function handler(req, res) {
           let displayTime = '';
           if(pubDate) {
             const d = new Date(pubDate);
-            const now = new Date();
-            const toKST = (dt) => new Date(dt.getTime() + 9*60*60*1000);
-            const kstD = toKST(d);
-            const kstNow = toKST(now);
-            const hhmm = String(kstD.getUTCHours()).padStart(2,'0') + ':' + String(kstD.getUTCMinutes()).padStart(2,'0');
-            const isToday = kstD.getUTCFullYear()===kstNow.getUTCFullYear() && kstD.getUTCMonth()===kstNow.getUTCMonth() && kstD.getUTCDate()===kstNow.getUTCDate();
-            const yesterday = new Date(kstNow.getTime() - 86400000);
-            const isYesterday = kstD.getUTCFullYear()===yesterday.getUTCFullYear() && kstD.getUTCMonth()===yesterday.getUTCMonth() && kstD.getUTCDate()===yesterday.getUTCDate();
-            if(isToday) displayTime = hhmm;
-            else if(isYesterday) displayTime = '어제 ' + hhmm;
-            else displayTime = (kstD.getUTCMonth()+1) + '/' + kstD.getUTCDate() + ' ' + hhmm;
+            const kstD = new Date(d.getTime() + 9*60*60*1000);
+            const mm = String(kstD.getUTCMonth()+1).padStart(2,'0');
+            const dd = String(kstD.getUTCDate()).padStart(2,'0');
+            const hh = String(kstD.getUTCHours()).padStart(2,'0');
+            const mn = String(kstD.getUTCMinutes()).padStart(2,'0');
+            displayTime = mm + '/' + dd + ' ' + hh + ':' + mn;
           }
 
           items.push({ title: title.trim(), link: link.trim(), pubDate: pubDate.trim(), source: source.trim(), displayTime });
