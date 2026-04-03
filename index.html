@@ -2854,7 +2854,7 @@ window.reverseFetch = async () => {
     // Firestore에 역발상 히스토리 저장
     try {
       const user = window._curUser;
-      if(user && (fResult.length > 0 || fiResult.length > 0)) {
+      if(user) {  // 종목 없어도 오늘 탭 생성을 위해 항상 저장
         const today = new Date().toISOString().slice(0,10);
         await setDoc(doc(db, 'users', user.uid, 'reverseHistory', today), {
           date: today,
