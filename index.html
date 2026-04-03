@@ -2348,7 +2348,7 @@ window.kisTopFetch = async () => {
   msg.textContent = '🔍 KIS에서 순매수 상위 종목 불러오는 중...';
 
   try {
-    const r = await fetch('/api/kis?action=foreign_inst');
+    const r = await fetch('/api/kis?action=foreign_inst_combined');
     const data = await r.json();
 
     if(data.error) throw new Error(data.error);
@@ -2658,7 +2658,7 @@ window.etfReverseFetch = async () => {
   try {
     const [volRes, fiRes] = await Promise.all([
       fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst')
+      fetch('/api/kis?action=foreign_inst_combined')
     ]);
     const volData = await volRes.json();
     const fiData  = await fiRes.json();
@@ -2749,7 +2749,7 @@ window.upSudFetch = async () => {
   try {
     const [volRes, fiRes] = await Promise.all([
       fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst')
+      fetch('/api/kis?action=foreign_inst_combined')
     ]);
     const volData = await volRes.json();
     const fiData  = await fiRes.json();
@@ -2878,7 +2878,7 @@ window.reverseFetch = async () => {
 
   try {
     // 1단계: foreign_inst로 외국인/기관 순매수 종목 가져오기
-    const fiRes = await fetch('/api/kis?action=foreign_inst');
+    const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
     const fiData = await fiRes.json();
     if(fiData.error) throw new Error('수급 조회 실패: ' + fiData.error);
 
