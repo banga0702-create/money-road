@@ -1220,6 +1220,125 @@ function delStock(id){
   save(); renderStockList(); updateStatCards();
 }
 
+// 관심종목 수정
+let _editStockId = null;
+function editStock(id) {
+  const s = S.stocks.find(x => x.id === id);
+  if(!s) return;
+  _editStockId = id;
+  document.getElementById('sName').value = s.name || '';
+  document.getElementById('sSector').value = s.sector || '';
+  document.getElementById('sVol').value = s.vol || '';
+  document.getElementById('sFBuy').value = s.fBuy || '';
+  document.getElementById('sIBuy').value = s.iBuy || '';
+  document.getElementById('sFRk').value = s.fRk !== 99 ? s.fRk : '';
+  document.getElementById('sIRk').value = s.iRk !== 99 ? s.iRk : '';
+  document.getElementById('sPrice').value = s.price || '';
+  document.getElementById('sChgRate').value = s.chgRate || '';
+  document.getElementById('sMemo').value = s.memo || '';
+  curStr = s.strength || 0;
+  curRep = s.report || '없음';
+  document.querySelectorAll('.str-btn').forEach(b => b.classList.remove('on'));
+  if(curStr) document.querySelectorAll('.str-btn')[curStr-1]?.classList.add('on');
+  document.querySelectorAll('#repSeg .seg-item').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === curRep);
+  });
+  autoCalcS();
+  document.querySelector('#moStock .mo-title').textContent = '✏️ 종목 수정';
+  document.querySelector('#moStock .btn-pr:last-child').onclick = saveEditStock;
+  openMo('moStock');
+}
+function saveEditStock() {
+  const s = S.stocks.find(x => x.id === _editStockId);
+  if(!s) return;
+  const name = document.getElementById('sName').value.trim();
+  if(!name) { alert('종목명을 입력하세요'); return; }
+  const vol = +document.getElementById('sVol').value||0;
+  const fBuy = +document.getElementById('sFBuy').value||0;
+  const iBuy = +document.getElementById('sIBuy').value||0;
+  const fRk = +document.getElementById('sFRk').value||99;
+  const iRk = +document.getElementById('sIRk').value||99;
+  const ratio = vol>0 ? +((fBuy+iBuy)/vol*100).toFixed(2) : 0;
+  let score = 0;
+  if(vol>=2000) score+=3;
+  if(fBuy>0&&iBuy>0) score+=3;
+  if(curStr===4) score+=2;
+  if(fRk>=1&&fRk<=15) score+=1;
+  if(iRk>=1&&iRk<=15) score+=1;
+  Object.assign(s, {
+    name, sector: document.getElementById('sSector').value.trim(),
+    vol, fBuy, iBuy, fRk, iRk, ratio,
+    price: +document.getElementById('sPrice').value||0,
+    chgRate: +document.getElementById('sChgRate').value||0,
+    strength: curStr, report: curRep,
+    memo: document.getElementById('sMemo').value.trim(),
+    score,
+    isCapture: vol>=2000&&fBuy>0&&iBuy>0&&fRk>=1&&fRk<=15,
+    isTomorrow: vol>=2000&&fBuy>0&&iBuy>0&&curStr===4&&ratio>=5,
+  });
+  S.stocks.sort((a,b) => b.score-a.score);
+  S.stocks.forEach((s,i) => s.num=i+1);
+  save(); renderStockList(); updateStatCards();
+  closeMo('moStock');
+  // 버튼 원래대로 복구
+  document.querySelector('#moStock .mo-title').textContent = '📋 종목 수급 기록';
+  document.querySelector('#moStock .btn-pr:last-child').onclick = saveStock;
+  _editStockId = null;
+}
+
+// 종봉픽 수정
+let _editCandleIdx = null;
+function editCandle(i) {
+  const c = S.candles[i];
+  if(!c) return;
+  _editCandleIdx = i;
+  document.getElementById('cdCode').value = c.code || '';
+  document.getElementById('cdName').value = c.name || '';
+  document.getElementById('cdSector').value = c.sector || '';
+  document.getElementById('cdVol').value = c.vol || '';
+  document.getElementById('cdFBuy').value = c.fBuy || '';
+  document.getElementById('cdIBuy').value = c.iBuy || '';
+  document.getElementById('cdH').value = c.high || '';
+  document.getElementById('cdL').value = c.low || '';
+  document.getElementById('cdCur').value = c.curPrice || '';
+  document.getElementById('cdChg').value = c.chg || '';
+  document.getElementById('cdMemo').value = c.memo || '';
+  calcCandle();
+  document.querySelector('#moCandle .mo-title').textContent = '✏️ 종봉 수정';
+  document.querySelector('#moCandle .btn-pr:last-child').onclick = saveEditCandle;
+  openMo('moCandle');
+}
+function saveEditCandle() {
+  const c = S.candles[_editCandleIdx];
+  if(!c) return;
+  const name = document.getElementById('cdName').value.trim();
+  if(!name) { alert('종목명을 입력하세요'); return; }
+  const h = +document.getElementById('cdH').value||0;
+  const l = +document.getElementById('cdL').value||0;
+  Object.assign(c, {
+    code: document.getElementById('cdCode').value.trim(),
+    name, sector: document.getElementById('cdSector').value.trim(),
+    vol: +document.getElementById('cdVol').value||0,
+    fBuy: +document.getElementById('cdFBuy').value||0,
+    iBuy: +document.getElementById('cdIBuy').value||0,
+    high: h, low: l,
+    midLine: h&&l ? Math.round((h+l)/2) : c.midLine,
+    curPrice: +document.getElementById('cdCur').value||c.curPrice,
+    chg: +document.getElementById('cdChg').value||0,
+    memo: document.getElementById('cdMemo').value.trim(),
+  });
+  save();
+  const user = window._curUser;
+  if(user) window.saveCandleToFirestore(user.uid, S.candles);
+  renderCandleFeat();
+  closeMo('moCandle');
+  document.querySelector('#moCandle .mo-title').textContent = '🕯️ 종봉 PICK 추가';
+  document.querySelector('#moCandle .btn-pr:last-child').onclick = addCandle;
+  _editCandleIdx = null;
+}
+
+
+
 /* ═══════════════════════════════════════════
    오늘의 시장 한 줄
 ═══════════════════════════════════════════ */
@@ -1567,6 +1686,7 @@ function renderStockList(){
           ${s.isCapture?'<span class="badge b-ac">포착</span>':''}
           ${s.isTomorrow?'<span class="badge b-wa">내일↑</span>':''}
         </div>
+        <button class="btn btn-sm" style="width:auto;padding:4px 8px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;font-size:11px" onclick="editStock(${s.id})">✏️</button>
         <button class="btn btn-sc btn-sm" style="width:auto;padding:4px 8px" onclick="delStock(${s.id})">✕</button>
       </div>
       <div class="sli-body">
@@ -1805,7 +1925,8 @@ function renderCandleFeat(){
           ${c.sector?`<span class="badge b-gr">${c.sector}</span>`:''}
           ${c.chg?`<span class="badge" style="background:${c.chg>=0?'var(--up2)':'var(--dn2)'};color:${chgColor};border:1px solid ${chgColor}">${c.chg>=0?'▲':'▼'}${Math.abs(c.chg)}%</span>`:''}
         </div>
-        <button class="btn btn-sc btn-sm" style="width:auto;padding:4px 8px" onclick="delCandle(${i})">✕</button>
+        <button class="btn btn-sm" style="width:auto;padding:4px 8px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;font-size:11px" onclick="editCandle(${i})">✏️</button>
+      <button class="btn btn-sc btn-sm" style="width:auto;padding:4px 8px" onclick="delCandle(${i})">✕</button>
       </div>
       <div class="sli-body">
         ${c.curPrice?`<span class="sli-chip" style="color:var(--tx)">${parseInt(c.curPrice).toLocaleString()}원</span>`:''}
