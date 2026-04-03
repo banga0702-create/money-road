@@ -599,7 +599,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
         <!-- 외국인단독 -->
         <div style="min-width:0">
-          <div style="font-size:9px;font-weight:800;color:var(--dn);margin-bottom:6px">🌊 외국인단독</div>
+          <div style="font-size:9px;font-weight:800;color:var(--dn);margin-bottom:6px">🌊 외국인순매수</div>
           <div id="topListI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
@@ -2389,17 +2389,19 @@ window.kisTopFetch = async () => {
     window._kisRows = {};
     let _rowIdx = 0;
 
-    // 외+기 합산 순매수 높은 순 (동시매수만)
-    const fi = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
-      .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
-    // 외국인(+기관) 동시매수, 외국인 순매수 높은 순
-    const f = all.filter(s => s.fBuy > 0 && s.iBuy > 0)
-      .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
-    // 외국인 단독 (기관 무관)
-    const inst = all.filter(s => s.fBuy > 0)
-      .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
+    // 외국인 순매수 TOP30 기준
+    const top30 = all.filter(s => s.fBuy > 0).sort((a,b) => b.fBuy - a.fBuy).slice(0,30);
 
-    // 3개 리스트 모두 등장하는 종목 세트
+    // 외+기 합산: TOP30 중 기관도 매수, 합산금액 순
+    const fi = top30.filter(s => s.iBuy > 0)
+      .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
+    // 외국인(+기관): TOP30 중 기관도 매수, 외국인 금액 순
+    const f = top30.filter(s => s.iBuy > 0)
+      .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
+    // 외국인 순매수: TOP30 전체, 기관 무관, 외국인 금액 순
+    const inst = top30.slice(0,15);
+
+    // ⭐ 배지: fi(합산순)과 f(외국인순) 모두 상위권 + inst(전체)에도 있는 종목
     const fiNames = new Set(fi.map(s => s.name));
     const fNames  = new Set(f.map(s => s.name));
     const iNames  = new Set(inst.map(s => s.name));
