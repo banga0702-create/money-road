@@ -2422,26 +2422,55 @@ window.kisTopFetch = async () => {
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
       // 업종 → 테마 변환
       const sectorMap = {
-        '전기·전자':'반도체/IT', '반도체':'반도체/IT', '전자부품':'반도체/IT', '전자':'반도체/IT',
+        '전기·전자':'전기·전자', '반도체':'반도체', '전자부품':'전자부품',
         'IT 서비스':'AI/플랫폼', '소프트웨어':'AI/플랫폼', '인터넷':'AI/플랫폼',
-        '기계·장비':'로봇/기계', '일반기계':'로봇/기계', '기계·장비':'로봇/기계',
-        '화학':'2차전지/화학', '비금속광물':'2차전지/화학',
+        '기계·장비':'기계', '일반기계':'기계',
+        '화학':'화학', '비금속광물':'소재',
         '의료·정밀기기':'바이오', '의약품':'바이오', '제약':'바이오',
         '증권':'금융', '은행':'금융', '보험':'금융', '기타금융':'금융',
-        '운송·창고':'물류/운송', '해운':'물류/운송',
-        '유통':'소비/유통', '음식료품':'소비/유통',
-        '오락·문화':'엔터', '방송통신':'엔터',
+        '운송·창고':'물류', '해운':'조선/해운',
+        '유통':'유통', '음식료품':'음식료',
+        '오락·문화':'엔터', '방송통신':'통신',
         '전기·가스':'에너지', '건설':'건설',
-        '금속':'소재/금속', '철강':'소재/금속',
+        '금속':'소재/금속', '철강':'철강',
+        '운송장비·부품':'운송장비',
+        '일반서비스':'서비스',
       };
-      // 종목명 → 테마 직접 매핑 (업종 분류가 맞지 않는 종목)
+      // 종목명 → 테마 직접 매핑
       const stockThemeMap = {
-        '한미반도체':'반도체/IT', '리노공업':'반도체/IT', '이오테크닉스':'반도체/IT',
-        '원익IPS':'반도체/IT', '피에스케이':'반도체/IT', '동진쎄미켐':'반도체/IT',
-        '에스티아이':'반도체/IT', '유진테크':'반도체/IT', '테크윙':'반도체/IT',
-        '하나마이크론':'반도체/IT', '두산테스나':'반도체/IT',
-        '레인보우로보틱스':'로봇/기계', '두산로보틱스':'로봇/기계',
+        // 반도체
+        'SK하이닉스':'반도체', '삼성전자':'반도체', '한미반도체':'반도체',
+        '리노공업':'반도체', '이오테크닉스':'반도체', '원익IPS':'반도체',
+        '피에스케이':'반도체', '동진쎄미켐':'반도체', '에스티아이':'반도체',
+        '유진테크':'반도체', '테크윙':'반도체', '하나마이크론':'반도체', '두산테스나':'반도체',
+        // 방산
+        '한화에어로스페이스':'방산', '현대로템':'방산', '한화시스템':'방산',
+        'LIG넥스원':'방산', '한화오션':'방산/조선', 'HD현대중공업':'조선',
+        'HD현대일렉트릭':'방산/전력', 'SK이터닉스':'방산/전력',
+        // 2차전지
+        'LG에너지솔루션':'2차전지', '삼성SDI':'2차전지', 'SK이노베이션':'2차전지',
+        '에코프로머티':'2차전지', '포스코퓨처엠':'2차전지', 'POSCO홀딩스':'철강/소재',
+        // 바이오
+        '삼성바이오로직스':'바이오', '셀트리온':'바이오', '알테오젠':'바이오',
+        '에이피알':'바이오/뷰티',
+        // 건설/플랜트
+        '삼성E&A':'건설/플랜트', 'DL이앤씨':'건설', '대우건설':'건설',
+        // 에너지/신재생
+        '한화솔루션':'태양광/에너지', '씨에스윈드':'풍력', '두산에너빌리티':'원전/에너지',
+        // 자동차
+        '현대차':'자동차', '기아':'자동차', '현대모비스':'자동차부품',
+        // IT/플랫폼
+        'NAVER':'AI/플랫폼', '카카오':'AI/플랫폼',
+        // 금융
+        '미래에셋증권':'증권', '하나금융지주':'금융', '신한지주':'금융',
+        // 소재/철강
+        '포스코인터내셔널':'자원/에너지', '씨에스윈드':'풍력',
+        // 기타
+        '한국카본':'소재', '한화':'방산/화학',
+        // 로봇
+        '레인보우로보틱스':'로봇', '두산로보틱스':'로봇',
       };
+      window._stockThemeMap = stockThemeMap;
       const displaySector = stockThemeMap[s.name] || (s.sector ? (sectorMap[s.sector] || s.sector) : '');
       const isTriple = tripleNames.has(s.name);
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
@@ -2575,7 +2604,7 @@ window.loadKisHistory = async (date, uid) => {
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
-        + (s.sector ? '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + s.sector + '</span>' : '<span></span>')
+        + '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + (window._stockThemeMap?.[s.name] || s.sector || '') + '</span>'
         + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
