@@ -18,16 +18,29 @@ export default async function handler(req, res) {
     async function getToken() {
       const now = Date.now();
       if (_token && now < _tokenExp) return _token;
-      const r = await fetch(`${BASE_URL}/oauth2/tokenP`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ grant_type: 'client_credentials', appkey: APP_KEY, appsecret: APP_SECRET })
-      });
-      const data = await r.json();
-      if (!data.access_token) throw new Error('토큰 발급 실패: ' + JSON.stringify(data));
-      _token = data.access_token;
-      _tokenExp = now + 20 * 60 * 1000;
-      return _token;
+      // 토큰 만료 or 없으면 새로 발급 (최대 2회 재시도)
+      for(let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const r = await fetch(`${BASE_URL}/oauth2/tokenP`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grant_type: 'client_credentials', appkey: APP_KEY, appsecret: APP_SECRET })
+          });
+          const data = await r.json();
+          if(data.error_code === 'EGW00133') {
+            // 1분당 1회 제한 - 잠시 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+          if (!data.access_token) throw new Error('토큰 발급 실패: ' + JSON.stringify(data));
+          _token = data.access_token;
+          _tokenExp = now + 23 * 60 * 1000; // 23분 캐시
+          return _token;
+        } catch(e) {
+          if(attempt === 1) throw e;
+        }
+      }
+      throw new Error('토큰 발급 실패');
     }
 
     if (action === 'test') {
@@ -236,10 +249,30 @@ export default async function handler(req, res) {
           const link  = (block.match(/<link>(.*?)<\/link>/)  || [])[1] || '';
           const pubDate = (block.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
           const source = (block.match(/<source[^>]*>(.*?)<\/source>/) || [])[1] || '';
-          items.push({ title: title.trim(), link: link.trim(), pubDate: pubDate.trim(), source: source.trim() });
+
+          // 날짜 포맷: 오늘이면 HH:MM, 어제면 어제 HH:MM, 그 외 MM/DD HH:MM
+          let displayTime = '';
+          if(pubDate) {
+            const d = new Date(pubDate);
+            const now = new Date();
+            const toKST = (dt) => new Date(dt.getTime() + 9*60*60*1000);
+            const kstD = toKST(d);
+            const kstNow = toKST(now);
+            const hhmm = String(kstD.getUTCHours()).padStart(2,'0') + ':' + String(kstD.getUTCMinutes()).padStart(2,'0');
+            const isToday = kstD.getUTCFullYear()===kstNow.getUTCFullYear() && kstD.getUTCMonth()===kstNow.getUTCMonth() && kstD.getUTCDate()===kstNow.getUTCDate();
+            const yesterday = new Date(kstNow.getTime() - 86400000);
+            const isYesterday = kstD.getUTCFullYear()===yesterday.getUTCFullYear() && kstD.getUTCMonth()===yesterday.getUTCMonth() && kstD.getUTCDate()===yesterday.getUTCDate();
+            if(isToday) displayTime = hhmm;
+            else if(isYesterday) displayTime = '어제 ' + hhmm;
+            else displayTime = (kstD.getUTCMonth()+1) + '/' + kstD.getUTCDate() + ' ' + hhmm;
+          }
+
+          items.push({ title: title.trim(), link: link.trim(), pubDate: pubDate.trim(), source: source.trim(), displayTime });
           if(items.length >= 50) break;
         }
-        return res.status(200).json({ items });
+        // 최신순 정렬
+        items.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
+        return res.status(200).json({ items: items.slice(0,20) });
       } catch(e) {
         return res.status(500).json({ error: e.message });
       }
