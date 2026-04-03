@@ -42,17 +42,17 @@ export default async function handler(req, res) {
         String(today.getMonth()+1).padStart(2,'0') +
         String(today.getDate()).padStart(2,'0');
 
-      const [kospiRes, kosdaqRes] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSP&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=0001`, {
-          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' }
-        }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSQ&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=1001`, {
-          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' }
-        })
-      ]);
+      // 순차 호출 (병렬 시 토큰 제한 오류 방지)
+      const kospiRes = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSP&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=0001`, {
+        headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' }
+      });
+      const kospi = await kospiRes.json();
 
-      const kospi  = await kospiRes.json();
+      const kosdaqRes = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001&FID_INPUT_DATE_1=${dateStr}&FID_INPUT_ISCD_1=KSQ&FID_INPUT_DATE_2=${dateStr}&FID_INPUT_ISCD_2=1001`, {
+        headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' }
+      });
       const kosdaq = await kosdaqRes.json();
+
       return res.status(200).json({ kospi, kosdaq });
     }
 
@@ -133,11 +133,13 @@ export default async function handler(req, res) {
       const { codes } = req.query; // 쉼표로 구분된 종목코드 목록
       if (!codes) return res.status(400).json({ error: 'codes 파라미터 필요' });
 
-      const codeList = codes.split(',').slice(0, 30); // 최대 30개
+      const codeList = codes.split(',').slice(0, 20); // 최대 20개
 
-      const results = await Promise.all(
-        codeList.map(code =>
-          fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code.trim()}`, {
+      // 순차 호출 (토큰 제한 방지)
+      const results = [];
+      for (const code of codeList) {
+        try {
+          const r = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code.trim()}`, {
             headers: {
               'content-type': 'application/json',
               'authorization': `Bearer ${token}`,
@@ -146,9 +148,13 @@ export default async function handler(req, res) {
               'tr_id': 'FHKST01010100',
               'custtype': 'P'
             }
-          }).then(r => r.json()).then(d => ({ code: code.trim(), ...d.output })).catch(() => ({ code: code.trim() }))
-        )
-      );
+          });
+          const d = await r.json();
+          results.push({ code: code.trim(), ...d.output });
+        } catch(e) {
+          results.push({ code: code.trim() });
+        }
+      }
 
       return res.status(200).json({ output: results });
     }
