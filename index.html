@@ -2701,11 +2701,11 @@ window.upSudFetch = async () => {
           + '</div>';
       }).join('');
 
-      // 자동으로 연속매수/매도 조회 (foreign_inst 기준 fBuy/iBuy 전달)
-      result.forEach(s => {
+      // 자동으로 연속매수/매도 조회 - 딜레이 순차 호출
+      result.forEach((s, idx) => {
         const n = s.hts_kor_isnm;
         const k = 'us_' + n.replace(/[^a-zA-Z0-9가-힣]/g,'');
-        autoLoadStreak(k, s.mksc_shrn_iscd||'', fBuyMap[n]||0, iBuyMap[n]||0);
+        setTimeout(() => autoLoadStreak(k, s.mksc_shrn_iscd||'', fBuyMap[n]||0, iBuyMap[n]||0), idx * 600);
       });
     }
 
@@ -2839,13 +2839,13 @@ window.reverseFetch = async () => {
     document.getElementById('reverseListF').innerHTML = fResult.length  ? fResult.map(s=>makeRevRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = fiResult.length ? fiResult.map(s=>makeRevRow(s,true)).join('')  : emptyHtml;
 
-    // 자동으로 연속매수/매도 조회 (foreign_inst의 정확한 순매수 값 전달)
+    // 자동으로 연속매수/매도 조회 - 딜레이 순차 호출 (토큰 제한 방지)
     const allRevStocks = [...fResult, ...fiResult];
-    allRevStocks.forEach(s => {
+    allRevStocks.forEach((s, idx) => {
       const key = 'rv_' + s.name.replace(/\s/g,'');
-      const todayF = fBuyMap[s.name] || 0;  // foreign_inst 기준 외국인 순매수
-      const todayI = iBuyMap[s.name] || 0;  // foreign_inst 기준 기관 순매수
-      autoLoadStreak(key, codeMap[s.name] || '', todayF, todayI);
+      const todayF = fBuyMap[s.name] || 0;
+      const todayI = iBuyMap[s.name] || 0;
+      setTimeout(() => autoLoadStreak(key, codeMap[s.name] || '', todayF, todayI), idx * 600);
     });
 
     msg.textContent = `✓ 완료! 외국인매수 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
@@ -2863,6 +2863,9 @@ window.reverseFetch = async () => {
           savedAt: Date.now()
         });
         await renderReverseDateTabs(user.uid);
+        // 오늘 탭 활성화
+        const revTodayBtn = document.getElementById('revDateBtn-' + today);
+        if(revTodayBtn) { revTodayBtn.style.background='var(--pr)'; revTodayBtn.style.color='#fff'; revTodayBtn.style.borderColor='var(--pr)'; }
       }
     } catch(e2) { console.warn('역발상 히스토리 저장 실패:', e2); }
 
@@ -2946,10 +2949,10 @@ window.loadUpSudHistory = async (date, uid) => {
         + '</div>';
     }).join('');
 
-    // 자동으로 연속매수/매도 조회 (저장된 fBuy/iBuy 전달)
+    // 자동으로 연속매수/매도 조회 - 딜레이 순차 호출
     list.forEach((s, i) => {
       const k = 'usd_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'') + '_' + i;
-      autoLoadStreak(k, s.code||'', s.fBuy||0, s.iBuy||0);
+      setTimeout(() => autoLoadStreak(k, s.code||'', s.fBuy||0, s.iBuy||0), i * 600);
     });
   } catch(e) { console.warn('상승수급 히스토리 로드 실패:', e); }
 };
@@ -3011,10 +3014,10 @@ window.loadReverseHistory = async (date, uid) => {
     document.getElementById('reverseListF').innerHTML = (data.fResult||[]).length ? data.fResult.map(s=>makeHistRow(s,false)).join('') : emptyHtml;
     document.getElementById('reverseList').innerHTML  = (data.fiResult||[]).length ? data.fiResult.map(s=>makeHistRow(s,true)).join('') : emptyHtml;
 
-    // 자동으로 연속매수/매도 조회 (저장된 fBuy/iBuy 값 전달)
-    [...(data.fResult||[]), ...(data.fiResult||[])].forEach(s => {
+    // 자동으로 연속매수/매도 조회 - 딜레이 순차 호출
+    [...(data.fResult||[]), ...(data.fiResult||[])].forEach((s, idx) => {
       const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'');
-      autoLoadStreak(key, s.code||'', s.fBuy||0, s.iBuy||0);
+      setTimeout(() => autoLoadStreak(key, s.code||'', s.fBuy||0, s.iBuy||0), idx * 600);
     });
   } catch(e) { console.warn('역발상 히스토리 로드 실패:', e); }
 };
