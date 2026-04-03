@@ -3708,11 +3708,16 @@ window.drawMiniChart = async (svgId, code) => {
   try {
     const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    // 오늘 날짜 + 거래량 있는 데이터만 필터링
+    // 오늘 날짜 데이터만 필터링 (거래량 있는 것 우선, 없으면 전체 사용)
     const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const items = [...(data.output2 || [])]
-      .filter(d => d.stck_bsop_date === todayStr && parseInt(d.cntg_vol||0) > 0)
+    const allToday = [...(data.output2 || [])]
+      .filter(d => d.stck_bsop_date === todayStr)
       .sort((a,b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
+    // 거래량 있는 것만 우선 사용, 없으면 전체 (중복가격 제거)
+    const withVol = allToday.filter(d => parseInt(d.cntg_vol||0) > 0);
+    const items = withVol.length >= 2 ? withVol : allToday.filter((d,i,arr) =>
+      i === 0 || d.stck_prpr !== arr[i-1].stck_prpr
+    );
     if(!items.length) return;
 
     const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
