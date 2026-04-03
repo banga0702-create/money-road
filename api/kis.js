@@ -186,49 +186,32 @@ export default async function handler(req, res) {
     }
 
     // 코스피/코스닥 당일 시봉 차트 (ETF 대용)
-    // code: 069500=코스피200ETF, 233740=코스닥150ETF
     if (action === 'chart_minute') {
       const token = await getToken();
       const { code = '069500' } = req.query;
-      // 3번 호출해서 하루치 분봉 합치기: 11시, 13시, 현재시간
       const now = new Date();
-      const hhmm = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '00';
-      // 2번 병렬 호출 + output1 포함
-      const fetchMin = async (t) => {
+      // KST 기준 현재 시각
+      const kstHour = (now.getUTCHours() + 9) % 24;
+      const kstMin = now.getUTCMinutes();
+      const hhmm = String(kstHour).padStart(2,'0') + String(kstMin).padStart(2,'0') + '00';
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 7000); // 7초 타임아웃
         const r = await fetch(
-          `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${t}&FID_PW_DATA_INCU_YN=Y`,
-          { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' } }
+          `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice?FID_ETC_CLS_CODE=&FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_HOUR_1=${hhmm}&FID_PW_DATA_INCU_YN=Y`,
+          { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010200', 'custtype': 'P' }, signal: controller.signal }
         );
-        return await r.json();
-      };
-
-      // 순차 호출 (병렬 호출 시 토큰 제한 오류 방지)
-      const res1 = await fetchMin('110000');
-      if(res1.rt_cd && res1.rt_cd !== '0') {
-        return res.status(200).json({ output1: {}, output2: [] });
+        clearTimeout(timeout);
+        const data = await r.json();
+        if(data.rt_cd && data.rt_cd !== '0') {
+          return res.status(200).json({ output1: {}, output2: [] });
+        }
+        const output2 = (data.output2 || []).sort((a,b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
+        return res.status(200).json({ output1: data.output1 || {}, output2 });
+      } catch(e) {
+        // 타임아웃 또는 오류시 빈 데이터 반환 (500 방지)
+        return res.status(200).json({ output1: {}, output2: [], error: e.message });
       }
-      const d1 = res1.output2 || [];
-
-      // 현재 시간이 11시 이후면 2차 호출
-      let d2 = [];
-      let output1 = res1.output1 || {};
-      if(now.getHours() >= 11) {
-        try {
-          const res2 = await fetchMin(hhmm);
-          d2 = res2.output2 || [];
-          if(res2.output1) output1 = res2.output1;
-        } catch(e) { /* 2차 호출 실패시 무시 */ }
-      }
-
-      // 합치고 시간순 정렬 후 중복 제거
-      const seen = new Set();
-      const combined = [...d1, ...d2].filter(d => {
-        if(seen.has(d.stck_cntg_hour)) return false;
-        seen.add(d.stck_cntg_hour);
-        return true;
-      }).sort((a, b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
-
-      return res.status(200).json({ output1, output2: combined });
     }
 
     // 구글 뉴스 RSS - 증시 뉴스
