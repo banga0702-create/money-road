@@ -90,6 +90,43 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // 외국인TOP30 + 기관TOP30 합산 (커버리지 확대)
+    if (action === 'foreign_inst_combined') {
+      const token = await getToken();
+      const { market = '0000' } = req.query;
+
+      // 외국인 TOP30
+      const fRes = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=1&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04400000', 'custtype': 'P' } }
+      );
+      const fData = await fRes.json();
+
+      // 기관 TOP30 (순차 호출)
+      const iRes = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/foreign-institution-total?FID_COND_MRKT_DIV_CODE=V&FID_COND_SCR_DIV_CODE=16449&FID_INPUT_ISCD=${market}&FID_DIV_CLS_CODE=2&FID_RANK_SORT_CLS_CODE=0&FID_ETC_CLS_CODE=0`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04400000', 'custtype': 'P' } }
+      );
+      const iData = await iRes.json();
+
+      // 합치기 - 종목코드 기준 중복 제거, 외국인/기관 금액 모두 보존
+      const codeMap = {};
+      (fData.output || []).forEach(s => {
+        codeMap[s.mksc_shrn_iscd] = { ...s };
+      });
+      (iData.output || []).forEach(s => {
+        if(codeMap[s.mksc_shrn_iscd]) {
+          // 이미 있으면 기관 금액만 업데이트
+          codeMap[s.mksc_shrn_iscd].orgn_ntby_tr_pbmn = s.orgn_ntby_tr_pbmn;
+          codeMap[s.mksc_shrn_iscd].orgn_ntby_qty = s.orgn_ntby_qty;
+        } else {
+          codeMap[s.mksc_shrn_iscd] = { ...s };
+        }
+      });
+
+      return res.status(200).json({ output: Object.values(codeMap) });
+    }
+
     // 거래대금 상위 종목 (하락 필터 가능)
     if (action === 'vol_rank') {
       const token = await getToken();
