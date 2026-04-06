@@ -324,6 +324,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .chk-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd)}
 .chk-row:last-child{border-bottom:none}
 .chk-lbl{font-size:11px;color:var(--tx2)}
+/* ── 뉴스 키워드 탭 */
+.news-kw-btn{padding:6px 14px;border-radius:20px;border:1.5px solid var(--bd);background:var(--sf2);color:var(--tx3);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .18s;white-space:nowrap;flex-shrink:0}
+.news-kw-btn.active{background:var(--pr);border-color:var(--pr);color:#fff}
 </style>
 </head>
 <body>
@@ -700,6 +703,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="form-hdr">
       <span class="form-hdr-title">📰 증시 뉴스</span>
       <button class="btn btn-ac btn-sm" onclick="fetchNewsPage()" id="newsBtnPage">🔄 새로고침</button>
+    </div>
+    <!-- 키워드 탭 -->
+    <div style="display:flex;gap:6px;padding:10px 16px 4px;overflow-x:auto;scrollbar-width:none">
+      <button class="news-kw-btn active" data-kw="주식" onclick="newsKwClick(this)">주식</button>
+      <button class="news-kw-btn" data-kw="코스피" onclick="newsKwClick(this)">코스피</button>
+      <button class="news-kw-btn" data-kw="코스닥" onclick="newsKwClick(this)">코스닥</button>
+      <button class="news-kw-btn" data-kw="증시" onclick="newsKwClick(this)">증시</button>
     </div>
     <div id="newsMsgPage" style="margin:8px 16px;font-size:11px;color:var(--ac);display:none"></div>
     <div id="newsFeedPage" style="margin:8px 16px 12px;display:flex;flex-direction:column;gap:8px">
@@ -3652,7 +3662,15 @@ window.fetchNews = async () => {
 };
 
 
-// ── 증시뉴스 페이지
+// ── 증시뉴스 페이지 (구글 뉴스 RSS)
+let _newsKw = '주식';
+window.newsKwClick = (el) => {
+  document.querySelectorAll('.news-kw-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  _newsKw = el.dataset.kw;
+  fetchNewsPage();
+};
+
 window.fetchNewsPage = async () => {
   const btn = document.getElementById('newsBtnPage');
   const msg = document.getElementById('newsMsgPage');
@@ -3661,7 +3679,7 @@ window.fetchNewsPage = async () => {
   if(msg) { msg.style.display='block'; msg.style.color='var(--ac)'; msg.textContent='뉴스 불러오는 중...'; }
 
   try {
-    const r = await fetch('/api/kis?action=news');
+    const r = await fetch('/api/news?q=' + encodeURIComponent(_newsKw));
     const data = await r.json();
     if(data.error) throw new Error(data.error);
     const items = data.items || [];
@@ -3670,9 +3688,19 @@ window.fetchNewsPage = async () => {
       return;
     }
     feed.innerHTML = items.map(item => {
-      const time = item.displayTime || (item.pubDate ? item.pubDate.replace(/^.*?(\d{1,2}:\d{2}).*$/, '$1') : '');
-      const title = item.title.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-      return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:13px 14px;cursor:pointer" onclick="window.open('${item.link}','_blank')">
+      const title = item.title || '';
+      const time = item.pubDate ? (() => {
+        try {
+          const d = new Date(item.pubDate);
+          const now = new Date();
+          const diff = Math.floor((now - d) / 60000);
+          if(diff < 60) return diff + '분 전';
+          if(diff < 1440) return Math.floor(diff/60) + '시간 전';
+          return (d.getMonth()+1) + '/' + d.getDate();
+        } catch { return ''; }
+      })() : '';
+      const safeLink = item.link.replace(/'/g, '%27');
+      return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:13px 14px;cursor:pointer" onclick="window.open('${safeLink}','_blank')">
         <div style="font-size:13px;font-weight:700;line-height:1.55;margin-bottom:6px;color:var(--tx)">${title}</div>
         <div style="display:flex;align-items:center;gap:6px">
           ${item.source ? `<span style="font-size:10px;font-weight:700;color:var(--pr);background:rgba(79,99,232,.1);padding:2px 7px;border-radius:5px">${item.source}</span>` : ''}
@@ -3683,6 +3711,7 @@ window.fetchNewsPage = async () => {
     if(msg) { msg.textContent = `✓ ${items.length}개 뉴스`; setTimeout(()=>{ msg.style.display='none'; },2000); }
   } catch(e) {
     if(msg) { msg.style.color='var(--up)'; msg.textContent='❌ '+e.message; }
+    feed.innerHTML = '<div class="empty" style="margin-top:30px"><div class="ico">📰</div><p>뉴스를 불러올 수 없어요</p></div>';
   } finally {
     if(btn) btn.textContent = '🔄 새로고침';
   }
