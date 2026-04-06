@@ -2686,11 +2686,10 @@ window.etfReverseFetch = async () => {
   msg.textContent = '🔍 ETF 데이터 분석 중...';
 
   try {
-    const [volRes, fiRes] = await Promise.all([
-      fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst_combined')
-    ]);
+    // 순차 호출 (토큰 충돌 방지)
+    const volRes = await fetch('/api/kis?action=vol_rank');
     const volData = await volRes.json();
+    const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
     const fiData  = await fiRes.json();
 
     if(volData.error) console.warn('vol_rank 오류:', volData.error);
@@ -2777,11 +2776,10 @@ window.upSudFetch = async () => {
   msg.textContent = '🔍 거래대금 상위 + 수급 교차 분석 중...';
 
   try {
-    const [volRes, fiRes] = await Promise.all([
-      fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst_combined')
-    ]);
+    // 순차 호출 (토큰 충돌 방지)
+    const volRes = await fetch('/api/kis?action=vol_rank');
     const volData = await volRes.json();
+    const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
     const fiData  = await fiRes.json();
     // price_rank(코스닥)는 실패해도 계속 진행
     let priceData = { output: [] };
@@ -2806,14 +2804,10 @@ window.upSudFetch = async () => {
       return true;
     });
 
-    const ETF_KW = ['KODEX','TIGER','KINDEX','KOSEF','ARIRANG','HANARO','ACE','SOL','FOCUS','TIMEFOLIO'];
-    const isETF = (n) => ETF_KW.some(k => n.toUpperCase().includes(k));
-
     const result = combined.filter(s => {
       const sign = s.prdy_vrss_sign;
       const tr = parseFloat(s.acml_tr_pbmn) / 100000000;
-      const name = s.hts_kor_isnm;
-      return (sign === '1' || sign === '2') && tr >= 2000 && !isETF(name);
+      return (sign === '1' || sign === '2') && tr >= 2000;
     }).sort((a,b) => {
       const tra = parseFloat(a.acml_tr_pbmn);
       const trb = parseFloat(b.acml_tr_pbmn);
