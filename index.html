@@ -3679,7 +3679,7 @@ window.fetchNewsPage = async () => {
   if(msg) { msg.style.display='block'; msg.style.color='var(--ac)'; msg.textContent='뉴스 불러오는 중...'; }
 
   try {
-    const r = await fetch('/api/news?q=' + encodeURIComponent(_newsKw));
+    const r = await fetch('/api/kis?action=news&q=' + encodeURIComponent(_newsKw));
     const data = await r.json();
     if(data.error) throw new Error(data.error);
     const items = data.items || [];
