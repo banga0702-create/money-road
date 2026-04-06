@@ -251,6 +251,43 @@ export default async function handler(req, res) {
       }
     }
 
+    // 구글 뉴스 RSS - 증시 뉴스
+    if (action === 'news') {
+      try {
+        const query = encodeURIComponent('주식 증시 코스피');
+        const url = `https://news.google.com/rss/search?q=${query}&hl=ko&gl=KR&ceid=KR:ko`;
+        const r = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml,application/xml,text/xml' }
+        });
+        const xml = await r.text();
+        const items = [];
+        const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g);
+        for (const m of itemMatches) {
+          const block = m[1];
+          const title = (block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || block.match(/<title>(.*?)<\/title>/) || [])[1] || '';
+          const link  = (block.match(/<link>(.*?)<\/link>/)  || [])[1] || '';
+          const pubDate = (block.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
+          const source = (block.match(/<source[^>]*>(.*?)<\/source>/) || [])[1] || '';
+          let displayTime = '';
+          if(pubDate) {
+            const d = new Date(pubDate);
+            const kstD = new Date(d.getTime() + 9*60*60*1000);
+            const mm = String(kstD.getUTCMonth()+1).padStart(2,'0');
+            const dd = String(kstD.getUTCDate()).padStart(2,'0');
+            const hh = String(kstD.getUTCHours()).padStart(2,'0');
+            const mn = String(kstD.getUTCMinutes()).padStart(2,'0');
+            displayTime = mm + '/' + dd + ' ' + hh + ':' + mn;
+          }
+          items.push({ title: title.trim(), link: link.trim(), pubDate: pubDate.trim(), source: source.trim(), displayTime });
+          if(items.length >= 50) break;
+        }
+        items.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
+        return res.status(200).json({ items: items.slice(0,20) });
+      } catch(e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
     if (action === 'naver_index') {
       const { index = 'KOSPI' } = req.query;
