@@ -293,6 +293,25 @@ export default async function handler(req, res) {
       }
     }
 
+    // 네이버 지수 차트 (코스피/코스닥 실제 지수)
+    if (action === 'naver_index') {
+      const { index = 'KOSPI' } = req.query;
+      try {
+        const r = await fetch(
+          `https://m.stock.naver.com/api/index/${index}/price?timeframe=1D`,
+          { headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Referer': 'https://m.stock.naver.com/',
+            'Accept': 'application/json'
+          }}
+        );
+        const data = await r.json();
+        return res.status(200).json(data);
+      } catch(e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     // 네이버 모바일 당일 차트 데이터
     if (action === 'naver_chart') {
       const { code = '069500' } = req.query;
