@@ -251,43 +251,48 @@ export default async function handler(req, res) {
       }
     }
 
-    // 구글 뉴스 RSS - 증시 뉴스
+    // 네이버 금융 뉴스
     if (action === 'news') {
       try {
-        const query = encodeURIComponent('주식 코스피 코스닥 증시 수급');
-        const url = `https://news.google.com/rss/search?q=${query}&hl=ko&gl=KR&ceid=KR:ko`;
-        const r = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml,application/xml,text/xml' }
-        });
-        const xml = await r.text();
-        // XML 파싱해서 JSON으로 변환
+        const r = await fetch(
+          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258',
+          { headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Referer': 'https://finance.naver.com/',
+            'Accept': 'text/html'
+          }}
+        );
+        const html = await r.text();
+        // 뉴스 파싱
         const items = [];
-        const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g);
-        for (const m of itemMatches) {
-          const block = m[1];
-          const title = (block.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || block.match(/<title>(.*?)<\/title>/) || [])[1] || '';
-          const link  = (block.match(/<link>(.*?)<\/link>/)  || [])[1] || '';
-          const pubDate = (block.match(/<pubDate>(.*?)<\/pubDate>/) || [])[1] || '';
-          const source = (block.match(/<source[^>]*>(.*?)<\/source>/) || [])[1] || '';
+        const articleRegex = /<a[^>]+href="(\/news\/news_read[^"]+)"[^>]*>([^<]+)<\/a>/g;
+        const timeRegex = /<span class="wdate">([^<]+)<\/span>/g;
+        const sourceRegex = /<span class="press_name">([^<]+)<\/span>/g;
 
-          // 날짜 포맷: 오늘이면 HH:MM, 어제면 어제 HH:MM, 그 외 MM/DD HH:MM
-          let displayTime = '';
-          if(pubDate) {
-            const d = new Date(pubDate);
-            const kstD = new Date(d.getTime() + 9*60*60*1000);
-            const mm = String(kstD.getUTCMonth()+1).padStart(2,'0');
-            const dd = String(kstD.getUTCDate()).padStart(2,'0');
-            const hh = String(kstD.getUTCHours()).padStart(2,'0');
-            const mn = String(kstD.getUTCMinutes()).padStart(2,'0');
-            displayTime = mm + '/' + dd + ' ' + hh + ':' + mn;
-          }
-
-          items.push({ title: title.trim(), link: link.trim(), pubDate: pubDate.trim(), source: source.trim(), displayTime });
-          if(items.length >= 50) break;
+        const titles = [], links = [], times = [], sources = [];
+        let m;
+        while((m = articleRegex.exec(html)) !== null) {
+          links.push('https://finance.naver.com' + m[1]);
+          titles.push(m[2].trim());
         }
-        // 최신순 정렬
-        items.sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
-        return res.status(200).json({ items: items.slice(0,20) });
+        while((m = timeRegex.exec(html)) !== null) times.push(m[1].trim());
+        while((m = sourceRegex.exec(html)) !== null) sources.push(m[1].trim());
+
+        for(let i = 0; i < Math.min(titles.length, 20); i++) {
+          // 날짜 포맷: YYYY.MM.DD HH:MM → MM/DD HH:MM
+          let displayTime = times[i] || '';
+          if(displayTime) {
+            displayTime = displayTime.replace(/^\d{4}\.(\d{2})\.(\d{2})\s+/, '$1/$2 ');
+          }
+          items.push({
+            title: titles[i],
+            link: links[i],
+            source: sources[i] || '',
+            displayTime,
+            pubDate: times[i] || ''
+          });
+        }
+        return res.status(200).json({ items });
       } catch(e) {
         return res.status(500).json({ error: e.message });
       }
