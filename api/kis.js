@@ -265,34 +265,21 @@ export default async function handler(req, res) {
         // 네이버는 EUC-KR 인코딩
         const buf = await r.arrayBuffer();
         const html = new TextDecoder('euc-kr').decode(buf);
-        // 뉴스 파싱
+        // 뉴스 파싱 - dl.articleSubject 블록 단위로 파싱
         const items = [];
-        const articleRegex = /<a[^>]+href="(\/news\/news_read[^"]+)"[^>]*>([^<]+)<\/a>/g;
-        const timeRegex = /<span class="wdate">([^<]+)<\/span>/g;
-        const sourceRegex = /<span class="press_name">([^<]+)<\/span>/g;
-
-        const titles = [], links = [], times = [], sources = [];
+        // 뉴스 블록: <dt> 안의 링크+제목, <dd class="articleSummary"> 안의 출처+날짜
+        const blockRegex = /<dt[^>]*>\s*<a[^>]+href="(\/news\/news_read\.naver[^"]*)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/dt>[\s\S]*?<dd class="articleSummary">([\s\S]*?)<\/dd>/g;
         let m;
-        while((m = articleRegex.exec(html)) !== null) {
-          links.push('https://finance.naver.com' + m[1]);
-          titles.push(m[2].trim());
-        }
-        while((m = timeRegex.exec(html)) !== null) times.push(m[1].trim());
-        while((m = sourceRegex.exec(html)) !== null) sources.push(m[1].trim());
-
-        for(let i = 0; i < Math.min(titles.length, 20); i++) {
-          // 날짜 포맷: YYYY.MM.DD HH:MM → MM/DD HH:MM
-          let displayTime = times[i] || '';
-          if(displayTime) {
-            displayTime = displayTime.replace(/^\d{4}\.(\d{2})\.(\d{2})\s+/, '$1/$2 ');
-          }
-          items.push({
-            title: titles[i],
-            link: links[i],
-            source: sources[i] || '',
-            displayTime,
-            pubDate: times[i] || ''
-          });
+        while((m = blockRegex.exec(html)) !== null && items.length < 20) {
+          const link = 'https://finance.naver.com' + m[1];
+          const title = m[2].replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+          const summary = m[3];
+          const srcMatch = summary.match(/<span class="press_name">([^<]+)<\/span>/);
+          const timeMatch = summary.match(/<span class="wdate">([^<]+)<\/span>/);
+          const source = srcMatch ? srcMatch[1].trim() : '';
+          const rawTime = timeMatch ? timeMatch[1].trim() : '';
+          const displayTime = rawTime.replace(/^\d{4}\.(\d{2})\.(\d{2})\s+/, '$1/$2 ');
+          if(title) items.push({ title, link, source, displayTime, pubDate: rawTime });
         }
         return res.status(200).json({ items });
       } catch(e) {
