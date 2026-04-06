@@ -2464,10 +2464,30 @@ window.kisTopFetch = async () => {
         'NAVER':'AI/플랫폼', '카카오':'AI/플랫폼',
         // 금융
         '미래에셋증권':'증권', '하나금융지주':'금융', '신한지주':'금융',
+        '한국금융지주':'금융', '키움증권':'증권', 'KB금융':'금융',
         // 소재/철강
-        '포스코인터내셔널':'자원/에너지', '씨에스윈드':'풍력',
+        '포스코인터내셔널':'자원/에너지', 'POSCO홀딩스':'철강/소재',
+        // 에너지
+        'S-Oil':'정유', '롯데케미칼':'화학', 'LG화학':'화학',
+        'SK이노베이션':'에너지/화학', '씨에스윈드':'풍력',
+        // 건설
+        '현대건설':'건설', '대우건설':'건설', 'DL이앤씨':'건설',
+        // 바이오
+        'HLB':'바이오', '에이비엘바이오':'바이오', '알지노믹스':'바이오',
+        '에이피알':'바이오/뷰티', '삼성바이오로직스':'바이오', '셀트리온':'바이오',
+        // 2차전지
+        '에코프로':'2차전지', '에코프로비엠':'2차전지', '에코프로머티':'2차전지소재',
+        'LG에너지솔루션':'2차전지', '삼성SDI':'2차전지', 'POSCO퓨처엠':'2차전지',
+        '롯데에너지머티리얼즈':'2차전지소재', '이수스페셜티케미컬':'2차전지소재',
+        // 반도체
+        '심텍':'반도체', '이수페타시스':'반도체', 'ISC':'반도체',
+        // 조선
+        'HD현대중공업':'조선', '한화오션':'조선', '삼성중공업':'조선',
+        // 자동차
+        '현대차':'자동차', '기아':'자동차', '현대모비스':'자동차부품',
         // 기타
-        '한국카본':'소재', '한화':'방산/화학',
+        '한국카본':'소재', '한화':'방산/화학', '효성중공업':'전력기기',
+        'LS ELECTRIC':'전력기기', '대우건설':'건설',
         // 로봇
         '레인보우로보틱스':'로봇', '두산로보틱스':'로봇',
       };
@@ -2482,10 +2502,10 @@ window.kisTopFetch = async () => {
         + (chgStr ? '<span style="font-size:8px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:2px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
-        + (s.sector ? '<span style="font-size:8px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%">' + displaySector + '</span>' : '<span></span>')
-        + '<div style="display:flex;gap:4px;flex-shrink:0">'
-        + (s.trPbmn > 0 ? '<span style="font-size:8px;color:var(--tx3);font-weight:600">💰' + s.trPbmn + '억</span>' : '')
-        + (ratioStr ? '<span style="font-size:8px;color:var(--ac);font-weight:700">수급 ' + ratioStr + '</span>' : '')
+        + '<span style="font-size:8px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:42%">' + displaySector + '</span>'
+        + '<div style="display:flex;gap:3px;flex-shrink:0;align-items:center">'
+        + (s.trPbmn > 0 ? '<span style="font-size:8px;color:var(--tx3)">💰' + s.trPbmn + '억</span>' : '')
+        + (ratioStr ? '<span style="font-size:8px;color:var(--ac);font-weight:700">수급' + ratioStr + '</span>' : '')
         + '</div>'
         + '</div>'
         + '</div>'
@@ -2608,8 +2628,11 @@ window.loadKisHistory = async (date, uid) => {
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
-        + '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + (window._stockThemeMap?.[s.name] || s.sector || '') + '</span>'
-        + (ratioStr ? '<span style="font-size:9px;color:var(--ac);font-weight:700;flex-shrink:0">수급 ' + ratioStr + '</span>' : '')
+        + '<span style="font-size:9px;color:var(--tx3);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:40%">' + (window._stockThemeMap?.[s.name] || s.sector || '') + '</span>'
+        + '<div style="display:flex;gap:3px;flex-shrink:0">'
+        + (s.trPbmn > 0 ? '<span style="font-size:8px;color:var(--tx3)">💰' + s.trPbmn + '억</span>' : '')
+        + (ratioStr ? '<span style="font-size:8px;color:var(--ac);font-weight:700">수급' + ratioStr + '</span>' : '')
+        + '</div>'
         + '</div>'
         + '</div>'
         + '</div>';
