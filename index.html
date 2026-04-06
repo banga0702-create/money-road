@@ -3728,37 +3728,32 @@ window.fetchMarketIndex = async () => {
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
-    // 분봉 차트 그리기 (ETF 대용: 069500=코스피200, 229200=코스닥150)
-    drawMiniChart('chartKospi', '069500');
-    drawMiniChart('chartKosdaq', '229200');
+    // 분봉 차트 그리기 - 순차 호출 (토큰 제한 방지)
+    setTimeout(async () => {
+      await drawMiniChart('chartKospi', '069500');
+      setTimeout(() => drawMiniChart('chartKosdaq', '229200'), 1500);
+    }, 1000);
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
 // 미니 분봉 차트
 window.drawMiniChart = async (svgId, code) => {
   try {
-    const r = await fetch('/api/kis?action=chart_minute&code=' + code);
+    // 네이버 지수 API 사용 (코스피=KOSPI, 코스닥=KOSDAQ)
+    const indexCode = code === '069500' ? 'KOSPI' : 'KOSDAQ';
+    const r = await fetch('/api/kis?action=naver_index&index=' + indexCode);
     const data = await r.json();
-    // 오늘 날짜 데이터만 필터링 (거래량 있는 것 우선, 없으면 전체 사용)
-    const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const allToday = [...(data.output2 || [])]
-      .filter(d => d.stck_bsop_date === todayStr)
-      .sort((a,b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
-    // 거래량 있는 것만 우선 사용, 없으면 전체 (중복가격 제거)
-    const withVol = allToday.filter(d => parseInt(d.cntg_vol||0) > 0);
-    const items = withVol.length >= 2 ? withVol : allToday.filter((d,i,arr) =>
-      i === 0 || d.stck_prpr !== arr[i-1].stck_prpr
-    );
+    const items = Array.isArray(data) ? data : (data.priceInfos || data.prices || data.items || []);
     if(!items.length) return;
 
-    const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
+    const prices = items.map(d => parseFloat(d.closePrice || d.openPrice || d.value || d[1] || 0)).filter(v=>v>0);
     if(prices.length < 2) return;
 
     const svg = document.getElementById(svgId);
     if(!svg) return;
     const W = 90, H = 44, pad = 3;
 
-    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
+    const prevClose = prices[0]; // 첫 번째 값 기준
     const currentPrice = prices[prices.length-1];
     const isUp = currentPrice >= prevClose;
     const lineColor = isUp ? '#FF4757' : '#3B82F6';
