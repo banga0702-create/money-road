@@ -251,55 +251,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 네이버 금융 뉴스
-    if (action === 'news') {
-      try {
-        const r = await fetch(
-          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=259',
-          { headers: {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
-            'Referer': 'https://finance.naver.com/',
-            'Accept': 'text/html'
-          }}
-        );
-        // 네이버는 EUC-KR 인코딩
-        const buf = await r.arrayBuffer();
-        const html = new TextDecoder('euc-kr').decode(buf);
-        // 뉴스 파싱 - 링크/제목/날짜/출처 개별 추출
-        const items = [];
-        const linkRegex = /href="(\/news\/news_read\.naver[^"]+)"/g;
-        const titleRegex = /<a[^>]+href="\/news\/news_read\.naver[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
-        const timeRegex = /<span class="wdate">([^<]+)<\/span>/g;
-        const sourceRegex = /<span class="press_name">([^<]+)<\/span>/g;
-
-        const links = [], titles = [], times = [], sources = [];
-        let m;
-        while((m = linkRegex.exec(html)) !== null) links.push('https://finance.naver.com' + m[1]);
-        titleRegex.lastIndex = 0;
-        while((m = titleRegex.exec(html)) !== null) {
-          const t = m[1].replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
-          if(t) titles.push(t);
-        }
-        while((m = timeRegex.exec(html)) !== null) times.push(m[1].trim());
-        while((m = sourceRegex.exec(html)) !== null) sources.push(m[1].trim());
-
-        for(let i = 0; i < Math.min(links.length, 20); i++) {
-          const rawTime = times[i] || '';
-          const displayTime = rawTime.replace(/^\d{4}\.(\d{2})\.(\d{2})\s+/, '$1/$2 ');
-          items.push({
-            title: titles[i] || '',
-            link: links[i],
-            source: sources[i] || '',
-            displayTime,
-            pubDate: rawTime
-          });
-        }
-        return res.status(200).json({ items });
-      } catch(e) {
-        return res.status(500).json({ error: e.message });
-      }
-    }
-
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
     if (action === 'naver_index') {
       const { index = 'KOSPI' } = req.query;
