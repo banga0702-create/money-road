@@ -2389,17 +2389,18 @@ window.kisTopFetch = async () => {
     window._kisRows = {};
     let _rowIdx = 0;
 
-    // 외국인 순매수 TOP30 기준
-    const top30 = all.filter(s => s.fBuy > 0).sort((a,b) => b.fBuy - a.fBuy).slice(0,30);
+    // 외탑30+기탑30 60종목 전체 기준
+    const all60 = all; // ETF 제외된 전체 풀
 
-    // 외+기 합산: TOP30 중 기관도 매수, 합산금액 순
-    const fi = top30.filter(s => s.iBuy > 0)
+    // 외+기 합산: 60종목 중 둘 다 매수, 합산금액 순
+    const fi = all60.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
-    // 외국인(+기관): TOP30 중 기관도 매수, 외국인 금액 순
-    const f = top30.filter(s => s.iBuy > 0)
+    // 외국인(+기관): 60종목 중 둘 다 매수, 외국인 금액 순
+    const f = all60.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
-    // 외국인 순매수: TOP30 전체, 기관 무관, 외국인 금액 순
-    const inst = top30.slice(0,15);
+    // 외국인 순매수: 60종목 전체, 기관 무관, 외국인 금액 순
+    const inst = all60.filter(s => s.fBuy > 0)
+      .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
 
     // ⭐ 배지: fi(합산순)과 f(외국인순) 모두 상위권 + inst(전체)에도 있는 종목
     const fiNames = new Set(fi.map(s => s.name));
