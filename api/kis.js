@@ -254,7 +254,8 @@ export default async function handler(req, res) {
     // 구글 뉴스 RSS - 증시 뉴스
     if (action === 'news') {
       try {
-        const query = encodeURIComponent('주식 증시 코스피');
+        const kw = req.query.q || '주식 증시 코스피';
+        const query = encodeURIComponent(kw);
         const url = `https://news.google.com/rss/search?q=${query}&hl=ko&gl=KR&ceid=KR:ko`;
         const r = await fetch(url, {
           headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml,application/xml,text/xml' }
