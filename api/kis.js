@@ -255,7 +255,7 @@ export default async function handler(req, res) {
     if (action === 'news') {
       try {
         const r = await fetch(
-          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258',
+          'https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=259',
           { headers: {
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
             'Referer': 'https://finance.naver.com/',
