@@ -262,7 +262,9 @@ export default async function handler(req, res) {
             'Accept': 'text/html'
           }}
         );
-        const html = await r.text();
+        // 네이버는 EUC-KR 인코딩
+        const buf = await r.arrayBuffer();
+        const html = new TextDecoder('euc-kr').decode(buf);
         // 뉴스 파싱
         const items = [];
         const articleRegex = /<a[^>]+href="(\/news\/news_read[^"]+)"[^>]*>([^<]+)<\/a>/g;
