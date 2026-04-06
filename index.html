@@ -3757,20 +3757,26 @@ window.fetchMarketIndex = async () => {
     setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv));
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
     setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn));
-    // KODEX200(069500) 투자자별 순매수
+    // KRX 코스피200 선물 투자자별 순매수 (계약수)
     try {
-      const futRes = await fetch('/api/kis?action=investor&code=069500');
+      const futRes = await fetch('/api/kis?action=futures_investor');
       const futData = await futRes.json();
-      const fut = (futData.output || [])[0] || {};
+      // block1 배열에서 투자자구분별 데이터 파싱
+      const rows = futData.block1 || [];
+      // 개인: invstTpNm 포함 '개인', 외국인: '외국인', 기관: '기관합계' or '기관계'
+      const find = (kw) => rows.find(r => r.invstTpNm && r.invstTpNm.includes(kw));
+      const indv = find('개인');
+      const frgn = find('외국인');
+      const orgn = find('기관');
       const fmtFut = (v) => {
-        const n = Math.round(parseInt(v)||0);
+        const n = parseInt(String(v||'0').replace(/,/g,'')) || 0;
         const sign = n >= 0 ? '+' : '';
         const color = n >= 0 ? 'var(--up)' : 'var(--dn)';
         return `<span style="color:${color};font-size:9px">${sign}${n.toLocaleString()}</span>`;
       };
-      setEl('mktFutIndv', fmtFut(fut.prsn_ntby_qty || 0));
-      setEl('mktFutFrgn', fmtFut(fut.frgn_ntby_qty || 0));
-      setEl('mktFutOrgn', fmtFut(fut.orgn_ntby_qty || 0));
+      setEl('mktFutIndv', fmtFut(indv?.netBuyQty ?? indv?.ntby_qty ?? 0));
+      setEl('mktFutFrgn', fmtFut(frgn?.netBuyQty ?? frgn?.ntby_qty ?? 0));
+      setEl('mktFutOrgn', fmtFut(orgn?.netBuyQty ?? orgn?.ntby_qty ?? 0));
     } catch(e) { console.warn('선물 투자자 조회 실패:', e); }
 
     document.getElementById('mktIndexCard').style.display = 'block';
@@ -3859,20 +3865,24 @@ window.kisAutoFetch = async () => {
     setEl('mktIndvKp', fmt(kpIndv)); setEl('mktIndvKq', fmt(kqIndv));
     setEl('mktFrgnKp', fmt(kpFrgn)); setEl('mktFrgnKq', fmt(kqFrgn));
     setEl('mktOrgnKp', fmt(kpOrgn)); setEl('mktOrgnKq', fmt(kqOrgn));
-    // 코스피200 ETF 투자자별 순매수 (선물 방향 참고용)
+    // KRX 코스피200 선물 투자자별 순매수 (계약수)
     try {
-      const futRes2 = await fetch('/api/kis?action=investor&code=069500');
+      const futRes2 = await fetch('/api/kis?action=futures_investor');
       const futData2 = await futRes2.json();
-      const fut2 = (futData2.output || [])[0] || {};
+      const rows2 = futData2.block1 || [];
+      const find2 = (kw) => rows2.find(r => r.invstTpNm && r.invstTpNm.includes(kw));
+      const indv2 = find2('개인');
+      const frgn2 = find2('외국인');
+      const orgn2 = find2('기관');
       const fmtFut2 = (v) => {
-        const n = Math.round(parseInt(v)||0);
+        const n = parseInt(String(v||'0').replace(/,/g,'')) || 0;
         const sign = n >= 0 ? '+' : '';
         const color = n >= 0 ? 'var(--up)' : 'var(--dn)';
         return `<span style="color:${color};font-size:9px">${sign}${n.toLocaleString()}</span>`;
       };
-      setEl('mktFutIndv', fmtFut2(fut2.prsn_ntby_qty || 0));
-      setEl('mktFutFrgn', fmtFut2(fut2.frgn_ntby_qty || 0));
-      setEl('mktFutOrgn', fmtFut2(fut2.orgn_ntby_qty || 0));
+      setEl('mktFutIndv', fmtFut2(indv2?.netBuyQty ?? indv2?.ntby_qty ?? 0));
+      setEl('mktFutFrgn', fmtFut2(frgn2?.netBuyQty ?? frgn2?.ntby_qty ?? 0));
+      setEl('mktFutOrgn', fmtFut2(orgn2?.netBuyQty ?? orgn2?.ntby_qty ?? 0));
     } catch(e) { console.warn('선물 투자자 조회 실패:', e); }
 
     // 코스피/코스닥 지수는 market_investor API에서 직접 가져옴
