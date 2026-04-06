@@ -390,22 +390,16 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
           <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:2px">코스피</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-            <div>
-              <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKospiIdx">—</div>
-              <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKospiChg">—</div>
-            </div>
-            <svg id="chartKospi" width="90" height="44" style="flex-shrink:0"></svg>
+          <div>
+            <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKospiIdx">—</div>
+            <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKospiChg">—</div>
           </div>
         </div>
         <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
           <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:2px">코스닥</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-            <div>
-              <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKosdaqIdx">—</div>
-              <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKosdaqChg">—</div>
-            </div>
-            <svg id="chartKosdaq" width="90" height="44" style="flex-shrink:0"></svg>
+          <div>
+            <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKosdaqIdx">—</div>
+            <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKosdaqChg">—</div>
           </div>
         </div>
       </div>
@@ -424,7 +418,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
-          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">K200ETF</div>
+          <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">선물</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFutIndv">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFutFrgn">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFutOrgn">—</div>
@@ -3777,60 +3771,10 @@ window.fetchMarketIndex = async () => {
       setEl('mktFutIndv', fmtFut(fut.prsn_ntby_qty || 0));
       setEl('mktFutFrgn', fmtFut(fut.frgn_ntby_qty || 0));
       setEl('mktFutOrgn', fmtFut(fut.orgn_ntby_qty || 0));
-    } catch(e) { console.warn('K200ETF 투자자 조회 실패:', e); }
+    } catch(e) { console.warn('선물 투자자 조회 실패:', e); }
 
     document.getElementById('mktIndexCard').style.display = 'block';
-
-    // 분봉 차트 그리기 - 코스피 먼저, 500ms 후 코스닥
-    drawMiniChart('chartKospi', '069500');
-    setTimeout(() => drawMiniChart('chartKosdaq', '229200'), 500);
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
-};
-
-// 미니 분봉 차트
-window.drawMiniChart = async (svgId, code) => {
-  try {
-    const r = await fetch('/api/kis?action=chart_minute&code=' + code);
-    const data = await r.json();
-    // 오늘 날짜 + 거래량 있는 데이터만
-    const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const allToday = [...(data.output2 || [])]
-      .filter(d => d.stck_bsop_date === todayStr)
-      .sort((a,b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
-    const withVol = allToday.filter(d => parseInt(d.cntg_vol||0) > 0);
-    const items = withVol.length >= 2 ? withVol : allToday;
-    if(!items.length) return;
-
-    const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
-    if(prices.length < 2) return;
-
-    const svg = document.getElementById(svgId);
-    if(!svg) return;
-    const W = 90, H = 44, pad = 3;
-
-    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
-    const currentPrice = prices[prices.length-1];
-    const isUp = currentPrice >= prevClose;
-    const lineColor = isUp ? '#FF4757' : '#3B82F6';
-    const fillColor = isUp ? 'rgba(255,71,87,0.12)' : 'rgba(59,130,246,0.12)';
-
-    const min = Math.min(...prices) * 0.999;
-    const max = Math.max(...prices) * 1.001;
-    const range = max - min || 1;
-
-    const toY = v => pad + (1 - (v - min) / range) * (H - pad*2);
-    const toX = i => pad + (i / (prices.length-1)) * (W - pad*2);
-
-    const pts = prices.map((v,i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
-    const lastX = toX(prices.length-1);
-    const lastY = toY(prices[prices.length-1]);
-
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.innerHTML =
-      `<polygon points="${toX(0).toFixed(1)},${H} ${pts} ${lastX.toFixed(1)},${H}" fill="${fillColor}"/>` +
-      `<polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>` +
-      `<circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="2" fill="${lineColor}"/>`;
-  } catch(e) { console.warn('분봉 차트 실패:', e); }
 };
 
 window.kisAutoFetch = async () => {
