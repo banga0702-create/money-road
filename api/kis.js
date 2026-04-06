@@ -289,46 +289,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // KRX 선물 투자자별 매매동향 (코스피200 선물 순매수 계약수)
-    if (action === 'futures_investor') {
-      try {
-        const now = new Date();
-        // KST 기준 오늘 날짜
-        const kst = new Date(now.getTime() + 9*60*60*1000);
-        const trdDd = kst.getUTCFullYear().toString()
-          + String(kst.getUTCMonth()+1).padStart(2,'0')
-          + String(kst.getUTCDate()).padStart(2,'0');
-
-        const KRX_URL = 'http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd';
-        const headers = {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Referer': 'http://data.krx.co.kr/',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        };
-
-        // 파생상품 > 거래실적 > 투자자별 거래실적
-        // bld: dbms/MDC/STAT/standard/MDCSTAT12301 (파생 투자자별 거래실적)
-        const body = new URLSearchParams({
-          bld: 'dbms/MDC/STAT/standard/MDCSTAT12301',
-          locale: 'ko_KR',
-          trdDd: trdDd,
-          prodId: 'KSP200', // 코스피200 선물
-          invstTpCd: '0000', // 전체
-          csvxls_isNo: 'false'
-        }).toString();
-
-        const r = await fetch(KRX_URL, {
-          method: 'POST',
-          headers,
-          body
-        });
-        const data = await r.json();
-        return res.status(200).json(data);
-      } catch(e) {
-        return res.status(500).json({ error: e.message });
-      }
-    }
-
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
     if (action === 'naver_index') {
       const { index = 'KOSPI' } = req.query;
