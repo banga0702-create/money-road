@@ -3728,30 +3728,34 @@ window.fetchMarketIndex = async () => {
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
-    // 분봉 차트 그리기 (네이버 지수 - KIS 토큰 불필요)
+    // 분봉 차트 그리기 - 코스피 먼저, 500ms 후 코스닥
     drawMiniChart('chartKospi', '069500');
-    drawMiniChart('chartKosdaq', '229200');
+    setTimeout(() => drawMiniChart('chartKosdaq', '229200'), 500);
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
 // 미니 분봉 차트
 window.drawMiniChart = async (svgId, code) => {
   try {
-    // 네이버 지수 API 사용 (코스피=KOSPI, 코스닥=KOSDAQ)
-    const indexCode = code === '069500' ? 'KOSPI' : 'KOSDAQ';
-    const r = await fetch('/api/kis?action=naver_index&index=' + indexCode);
+    const r = await fetch('/api/kis?action=chart_minute&code=' + code);
     const data = await r.json();
-    const items = Array.isArray(data) ? data : (data.priceInfos || data.prices || data.items || []);
+    // 오늘 날짜 + 거래량 있는 데이터만
+    const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const allToday = [...(data.output2 || [])]
+      .filter(d => d.stck_bsop_date === todayStr)
+      .sort((a,b) => a.stck_cntg_hour.localeCompare(b.stck_cntg_hour));
+    const withVol = allToday.filter(d => parseInt(d.cntg_vol||0) > 0);
+    const items = withVol.length >= 2 ? withVol : allToday;
     if(!items.length) return;
 
-    const prices = items.map(d => parseFloat(d.closePrice || d.openPrice || d.value || d[1] || 0)).filter(v=>v>0);
+    const prices = items.map(d => parseFloat(d.stck_prpr || 0)).filter(v=>v>0);
     if(prices.length < 2) return;
 
     const svg = document.getElementById(svgId);
     if(!svg) return;
     const W = 90, H = 44, pad = 3;
 
-    const prevClose = prices[0]; // 첫 번째 값 기준
+    const prevClose = parseFloat(data.output1?.stck_prdy_clpr || prices[0]);
     const currentPrice = prices[prices.length-1];
     const isUp = currentPrice >= prevClose;
     const lineColor = isUp ? '#FF4757' : '#3B82F6';
