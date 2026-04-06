@@ -3728,11 +3728,9 @@ window.fetchMarketIndex = async () => {
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
-    // 분봉 차트 그리기 - 순차 호출 (토큰 제한 방지)
-    setTimeout(async () => {
-      await drawMiniChart('chartKospi', '069500');
-      setTimeout(() => drawMiniChart('chartKosdaq', '229200'), 1500);
-    }, 1000);
+    // 분봉 차트 그리기 (네이버 지수 - KIS 토큰 불필요)
+    drawMiniChart('chartKospi', '069500');
+    drawMiniChart('chartKosdaq', '229200');
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
