@@ -3631,7 +3631,7 @@ window.fetchNews = async () => {
     }
 
     feed.innerHTML = items.map(item => {
-      const time = item.pubDate ? new Date(item.pubDate).toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'}) : '';
+      const time = item.displayTime || '';
       const title = item.title.replace(/<[^>]*>/g, '').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#39;/g,"'");
       return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;cursor:pointer;transition:background .12s;active:background:var(--sf2)" onclick="window.open('${item.link}','_blank')">
         <div style="font-size:12px;font-weight:700;line-height:1.5;margin-bottom:6px;color:var(--tx)">${title}</div>
