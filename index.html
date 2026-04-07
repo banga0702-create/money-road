@@ -3024,7 +3024,7 @@ window.reverseFetch = async () => {
       setTimeout(() => autoLoadStreak(key, codeMap[s.name] || '', todayF, todayI), idx * 1200);
     });
 
-    msg.textContent = `✓ 완료! 외국인매수 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
+    msg.textContent = `✓ 완료! 외+기 합산 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
     setTimeout(() => { msg.style.display='none'; }, 5000);
 
     // Firestore에 역발상 히스토리 저장
