@@ -1109,6 +1109,24 @@ function calcMktAuto() {
     kospiChg, kosdaqChg,
     up: upCnt, total: totCnt
   };
+
+  // weekHist + monthHist 자동 저장
+  const now = new Date();
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const dn = dayNames[now.getDay()];
+  const dateKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(!S.weekHist) S.weekHist = [];
+  const idx = S.weekHist.findIndex(h => h.date === dateKey);
+  if(idx >= 0) {
+    S.weekHist[idx] = { day: dn, date: dateKey, score, isToday: true };
+  } else {
+    S.weekHist.forEach(h => { h.isToday = false; });
+    if(S.weekHist.length >= 7) S.weekHist.shift();
+    S.weekHist.push({ day: dn, date: dateKey, score, isToday: true });
+  }
+  if(!S.monthHist) S.monthHist = {};
+  S.monthHist[dateKey] = score;
+
   renderHome();
 }
 
@@ -1512,12 +1530,13 @@ function renderMarketComment(score, prevScore) {
   const weekBarEl = document.getElementById('mktWeekBar');
   if(weekBarEl && S.weekHist && S.weekHist.length) {
     weekBarEl.innerHTML = S.weekHist.map(d => {
-      const h = Math.max(Math.round(d.score * 0.28), 2);
-      const c = d.score >= 55 ? 'var(--up)' : d.score >= 45 ? 'var(--tx3)' : 'var(--dn)';
       const isToday = d.isToday;
+      const h = isToday ? Math.max(Math.round(d.score * 0.48), 6) : Math.max(Math.round(d.score * 0.24), 2);
+      const c = d.score >= 55 ? 'var(--up)' : d.score >= 45 ? 'var(--tx3)' : 'var(--dn)';
+      const label = d.date ? d.date.slice(5).replace('-','/') : d.day;
       return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-        <div style="width:${isToday?'10px':'7px'};height:${h}px;background:${c};border-radius:3px 3px 0 0;opacity:${isToday?'1':'0.5'};transition:height .8s"></div>
-        <div style="font-size:7px;font-weight:${isToday?'900':'600'};color:${isToday?color:'var(--tx3)'};">${d.day}</div>
+        <div style="width:${isToday?'10px':'7px'};height:${h}px;background:${c};border-radius:3px 3px 0 0;opacity:${isToday?'1':'0.55'};transition:height .8s"></div>
+        <div style="font-size:7px;font-weight:${isToday?'900':'600'};color:${isToday?color:'var(--tx3)'};">${label}</div>
       </div>`;
     }).join('');
   }
