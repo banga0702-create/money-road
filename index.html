@@ -1568,21 +1568,23 @@ function renderHome(){
   // TOP5
   const sorted=[...S.stocks].sort((a,b)=>b.score-a.score).slice(0,5);
   const t5=document.getElementById('top5');
-  if(!sorted.length){
-    t5.innerHTML='<div class="empty" style="padding:26px"><div class="ico">📊</div><p>수급 종목 기록 후 표시됩니다</p></div>';
-  } else {
-    t5.innerHTML=sorted.map((s,i)=>`
-      <div class="t5item">
-        <div class="t5rank ${i<3?'r'+(i+1):''}">${i+1}</div>
-        <div class="t5info">
-          <div class="t5name">${s.name}
-            ${s.isCapture?'<span class="badge b-ac">포착</span>':''}
-            ${s.isTomorrow?'<span class="badge b-wa">내일↑</span>':''}
+  if(t5) {
+    if(!sorted.length){
+      t5.innerHTML='<div class="empty" style="padding:26px"><div class="ico">📊</div><p>수급 종목 기록 후 표시됩니다</p></div>';
+    } else {
+      t5.innerHTML=sorted.map((s,i)=>`
+        <div class="t5item">
+          <div class="t5rank ${i<3?'r'+(i+1):''}">${i+1}</div>
+          <div class="t5info">
+            <div class="t5name">${s.name}
+              ${s.isCapture?'<span class="badge b-ac">포착</span>':''}
+              ${s.isTomorrow?'<span class="badge b-wa">내일↑</span>':''}
+            </div>
+            <div class="t5sub">${s.sector||'섹터없음'} · 강도${s.strength||'—'} · ${s.vol>=2000?s.vol+'억':'—'}</div>
           </div>
-          <div class="t5sub">${s.sector||'섹터없음'} · 강도${s.strength||'—'} · ${s.vol>=2000?s.vol+'억':'—'}</div>
-        </div>
-        <div class="t5score">${s.score}점</div>
-      </div>`).join('');
+          <div class="t5score">${s.score}점</div>
+        </div>`).join('');
+    }
   }
 
   // 히스토리 (현재 모드에 맞게)
