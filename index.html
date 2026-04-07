@@ -400,7 +400,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div class="tc-status" id="tcStatus" style="color:var(--tx3)">데이터 없음</div>
         </div>
         <div style="text-align:right">
-          <div class="tc-score"><span id="tcScore">0</span><span class="tc-unit">pt</span></div>
+          <div class="tc-score" style="display:none"><span id="tcScore">0</span><span class="tc-unit">pt</span></div>
           <div class="tc-time" id="tcTime">15:35 기준</div>
         </div>
       </div>
@@ -477,7 +477,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div class="zone-block-arrow" style="color:#86EFAC" id="zba-optimism"></div>
         </div>
         <div class="zone-block" id="zb-overHeat" style="background:rgba(252,165,165,.15)">
-          <div class="zone-block-icon">🔥</div>
+          <div class="zone-block-icon">🤑</div>
           <div class="zone-block-label" style="color:#FCA5A5">극단탐욕</div>
           <div class="zone-block-arrow" style="color:#FCA5A5" id="zba-overHeat"></div>
         </div>
@@ -1441,7 +1441,7 @@ const MARKET_COMMENTS = {
     ]
   },
   overHeat: {
-    range:[75,100], label:'극단적 탐욕', icon:'🔥',
+    range:[75,100], label:'극단적 탐욕', icon:'🤑',
     color:'#FCA5A5', bg:'rgba(252,165,165,.12)', border:'rgba(252,165,165,.25)',
     lightColor:'#DC2626', lightBg:'rgba(239,68,68,.08)',
     msgs:[
@@ -1491,7 +1491,7 @@ function renderMarketComment(score, prevScore) {
   // 온도 & 아이콘
   document.getElementById('mktTempIco').textContent = zone.icon;
   document.getElementById('mktTempDeg').textContent = temp;
-  document.getElementById('mktTempDeg').style.color = color;
+  document.getElementById('mktTempDeg').style.color = 'var(--tx)';
 
   // 투자심리 뱃지
   const psych = document.getElementById('mktPsych');
@@ -1617,7 +1617,7 @@ function renderHome(){
   if(upNumEl) upNumEl.textContent = m.up ? m.up.toLocaleString() : '—';
   if(dnNumEl) dnNumEl.textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
 
-  const st=score>=75?{txt:'🔥 강세',col:'var(--up)'}:
+  const st=score>=75?{txt:'🤑 강세',col:'var(--up)'}:
     score>=55?{txt:'📈 상승장',col:'#F97316'}:
     score>=45?{txt:'➡️ 중립',col:'var(--tx2)'}:
     score>=25?{txt:'📉 약세',col:'var(--dn)'}:
