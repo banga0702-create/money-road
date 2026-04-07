@@ -505,18 +505,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
     </div>
 
-    <!-- 3개 통계 -->
-    <div class="stat3">
-      <div class="stat-item"><div class="stat-val" id="st2000" style="color:var(--ac)">—</div><div class="stat-lbl">2000억↑ 종목</div></div>
-      <div class="stat-item"><div class="stat-val" id="stFBuy" style="color:var(--up)">—</div><div class="stat-lbl">외국인 순매수</div></div>
-      <div class="stat-item"><div class="stat-val" id="stIBuy" style="color:var(--dn)">—</div><div class="stat-lbl">기관 순매수</div></div>
-    </div>
-
-    <!-- TOP5 -->
-    <div class="sh"><span class="sh-title">오늘의 수급 TOP5</span><span class="sh-link" onclick="switchTab('supply')">기록 →</span></div>
-    <div class="card card-p0" id="top5"></div>
-
-
 
   </div>
 
@@ -1518,8 +1506,8 @@ function renderHome(){
   const C=289.03;
 
   setTimeout(()=>{
-    document.getElementById('gcUp').style.strokeDashoffset=C*(1-upR/100);
-    document.getElementById('gcDn').style.strokeDashoffset=C*(1-dnR/100);
+    document.getElementById('gcUp').style.strokeDashoffset = 0;
+    document.getElementById('gcDn').style.strokeDashoffset = 0;
     document.getElementById('tbarFill').style.width=score+'%';
     document.getElementById('tbarCur').style.left=score+'%';
     animNum('tcScore',score);
