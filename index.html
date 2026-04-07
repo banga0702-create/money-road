@@ -153,7 +153,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 /* 구간 블록 게이지 */
 .zone-bar{display:flex;gap:3px;margin-top:12px}
 .zone-block{flex:1;border-radius:8px;padding:8px 4px 6px;text-align:center;opacity:.35;transition:all .3s;border:1.5px solid transparent;cursor:default}
-.zone-block.active{opacity:1;transform:translateY(-2px);border-color:rgba(255,255,255,.3)}
+.zone-block.active{opacity:1;transform:translateY(-2px);border:2px solid var(--tx)!important;box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .zone-block-icon{font-size:16px;line-height:1}
 .zone-block-label{font-size:8px;font-weight:800;margin-top:3px;letter-spacing:-.3px}
 .zone-block-arrow{font-size:9px;font-weight:900;margin-top:2px}
@@ -436,33 +436,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
       <!-- 온도바 -->
       <!-- 구간 블록 게이지 -->
-      <div class="zone-bar" id="zoneBar">
-        <div class="zone-block" id="zb-panic" style="background:rgba(59,130,246,.25)">
-          <div class="zone-block-icon">🥶</div>
-          <div class="zone-block-label" style="color:#93C5FD">극단공포</div>
-          <div class="zone-block-arrow" style="color:#93C5FD" id="zba-panic"></div>
-        </div>
-        <div class="zone-block" id="zb-fear" style="background:rgba(125,211,252,.2)">
-          <div class="zone-block-icon">😰</div>
-          <div class="zone-block-label" style="color:#7DD3FC">공포</div>
-          <div class="zone-block-arrow" style="color:#7DD3FC" id="zba-fear"></div>
-        </div>
-        <div class="zone-block" id="zb-neutral" style="background:rgba(148,163,184,.2)">
-          <div class="zone-block-icon">😐</div>
-          <div class="zone-block-label" style="color:#94A3B8">중립</div>
-          <div class="zone-block-arrow" style="color:#94A3B8" id="zba-neutral"></div>
-        </div>
-        <div class="zone-block" id="zb-optimism" style="background:rgba(134,239,172,.2)">
-          <div class="zone-block-icon">😊</div>
-          <div class="zone-block-label" style="color:#86EFAC">탐욕</div>
-          <div class="zone-block-arrow" style="color:#86EFAC" id="zba-optimism"></div>
-        </div>
-        <div class="zone-block" id="zb-overHeat" style="background:rgba(252,165,165,.2)">
-          <div class="zone-block-icon">🔥</div>
-          <div class="zone-block-label" style="color:#FCA5A5">극단탐욕</div>
-          <div class="zone-block-arrow" style="color:#FCA5A5" id="zba-overHeat"></div>
-        </div>
-      </div>
       <!-- 연중고점 대비 -->
       <div id="mktHighInfo" style="display:none;align-items:center;margin-top:10px;padding:8px 12px;background:var(--sf2);border-radius:10px;border:1px solid var(--bd)"></div>
     </div>
@@ -481,6 +454,34 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         </div>
       </div>
       <div class="mkt-divider"></div>
+      <!-- 구간 블록 -->
+      <div class="zone-bar" id="zoneBar" style="padding:10px 14px 0">
+        <div class="zone-block" id="zb-panic" style="background:rgba(59,130,246,.15)">
+          <div class="zone-block-icon">🥶</div>
+          <div class="zone-block-label" style="color:#93C5FD">극단공포</div>
+          <div class="zone-block-arrow" style="color:#93C5FD" id="zba-panic"></div>
+        </div>
+        <div class="zone-block" id="zb-fear" style="background:rgba(125,211,252,.15)">
+          <div class="zone-block-icon">😰</div>
+          <div class="zone-block-label" style="color:#7DD3FC">공포</div>
+          <div class="zone-block-arrow" style="color:#7DD3FC" id="zba-fear"></div>
+        </div>
+        <div class="zone-block" id="zb-neutral" style="background:rgba(148,163,184,.15)">
+          <div class="zone-block-icon">😐</div>
+          <div class="zone-block-label" style="color:#94A3B8">중립</div>
+          <div class="zone-block-arrow" style="color:#94A3B8" id="zba-neutral"></div>
+        </div>
+        <div class="zone-block" id="zb-optimism" style="background:rgba(134,239,172,.15)">
+          <div class="zone-block-icon">😊</div>
+          <div class="zone-block-label" style="color:#86EFAC">탐욕</div>
+          <div class="zone-block-arrow" style="color:#86EFAC" id="zba-optimism"></div>
+        </div>
+        <div class="zone-block" id="zb-overHeat" style="background:rgba(252,165,165,.15)">
+          <div class="zone-block-icon">🔥</div>
+          <div class="zone-block-label" style="color:#FCA5A5">극단탐욕</div>
+          <div class="zone-block-arrow" style="color:#FCA5A5" id="zba-overHeat"></div>
+        </div>
+      </div>
       <div class="mkt-comment-body">
         <span class="mkt-comment-icon">💬</span>
         <span class="mkt-comment-text" id="mktCommentTxt">시장 데이터를 입력하면 오늘의 시장 한 줄이 표시됩니다.</span>
