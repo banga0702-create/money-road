@@ -131,7 +131,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .gcld{fill:none;stroke-width:11;stroke-linecap:round;stroke:url(#gC);filter:drop-shadow(0 0 5px rgba(59,130,246,.4));transition:stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)}
 .g2center{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
 .g2icon{font-size:18px;line-height:1;margin-bottom:1px}
-.g2pct{font-size:22px;font-weight:900;letter-spacing:-1px;line-height:1.1}
+.g2pct{font-size:18px;font-weight:900;letter-spacing:-1px;line-height:1.1}
 .g2sub{font-size:8px;font-weight:700;color:var(--tx3);margin-top:1px}
 .g2cnt{font-size:10px;font-weight:700}
 .g2vs{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 6px}
@@ -444,8 +444,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           </svg>
           <div class="g2center">
             <span class="g2icon">🔥</span>
-            <span class="g2pct" style="color:var(--up)" id="gpUp">0%</span>
-            <span class="g2sub">상승</span>
+            <span class="g2pct" style="color:var(--up)" id="gpUp">—</span>
+            <span class="g2sub">상승종목</span>
           </div>
           <span class="g2cnt" style="color:var(--up)" id="gUpCnt">— 종목</span>
         </div>
@@ -459,8 +459,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           </svg>
           <div class="g2center">
             <span class="g2icon">❄️</span>
-            <span class="g2pct" style="color:var(--dn)" id="gpDn">0%</span>
-            <span class="g2sub">하락</span>
+            <span class="g2pct" style="color:var(--dn)" id="gpDn">—</span>
+            <span class="g2sub">하락종목</span>
           </div>
           <span class="g2cnt" style="color:var(--dn)" id="gDnCnt">— 종목</span>
         </div>
@@ -1485,8 +1485,8 @@ function renderHome(){
     document.getElementById('tbarFill').style.width=score+'%';
     document.getElementById('tbarCur').style.left=score+'%';
     animNum('tcScore',score);
-    animPct('gpUp',upR);
-    animPct('gpDn',dnR);
+    document.getElementById('gpUp').textContent = m.up ? m.up.toLocaleString() : '—';
+    document.getElementById('gpDn').textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
   },200);
 
   document.getElementById('rbarU').style.flex=upR;
@@ -1502,8 +1502,8 @@ function renderHome(){
   if(dnPctEl) dnPctEl.textContent = dnR + '%';
   if(upNumEl) upNumEl.textContent = m.up ? m.up.toLocaleString() : '—';
   if(dnNumEl) dnNumEl.textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
-  document.getElementById('gUpCnt').textContent=m.up?m.up.toLocaleString()+'종목':'— 종목';
-  document.getElementById('gDnCnt').textContent=(m.up&&m.total)?((m.total-m.up).toLocaleString()+'종목'):'— 종목';
+  document.getElementById('gUpCnt').textContent = upR + '%';
+  document.getElementById('gDnCnt').textContent = dnR + '%';
 
   const st=score>=80?{txt:'🔥 강한 상승장',col:'var(--up)'}:
     score>=60?{txt:'📈 상승장',col:'#F97316'}:
