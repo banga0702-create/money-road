@@ -489,10 +489,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="mkt-diff-row" id="mktDiffRow" style="display:none">
         <span class="mkt-diff-item">오늘</span>
         <span class="mkt-diff-item" id="mktToday" style="color:var(--tx)">—°C</span>
-        <span style="color:var(--tx3);font-size:10px">/</span>
-        <span class="mkt-diff-item">어제</span>
-        <span class="mkt-diff-item" id="mktYest" style="color:var(--tx2)">—°C</span>
         <span class="mkt-diff-arrow" id="mktDiffBadge">—</span>
+        <!-- 7일 막대그래프 -->
+        <div id="mktWeekBar" style="display:flex;align-items:flex-end;gap:4px;margin-left:auto;height:32px"></div>
       </div>
     </div>
 
@@ -1468,22 +1467,39 @@ function renderMarketComment(score, prevScore) {
   document.getElementById('mktCommentTxt').textContent = msg;
   document.getElementById('mktCommentTxt').style.color = isLight ? '#374151' : '#C8D4E8';
 
-  // 어제 대비 변화
+  // 오늘 온도 + 7일 막대그래프
   const diffRow = document.getElementById('mktDiffRow');
+  document.getElementById('mktToday').textContent = temp + '°C';
+  document.getElementById('mktToday').style.color = color;
+
+  // 배지 (어제 대비)
   if(prevScore != null && prevScore >= 0) {
     const prevTemp = scoreToTemp(prevScore);
     const diff = temp - prevTemp;
     const isUp = diff > 0;
     const badge = document.getElementById('mktDiffBadge');
-    document.getElementById('mktToday').textContent = temp + '°C';
-    document.getElementById('mktToday').style.color = color;
-    document.getElementById('mktYest').textContent = prevTemp + '°C';
     badge.textContent = (isUp ? '▲' : diff < 0 ? '▼' : '—') + Math.abs(diff) + '° ' + (isUp ? '상승' : diff < 0 ? '하락' : '유지');
     badge.style.background = isUp ? 'var(--up2)' : diff < 0 ? 'var(--dn2)' : 'var(--sf3)';
     badge.style.color = isUp ? 'var(--up)' : diff < 0 ? 'var(--dn)' : 'var(--tx3)';
-    diffRow.style.display = 'flex';
   } else {
-    diffRow.style.display = 'none';
+    const badge = document.getElementById('mktDiffBadge');
+    badge.textContent = '';
+    badge.style.background = 'transparent';
+  }
+  diffRow.style.display = 'flex';
+
+  // 7일 막대그래프
+  const weekBarEl = document.getElementById('mktWeekBar');
+  if(weekBarEl && S.weekHist && S.weekHist.length) {
+    weekBarEl.innerHTML = S.weekHist.map(d => {
+      const h = Math.max(Math.round(d.score * 0.28), 2);
+      const c = d.score >= 55 ? 'var(--up)' : d.score >= 45 ? 'var(--tx3)' : 'var(--dn)';
+      const isToday = d.isToday;
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div style="width:${isToday?'10px':'7px'};height:${h}px;background:${c};border-radius:3px 3px 0 0;opacity:${isToday?'1':'0.5'};transition:height .8s"></div>
+        <div style="font-size:7px;font-weight:${isToday?'900':'600'};color:${isToday?color:'var(--tx3)'};">${d.day}</div>
+      </div>`;
+    }).join('');
   }
 }
 
