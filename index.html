@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -3809,8 +3808,10 @@ window.fetchMarketIndex = async () => {
       const dnCnt  = (parseInt(ikp.down_issu_cnt)||0) + (parseInt(ikq.down_issu_cnt)||0);
       const totCnt = upCnt + dnCnt + (parseInt(ikp.stnr_issu_cnt)||0) + (parseInt(ikq.stnr_issu_cnt)||0);
       if(totCnt > 0) {
-        document.getElementById('mUp').value    = upCnt;
-        document.getElementById('mTotal').value = totCnt;
+        const mUpEl = document.getElementById('mUp');
+        const mTotalEl = document.getElementById('mTotal');
+        if(mUpEl) mUpEl.value = upCnt;
+        if(mTotalEl) mTotalEl.value = totCnt;
         window._mktUpCnt  = upCnt;
         window._mktTotCnt = totCnt;
         calcMktAuto();
