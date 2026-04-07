@@ -289,6 +289,31 @@ export default async function handler(req, res) {
       }
     }
 
+    // 네이버 상승/하락 종목 수 (코스피+코스닥 합산)
+    if (action === 'market_breadth') {
+      try {
+        const headers = {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+          'Referer': 'https://m.stock.naver.com/',
+          'Accept': 'application/json'
+        };
+        const [kospiRes, kosdaqRes] = await Promise.all([
+          fetch('https://m.stock.naver.com/api/index/KOSPI/basic', { headers }),
+          fetch('https://m.stock.naver.com/api/index/KOSDAQ/basic', { headers })
+        ]);
+        const kospi  = await kospiRes.json();
+        const kosdaq = await kosdaqRes.json();
+
+        const upCnt  = (parseInt(kospi.risingStock)||0)  + (parseInt(kosdaq.risingStock)||0);
+        const dnCnt  = (parseInt(kospi.fallingStock)||0) + (parseInt(kosdaq.fallingStock)||0);
+        const totCnt = upCnt + dnCnt + (parseInt(kospi.steadyStock)||0) + (parseInt(kosdaq.steadyStock)||0);
+
+        return res.status(200).json({ upCnt, dnCnt, totCnt, kospi, kosdaq });
+      } catch(e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
     if (action === 'naver_index') {
       const { index = 'KOSPI' } = req.query;
