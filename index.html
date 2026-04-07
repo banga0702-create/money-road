@@ -3754,6 +3754,16 @@ window.fetchMarketIndex = async () => {
     setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv));
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
     setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn));
+
+    // 상승/하락 종목수 → 시장온도 자동 반영
+    const upCnt  = (parseInt(kp?.up_cnt)||0)  + (parseInt(kq?.up_cnt)||0);
+    const totCnt = (parseInt(kp?.tot_cnt)||0) + (parseInt(kq?.tot_cnt)||0);
+    if(upCnt && totCnt) {
+      document.getElementById('mUp').value    = upCnt;
+      document.getElementById('mTotal').value = totCnt;
+      calcMkt();
+    }
+
     document.getElementById('mktIndexCard').style.display = 'block';
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
