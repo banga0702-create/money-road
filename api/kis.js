@@ -289,29 +289,31 @@ export default async function handler(req, res) {
       }
     }
 
-    // 네이버 상승/하락 종목 수 (코스피+코스닥 합산)
+    // 상승/하락 종목 수 (KIS 업종현황 TR)
     if (action === 'market_breadth') {
-      try {
-        const headers = {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
-          'Referer': 'https://m.stock.naver.com/',
-          'Accept': 'application/json'
-        };
-        const [kospiRes, kosdaqRes] = await Promise.all([
-          fetch('https://m.stock.naver.com/api/index/KOSPI/basic', { headers }),
-          fetch('https://m.stock.naver.com/api/index/KOSDAQ/basic', { headers })
-        ]);
-        const kospi  = await kospiRes.json();
-        const kosdaq = await kosdaqRes.json();
+      const token = await getToken();
+      // FHPUP02100000: 업종현황 - 코스피(0001), 코스닥(1001)
+      // up_cnt, dn_cnt, flat_cnt, tot_cnt 필드 제공
+      const [kospiR, kosdaqR] = await Promise.all([
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-updown?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001`, {
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPUP02100000', 'custtype': 'P' }
+        }),
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-updown?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001`, {
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPUP02100000', 'custtype': 'P' }
+        })
+      ]);
+      const kospi  = await kospiR.json();
+      const kosdaq = await kosdaqR.json();
 
-        const upCnt  = (parseInt(kospi.risingStock)||0)  + (parseInt(kosdaq.risingStock)||0);
-        const dnCnt  = (parseInt(kospi.fallingStock)||0) + (parseInt(kosdaq.fallingStock)||0);
-        const totCnt = upCnt + dnCnt + (parseInt(kospi.steadyStock)||0) + (parseInt(kosdaq.steadyStock)||0);
+      // output 배열 첫번째 항목
+      const kp = (kospi.output  || kospi.output1  || [])[0] || {};
+      const kq = (kosdaq.output || kosdaq.output1 || [])[0] || {};
 
-        return res.status(200).json({ upCnt, dnCnt, totCnt, kospi, kosdaq });
-      } catch(e) {
-        return res.status(500).json({ error: e.message });
-      }
+      const upCnt  = (parseInt(kp.up_cnt )||0) + (parseInt(kq.up_cnt )||0);
+      const dnCnt  = (parseInt(kp.dn_cnt )||0) + (parseInt(kq.dn_cnt )||0);
+      const totCnt = (parseInt(kp.tot_cnt)||0) + (parseInt(kq.tot_cnt)||0);
+
+      return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq });
     }
 
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
