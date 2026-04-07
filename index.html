@@ -3755,14 +3755,16 @@ window.fetchMarketIndex = async () => {
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
     setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn));
 
-    // 상승/하락 종목수 → 시장온도 자동 반영
-    const upCnt  = (parseInt(kp?.up_cnt)||0)  + (parseInt(kq?.up_cnt)||0);
-    const totCnt = (parseInt(kp?.tot_cnt)||0) + (parseInt(kq?.tot_cnt)||0);
-    if(upCnt && totCnt) {
-      document.getElementById('mUp').value    = upCnt;
-      document.getElementById('mTotal').value = totCnt;
-      calcMkt();
-    }
+    // 상승/하락 종목 수 → 시장온도 자동 반영 (네이버)
+    try {
+      const bRes = await fetch('/api/kis?action=market_breadth');
+      const bData = await bRes.json();
+      if(bData.upCnt !== undefined && bData.totCnt > 0) {
+        document.getElementById('mUp').value    = bData.upCnt;
+        document.getElementById('mTotal').value = bData.totCnt;
+        calcMkt();
+      }
+    } catch(e) { console.warn('종목수 조회 실패:', e); }
 
     document.getElementById('mktIndexCard').style.display = 'block';
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
