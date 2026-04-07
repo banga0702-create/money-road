@@ -289,49 +289,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 상승/하락 종목 수 (네이버 증시 페이지 파싱)
-    if (action === 'market_breadth') {
-      try {
-        const headers = {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://finance.naver.com/',
-          'Accept': 'text/html'
-        };
-        const [kospiR, kosdaqR] = await Promise.all([
-          fetch('https://finance.naver.com/sise/sise_index.naver?code=KOSPI', { headers }),
-          fetch('https://finance.naver.com/sise/sise_index.naver?code=KOSDAQ', { headers })
-        ]);
-        const kospiText  = new TextDecoder('euc-kr').decode(await (await kospiR.arrayBuffer()));
-        const kosdaqText = new TextDecoder('euc-kr').decode(await (await kosdaqR.arrayBuffer()));
-
-        const parse = (html) => {
-          // 네이버 증시 페이지: 상승N 보합N 하락N 순서로 나옴
-          // td class="number" 안의 숫자들
-          const nums = [];
-          const re = /class="number_etc"[^>]*>[\s]*(\d[\d,]+)/g;
-          let m;
-          while((m = re.exec(html)) !== null) {
-            nums.push(parseInt(m[1].replace(/,/g,'')));
-          }
-          // 상승/보합/하락 순서
-          return { up: nums[0]||0, flat: nums[1]||0, dn: nums[2]||0 };
-        };
-
-        const kp = parse(kospiText);
-        const kq = parse(kosdaqText);
-
-        const upCnt  = kp.up  + kq.up;
-        const dnCnt  = kp.dn  + kq.dn;
-        const totCnt = kp.up + kp.dn + kp.flat + kq.up + kq.dn + kq.flat;
-
-        return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq,
-          raw_kospi: kospiText // 전체 반환
-        });
-      } catch(e) {
-        return res.status(500).json({ error: e.message });
-      }
-    }
-
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
     if (action === 'naver_index') {
       const { index = 'KOSPI' } = req.query;
