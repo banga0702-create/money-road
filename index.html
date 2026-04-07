@@ -1694,12 +1694,7 @@ function renderMonthHist(){
 }
 
 function updateStatCards(){
-  const n2k=S.stocks.filter(s=>s.vol>=2000).length;
-  const tf=S.stocks.reduce((a,s)=>a+(s.fBuy||0),0);
-  const ti=S.stocks.reduce((a,s)=>a+(s.iBuy||0),0);
-  document.getElementById('st2000').textContent=n2k||'—';
-  document.getElementById('stFBuy').textContent=tf?tf+'억':'—';
-  document.getElementById('stIBuy').textContent=ti?ti+'억':'—';
+  // stat 카드 제거됨 - 빈 함수 유지
 }
 
 function animNum(id,target,suffix=''){
