@@ -440,14 +440,14 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <div class="g2item">
           <svg class="g2svg" viewBox="0 0 110 110" width="128" height="128">
             <circle class="gtrk" cx="55" cy="55" r="46"/>
-            <circle class="ghot" id="gcUp" cx="55" cy="55" r="46" stroke-dasharray="289.03" stroke-dashoffset="289.03"/>
+            <circle id="gcUp" cx="55" cy="55" r="46" fill="none" stroke-width="11" stroke-linecap="round" stroke="var(--up)" stroke-dasharray="289.03" stroke-dashoffset="289.03" style="filter:drop-shadow(0 0 5px rgba(255,71,87,.4));transition:stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1),stroke .3s"/>
           </svg>
           <div class="g2center">
-            <span class="g2icon">🔥</span>
-            <span class="g2pct" style="color:var(--up)" id="gpUp">—</span>
-            <span class="g2sub">코스피</span>
+            <span class="g2icon" id="gIconUp">🔥</span>
+            <span class="g2pct" id="gpUp" style="font-size:15px;font-weight:900;line-height:1.2">—</span>
+            <span class="g2sub" id="gUpIdx" style="font-size:9px;color:var(--tx3);margin-top:1px">—</span>
           </div>
-          <span class="g2cnt" style="color:var(--up)" id="gUpCnt">— 종목</span>
+          <span class="g2cnt" id="gUpCnt" style="font-size:11px;font-weight:800">—</span>
         </div>
         <div class="g2vs">
           <div class="g2vs-ln"></div><span>VS</span><div class="g2vs-ln"></div>
@@ -455,31 +455,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <div class="g2item">
           <svg class="g2svg" viewBox="0 0 110 110" width="128" height="128">
             <circle class="gtrk" cx="55" cy="55" r="46"/>
-            <circle class="gcld" id="gcDn" cx="55" cy="55" r="46" stroke-dasharray="289.03" stroke-dashoffset="289.03"/>
+            <circle id="gcDn" cx="55" cy="55" r="46" fill="none" stroke-width="11" stroke-linecap="round" stroke="var(--dn)" stroke-dasharray="289.03" stroke-dashoffset="289.03" style="filter:drop-shadow(0 0 5px rgba(59,130,246,.4));transition:stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1),stroke .3s"/>
           </svg>
           <div class="g2center">
-            <span class="g2icon">❄️</span>
-            <span class="g2pct" style="color:var(--dn)" id="gpDn">—</span>
-            <span class="g2sub">코스닥</span>
+            <span class="g2icon" id="gIconDn">❄️</span>
+            <span class="g2pct" id="gpDn" style="font-size:15px;font-weight:900;line-height:1.2">—</span>
+            <span class="g2sub" id="gDnIdx" style="font-size:9px;color:var(--tx3);margin-top:1px">—</span>
           </div>
-          <span class="g2cnt" style="color:var(--dn)" id="gDnCnt">— 종목</span>
+          <span class="g2cnt" id="gDnCnt" style="font-size:11px;font-weight:800">—</span>
         </div>
-      </div>
-      <!-- 비율바 -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px">
-        <div style="text-align:left">
-          <div style="font-size:22px;font-weight:900;color:var(--up);line-height:1" id="rbarUpPct">—%</div>
-          <div style="font-size:10px;font-weight:700;color:var(--up);margin-top:2px">▲ 상승 <span id="rbarUpNum" style="font-weight:900">—</span>종목</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:22px;font-weight:900;color:var(--dn);line-height:1" id="rbarDnPct">—%</div>
-          <div style="font-size:10px;font-weight:700;color:var(--dn);margin-top:2px"><span id="rbarDnNum" style="font-weight:900">—</span>종목 ▼ 하락</div>
-        </div>
-      </div>
-      <div class="rbar" style="height:8px;border-radius:4px"><div class="rbar-u" id="rbarU" style="flex:0;border-radius:4px 0 0 4px"></div><div class="rbar-d" id="rbarD" style="flex:100;border-radius:0 4px 4px 0"></div></div>
-      <div class="rbar-lbl" style="display:none">
-        <span class="rbar-t" id="rbarUpLbl">상승 —%</span>
-        <span class="rbar-t" id="rbarDnLbl">하락 —%</span>
       </div>
       <!-- 온도바 -->
       <div class="tbar-wrap">
@@ -1113,7 +1097,8 @@ function calcMktAuto() {
   const prevScore = S.market.score > 0 ? S.market.score : null;
   S.market = { ...S.market, score, prevScore,
     fBuy, iBuy,
-    kospiChg, kosdaqChg
+    kospiChg, kosdaqChg,
+    up: 0, total: 0  // 종목수 초기화 (등락률 기반 모드)
   };
   renderHome();
 }
@@ -1538,25 +1523,36 @@ function renderHome(){
     document.getElementById('tbarFill').style.width=score+'%';
     document.getElementById('tbarCur').style.left=score+'%';
     animNum('tcScore',score);
-    if(m.total > 0) {
-      document.getElementById('gpUp').textContent = m.up.toLocaleString();
-      document.getElementById('gpDn').textContent = (m.total - m.up).toLocaleString();
-      document.getElementById('gUpCnt').textContent = upR + '%';
-      document.getElementById('gDnCnt').textContent = dnR + '%';
-    } else {
-      const kChg = m.kospiChg ?? window._mktKospiChg ?? null;
-      const qChg = m.kosdaqChg ?? window._mktKosdaqChg ?? null;
-      document.getElementById('gpUp').textContent = kChg !== null ? (kChg >= 0 ? '+' : '') + kChg.toFixed(2) + '%' : '—';
-      document.getElementById('gpDn').textContent = qChg !== null ? (qChg >= 0 ? '+' : '') + qChg.toFixed(2) + '%' : '—';
-      document.getElementById('gUpCnt').textContent = upR + '%';
-      document.getElementById('gDnCnt').textContent = dnR + '%';
-    }
+
+    const kospiChg  = m.kospiChg  ?? window._mktKospiChg  ?? null;
+    const kosdaqChg = m.kosdaqChg ?? window._mktKosdaqChg ?? null;
+    const kospiIdx  = window._mktKospiIdx  || null;
+    const kosdaqIdx = window._mktKosdaqIdx || null;
+
+    // 코스피 동그라미
+    const kospiUp = kospiChg === null || kospiChg >= 0;
+    const kospiColor = kospiUp ? 'var(--up)' : 'var(--dn)';
+    document.getElementById('gIconUp').textContent = kospiUp ? '🔥' : '❄️';
+    document.getElementById('gpUp').style.color = kospiColor;
+    document.getElementById('gpUp').textContent = kospiChg !== null ? (kospiChg >= 0 ? '+' : '') + kospiChg.toFixed(2) + '%' : '—';
+    document.getElementById('gUpIdx').textContent = kospiIdx ? kospiIdx : '코스피';
+    document.getElementById('gUpCnt').style.color = kospiColor;
+    document.getElementById('gUpCnt').textContent = kospiIdx ? kospiIdx : '';
+    document.getElementById('gcUp').style.stroke = kospiColor;
+
+    // 코스닥 동그라미
+    const kosdaqUp = kosdaqChg === null || kosdaqChg >= 0;
+    const kosdaqColor = kosdaqUp ? 'var(--up)' : 'var(--dn)';
+    document.getElementById('gIconDn').textContent = kosdaqUp ? '🔥' : '❄️';
+    document.getElementById('gpDn').style.color = kosdaqColor;
+    document.getElementById('gpDn').textContent = kosdaqChg !== null ? (kosdaqChg >= 0 ? '+' : '') + kosdaqChg.toFixed(2) + '%' : '—';
+    document.getElementById('gDnIdx').textContent = kosdaqIdx ? kosdaqIdx : '코스닥';
+    document.getElementById('gDnCnt').style.color = kosdaqColor;
+    document.getElementById('gDnCnt').textContent = kosdaqIdx ? kosdaqIdx : '';
+    document.getElementById('gcDn').style.stroke = kosdaqColor;
   },200);
 
-  document.getElementById('rbarU').style.flex=upR;
-  document.getElementById('rbarD').style.flex=dnR;
-  document.getElementById('rbarUpLbl').textContent=`상승 ${upR}%`;
-  document.getElementById('rbarDnLbl').textContent=`하락 ${dnR}%`;
+  // rbar 요소는 제거됨 - 관련 코드 스킵
   const upPctEl = document.getElementById('rbarUpPct');
   const dnPctEl = document.getElementById('rbarDnPct');
   const upNumEl = document.getElementById('rbarUpNum');
@@ -3815,6 +3811,8 @@ window.fetchMarketIndex = async () => {
     // 등락률 전역 저장 (시장온도 계산용)
     window._mktKospiChg  = parseFloat(kp?.bstp_nmix_prdy_ctrt) || 0;
     window._mktKosdaqChg = parseFloat(kq?.bstp_nmix_prdy_ctrt) || 0;
+    window._mktKospiIdx  = parseFloat(kp?.bstp_nmix_prpr) ? parseFloat(kp.bstp_nmix_prpr).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
+    window._mktKosdaqIdx = parseFloat(kq?.bstp_nmix_prpr) ? parseFloat(kq.bstp_nmix_prpr).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
     // 외국인/기관 순매수도 저장
     window._mktFBuy = Math.round(((parseFloat(kp?.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.frgn_ntby_tr_pbmn)||0)) / 100);
     window._mktIBuy = Math.round(((parseFloat(kp?.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.orgn_ntby_tr_pbmn)||0)) / 100);
