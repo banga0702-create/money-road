@@ -305,25 +305,29 @@ export default async function handler(req, res) {
         const kosdaqText = new TextDecoder('euc-kr').decode(await (await kosdaqR.arrayBuffer()));
 
         const parse = (html) => {
-          // 상승 N / 보합 N / 하락 N 패턴
-          const up   = (html.match(/상승[^0-9]*(\d[\d,]+)/) || [])[1]?.replace(/,/g,'');
-          const dn   = (html.match(/하락[^0-9]*(\d[\d,]+)/) || [])[1]?.replace(/,/g,'');
-          const flat = (html.match(/보합[^0-9]*(\d[\d,]+)/) || [])[1]?.replace(/,/g,'');
-          return {
-            up:   parseInt(up  ||'0'),
-            dn:   parseInt(dn  ||'0'),
-            flat: parseInt(flat||'0')
-          };
+          // 네이버 증시 페이지: 상승N 보합N 하락N 순서로 나옴
+          // td class="number" 안의 숫자들
+          const nums = [];
+          const re = /class="number_etc"[^>]*>[\s]*(\d[\d,]+)/g;
+          let m;
+          while((m = re.exec(html)) !== null) {
+            nums.push(parseInt(m[1].replace(/,/g,'')));
+          }
+          // 상승/보합/하락 순서
+          return { up: nums[0]||0, flat: nums[1]||0, dn: nums[2]||0 };
         };
 
         const kp = parse(kospiText);
         const kq = parse(kosdaqText);
 
-        const upCnt  = kp.up   + kq.up;
-        const dnCnt  = kp.dn   + kq.dn;
+        const upCnt  = kp.up  + kq.up;
+        const dnCnt  = kp.dn  + kq.dn;
         const totCnt = kp.up + kp.dn + kp.flat + kq.up + kq.dn + kq.flat;
 
-        return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq });
+        // 디버깅용 raw 포함
+        return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq,
+          raw_kospi: kospiText.slice(3000, 5000) // 상승/하락 숫자 있는 부분
+        });
       } catch(e) {
         return res.status(500).json({ error: e.message });
       }
