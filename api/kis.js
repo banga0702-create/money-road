@@ -324,9 +324,8 @@ export default async function handler(req, res) {
         const dnCnt  = kp.dn  + kq.dn;
         const totCnt = kp.up + kp.dn + kp.flat + kq.up + kq.dn + kq.flat;
 
-        // 디버깅용 raw 포함
         return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq,
-          raw_kospi: kospiText.slice(3000, 5000) // 상승/하락 숫자 있는 부분
+          raw_kospi: kospiText // 전체 반환
         });
       } catch(e) {
         return res.status(500).json({ error: e.message });
