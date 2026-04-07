@@ -289,6 +289,23 @@ export default async function handler(req, res) {
       }
     }
 
+    // 코스피/코스닥 지수 현재가 + 52주 고점 (업종 현재지수)
+    if (action === 'index_info') {
+      const token = await getToken();
+      // FHPUP02100000: 업종 현재지수 - 코스피(0001), 코스닥(1001)
+      const [kospiR, kosdaqR] = await Promise.all([
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-price?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001`, {
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPUP02100000', 'custtype': 'P' }
+        }),
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-index-price?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001`, {
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPUP02100000', 'custtype': 'P' }
+        })
+      ]);
+      const kospi  = await kospiR.json();
+      const kosdaq = await kosdaqR.json();
+      return res.status(200).json({ kospi, kosdaq });
+    }
+
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
     if (action === 'naver_index') {
       const { index = 'KOSPI' } = req.query;
