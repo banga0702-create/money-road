@@ -289,21 +289,44 @@ export default async function handler(req, res) {
       }
     }
 
-    // 상승/하락 종목 수 (KIS 시장 등락현황)
+    // 상승/하락 종목 수 (네이버 증시 페이지 파싱)
     if (action === 'market_breadth') {
-      const token = await getToken();
-      // FHPST01700000: 시장 등락현황 (코스피:0001, 코스닥:1001)
-      const [kospiR, kosdaqR] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-market-updown?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=0001&FID_BLNG_CLS_CODE=0`, {
-          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPST01700000', 'custtype': 'P' }
-        }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-market-updown?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=1001&FID_BLNG_CLS_CODE=0`, {
-          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPST01700000', 'custtype': 'P' }
-        })
-      ]);
-      const kp = await kospiR.json();
-      const kq = await kosdaqR.json();
-      return res.status(200).json({ kp, kq });
+      try {
+        const headers = {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Referer': 'https://finance.naver.com/',
+          'Accept': 'text/html'
+        };
+        const [kospiR, kosdaqR] = await Promise.all([
+          fetch('https://finance.naver.com/sise/sise_index.naver?code=KOSPI', { headers }),
+          fetch('https://finance.naver.com/sise/sise_index.naver?code=KOSDAQ', { headers })
+        ]);
+        const kospiText  = new TextDecoder('euc-kr').decode(await (await kospiR.arrayBuffer()));
+        const kosdaqText = new TextDecoder('euc-kr').decode(await (await kosdaqR.arrayBuffer()));
+
+        const parse = (html) => {
+          // 상승 N / 보합 N / 하락 N 패턴
+          const up   = (html.match(/상승[^0-9]*(\d[\d,]+)/) || [])[1]?.replace(/,/g,'');
+          const dn   = (html.match(/하락[^0-9]*(\d[\d,]+)/) || [])[1]?.replace(/,/g,'');
+          const flat = (html.match(/보합[^0-9]*(\d[\d,]+)/) || [])[1]?.replace(/,/g,'');
+          return {
+            up:   parseInt(up  ||'0'),
+            dn:   parseInt(dn  ||'0'),
+            flat: parseInt(flat||'0')
+          };
+        };
+
+        const kp = parse(kospiText);
+        const kq = parse(kosdaqText);
+
+        const upCnt  = kp.up   + kq.up;
+        const dnCnt  = kp.dn   + kq.dn;
+        const totCnt = kp.up + kp.dn + kp.flat + kq.up + kq.dn + kq.flat;
+
+        return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq });
+      } catch(e) {
+        return res.status(500).json({ error: e.message });
+      }
     }
 
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
