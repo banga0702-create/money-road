@@ -492,6 +492,26 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <span class="mkt-diff-arrow" id="mktDiffBadge">—</span>
         <!-- 7일 막대그래프 -->
         <div id="mktWeekBar" style="display:flex;align-items:flex-end;gap:4px;margin-left:auto;height:32px"></div>
+        <!-- 달력 버튼 -->
+        <button onclick="toggleMktCal()" style="background:none;border:none;font-size:16px;cursor:pointer;padding:0 0 0 8px;line-height:1">📅</button>
+      </div>
+      <!-- 펼쳐지는 달력 -->
+      <div id="mktCalWrap" style="display:none;padding:10px 14px 4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <button onclick="mktCalMove(-1)" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--tx2)">‹</button>
+          <span id="mktCalTitle" style="font-size:12px;font-weight:700;color:var(--tx)"></span>
+          <button onclick="mktCalMove(1)" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--tx2)">›</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">일</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">월</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">화</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">수</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">목</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">금</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">토</div>
+        </div>
+        <div id="mktCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px"></div>
       </div>
     </div>
 
@@ -4041,6 +4061,66 @@ window.doUpdateNickname = async () => {
     errEl.textContent = '오류: ' + e.message;
   }
 };
+
+// ── 홈 달력
+let _calYear = new Date().getFullYear();
+let _calMonth = new Date().getMonth();
+
+window.toggleMktCal = () => {
+  const wrap = document.getElementById('mktCalWrap');
+  if(!wrap) return;
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen) renderMktCal();
+};
+
+window.mktCalMove = (dir) => {
+  _calMonth += dir;
+  if(_calMonth < 0) { _calMonth = 11; _calYear--; }
+  if(_calMonth > 11) { _calMonth = 0; _calYear++; }
+  renderMktCal();
+};
+
+function renderMktCal() {
+  const title = document.getElementById('mktCalTitle');
+  const grid  = document.getElementById('mktCalGrid');
+  if(!title || !grid) return;
+
+  title.textContent = `${_calYear}년 ${_calMonth+1}월`;
+
+  const firstDay = new Date(_calYear, _calMonth, 1).getDay();
+  const lastDate = new Date(_calYear, _calMonth+1, 0).getDate();
+  const mh = S.monthHist || {};
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  let html = '';
+  // 빈칸
+  for(let i = 0; i < firstDay; i++) html += '<div></div>';
+
+  for(let d = 1; d <= lastDate; d++) {
+    const key = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const score = mh[key];
+    const isToday = key === todayStr;
+    let bg = 'transparent', color = 'var(--tx3)', fontW = '500';
+
+    if(score !== undefined) {
+      if(score >= 55) { bg = 'rgba(255,71,87,.15)'; color = 'var(--up)'; }
+      else if(score >= 45) { bg = 'rgba(148,163,184,.15)'; color = 'var(--tx2)'; }
+      else { bg = 'rgba(59,130,246,.15)'; color = 'var(--dn)'; }
+      fontW = '700';
+    }
+
+    const border = isToday ? '1.5px solid var(--pr)' : '1px solid transparent';
+    const scoreText = score !== undefined ? `<div style="font-size:7px;font-weight:800;color:${color}">${score}</div>` : '';
+
+    html += `<div style="background:${bg};border:${border};border-radius:6px;padding:3px 1px;text-align:center;cursor:${score!==undefined?'pointer':'default'}" title="${score!==undefined?score+'pt':''}">
+      <div style="font-size:9px;font-weight:${fontW};color:${isToday?'var(--pr)':color}">${d}</div>
+      ${scoreText}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
 
 // ── 로그아웃
 window.doSignOut = async () => {
