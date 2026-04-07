@@ -434,7 +434,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div class="tbar-cur" id="tbarCur" style="left:0%"></div>
         </div>
         <div class="tbar-scale">
-          <span>급락</span><span>약세</span><span>중립</span><span>상승</span><span>강세</span>
+          <span>극단공포</span><span>공포</span><span>중립</span><span>탐욕</span><span>극단탐욕</span>
         </div>
       </div>
       <!-- 연중고점 대비 -->
@@ -1333,7 +1333,7 @@ function saveEditCandle() {
 ═══════════════════════════════════════════ */
 const MARKET_COMMENTS = {
   panic: {
-    range:[0,20], label:'패닉', icon:'🥶',
+    range:[0,25], label:'극단적 공포', icon:'🥶',
     color:'#93C5FD', bg:'rgba(59,130,246,.12)', border:'rgba(59,130,246,.25)',
     lightColor:'#1D4ED8', lightBg:'rgba(59,130,246,.08)',
     msgs:[
@@ -1344,7 +1344,7 @@ const MARKET_COMMENTS = {
     ]
   },
   fear: {
-    range:[20,40], label:'공포', icon:'😰',
+    range:[25,45], label:'공포', icon:'😰',
     color:'#7DD3FC', bg:'rgba(125,211,252,.12)', border:'rgba(125,211,252,.25)',
     lightColor:'#0369A1', lightBg:'rgba(14,165,233,.08)',
     msgs:[
@@ -1355,7 +1355,7 @@ const MARKET_COMMENTS = {
     ]
   },
   neutral: {
-    range:[40,60], label:'중립', icon:'😐',
+    range:[45,55], label:'중립', icon:'😐',
     color:'#94A3B8', bg:'rgba(148,163,184,.12)', border:'rgba(148,163,184,.25)',
     lightColor:'#475569', lightBg:'rgba(148,163,184,.08)',
     msgs:[
@@ -1366,7 +1366,7 @@ const MARKET_COMMENTS = {
     ]
   },
   optimism: {
-    range:[60,80], label:'낙관', icon:'😊',
+    range:[55,75], label:'탐욕', icon:'😊',
     color:'#86EFAC', bg:'rgba(134,239,172,.12)', border:'rgba(134,239,172,.25)',
     lightColor:'#15803D', lightBg:'rgba(34,197,94,.08)',
     msgs:[
@@ -1377,7 +1377,7 @@ const MARKET_COMMENTS = {
     ]
   },
   overHeat: {
-    range:[80,100], label:'과열', icon:'🔥',
+    range:[75,100], label:'극단적 탐욕', icon:'🔥',
     color:'#FCA5A5', bg:'rgba(252,165,165,.12)', border:'rgba(252,165,165,.25)',
     lightColor:'#DC2626', lightBg:'rgba(239,68,68,.08)',
     msgs:[
@@ -1393,10 +1393,10 @@ const MARKET_COMMENTS = {
 function scoreToTemp(score) { return Math.round(score); }
 
 function getZone(temp) {
-  if(temp < 20) return MARKET_COMMENTS.panic;
-  if(temp < 40) return MARKET_COMMENTS.fear;
-  if(temp < 60) return MARKET_COMMENTS.neutral;
-  if(temp < 80) return MARKET_COMMENTS.optimism;
+  if(temp < 25) return MARKET_COMMENTS.panic;
+  if(temp < 45) return MARKET_COMMENTS.fear;
+  if(temp < 55) return MARKET_COMMENTS.neutral;
+  if(temp < 75) return MARKET_COMMENTS.optimism;
   return MARKET_COMMENTS.overHeat;
 }
 
@@ -1525,10 +1525,10 @@ function renderHome(){
   if(upNumEl) upNumEl.textContent = m.up ? m.up.toLocaleString() : '—';
   if(dnNumEl) dnNumEl.textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
 
-  const st=score>=80?{txt:'🔥 강한 상승장',col:'var(--up)'}:
-    score>=60?{txt:'📈 상승장',col:'#F97316'}:
-    score>=40?{txt:'➡️ 중립',col:'var(--tx2)'}:
-    score>=20?{txt:'📉 약세',col:'var(--dn)'}:
+  const st=score>=75?{txt:'🔥 강세',col:'var(--up)'}:
+    score>=55?{txt:'📈 상승장',col:'#F97316'}:
+    score>=45?{txt:'➡️ 중립',col:'var(--tx2)'}:
+    score>=25?{txt:'📉 약세',col:'var(--dn)'}:
     score>0?{txt:'❄️ 급락장',col:'#93C5FD'}:
     {txt:'데이터 없음',col:'var(--tx3)'};
   const stEl=document.getElementById('tcStatus');
