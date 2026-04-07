@@ -1044,30 +1044,17 @@ function calcMktAuto() {
   const upCnt  = window._mktUpCnt  || 0;
   const totCnt = window._mktTotCnt || 0;
 
-  // 종목수 있으면 종목수 기반, 없으면 등락률 기반으로 점수 계산
-  let chgScore;
+  let score = 0;
+
   if(totCnt > 0) {
-    chgScore = Math.min((upCnt / totCnt) * 50, 50); // 최대 50점
+    // 순수 상승종목 비율 = 시장온도
+    score = Math.round(upCnt / totCnt * 100);
   } else {
+    // 종목수 없으면 등락률 기반
     const avgChg = (kospiChg + kosdaqChg) / 2;
-    chgScore = Math.min(Math.max((avgChg + 3) / 6 * 50, 0), 50);
+    score = Math.min(Math.max(Math.round((avgChg + 3) / 6 * 100), 0), 100);
   }
 
-  // 외국인 순매수 → 최대 25점
-  let fScore = 0;
-  if(fBuy > 0) fScore = Math.min(fBuy / 3000 * 25, 25);
-  else if(fBuy < 0) fScore = Math.max(fBuy / 3000 * 25, -15);
-
-  // 기관 순매수 → 최대 15점
-  let iScore = 0;
-  if(iBuy > 0) iScore = Math.min(iBuy / 3000 * 15, 15);
-  else if(iBuy < 0) iScore = Math.max(iBuy / 3000 * 15, -10);
-
-  // 관심종목 2000억↑ 종목 수 → 최대 10점
-  const n2k = S.stocks ? S.stocks.filter(s => s.vol >= 2000).length : 0;
-  const n2kScore = Math.min(n2k * 2, 10);
-
-  let score = Math.round(chgScore + fScore + iScore + n2kScore);
   score = Math.min(Math.max(score, 0), 100);
 
   const prevScore = S.market.score > 0 ? S.market.score : null;
