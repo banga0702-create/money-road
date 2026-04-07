@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -437,6 +438,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <span>급락</span><span>약세</span><span>중립</span><span>상승</span><span>강세</span>
         </div>
       </div>
+      <!-- 연중고점 대비 -->
+      <div id="mktHighInfo" style="display:none;align-items:center;margin-top:10px;padding:8px 12px;background:var(--sf2);border-radius:10px;border:1px solid var(--bd)"></div>
     </div>
 
     <!-- 투자심리 카드 -->
@@ -1039,11 +1042,17 @@ function calcMktAuto() {
   const kosdaqChg = window._mktKosdaqChg || 0;
   const fBuy = window._mktFBuy || 0;
   const iBuy = window._mktIBuy || 0;
+  const upCnt  = window._mktUpCnt  || 0;
+  const totCnt = window._mktTotCnt || 0;
 
-  // 코스피+코스닥 평균 등락률 → 0~100점 변환
-  // -3% 이하 → 0점, +3% 이상 → 100점
-  const avgChg = (kospiChg + kosdaqChg) / 2;
-  const chgScore = Math.min(Math.max((avgChg + 3) / 6 * 50, 0), 50); // 최대 50점
+  // 종목수 있으면 종목수 기반, 없으면 등락률 기반으로 점수 계산
+  let chgScore;
+  if(totCnt > 0) {
+    chgScore = Math.min((upCnt / totCnt) * 50, 50); // 최대 50점
+  } else {
+    const avgChg = (kospiChg + kosdaqChg) / 2;
+    chgScore = Math.min(Math.max((avgChg + 3) / 6 * 50, 0), 50);
+  }
 
   // 외국인 순매수 → 최대 25점
   let fScore = 0;
@@ -1062,12 +1071,11 @@ function calcMktAuto() {
   let score = Math.round(chgScore + fScore + iScore + n2kScore);
   score = Math.min(Math.max(score, 0), 100);
 
-  // S.market 업데이트 후 렌더링 (저장은 안 함)
   const prevScore = S.market.score > 0 ? S.market.score : null;
   S.market = { ...S.market, score, prevScore,
     fBuy, iBuy,
     kospiChg, kosdaqChg,
-    up: 0, total: 0  // 종목수 초기화 (등락률 기반 모드)
+    up: upCnt, total: totCnt
   };
   renderHome();
 }
@@ -3788,6 +3796,45 @@ window.fetchMarketIndex = async () => {
     setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv));
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
     setEl('mktOrgnKp',  fmt(kpOrgn)); setEl('mktOrgnKq',  fmt(kqOrgn));
+
+    // index_info: 연중고점 + 상승/하락 종목수
+    try {
+      const iRes = await fetch('/api/kis?action=index_info');
+      const iData = await iRes.json();
+      const ikp = iData.kospi?.output || {};
+      const ikq = iData.kosdaq?.output || {};
+
+      // 상승/하락 종목수 → 시장온도 게이지
+      const upCnt  = (parseInt(ikp.ascn_issu_cnt)||0) + (parseInt(ikq.ascn_issu_cnt)||0);
+      const dnCnt  = (parseInt(ikp.down_issu_cnt)||0) + (parseInt(ikq.down_issu_cnt)||0);
+      const totCnt = upCnt + dnCnt + (parseInt(ikp.stnr_issu_cnt)||0) + (parseInt(ikq.stnr_issu_cnt)||0);
+      if(totCnt > 0) {
+        document.getElementById('mUp').value    = upCnt;
+        document.getElementById('mTotal').value = totCnt;
+        window._mktUpCnt  = upCnt;
+        window._mktTotCnt = totCnt;
+        calcMktAuto();
+      }
+
+      // 연중 고점 대비 % 표시
+      const kospiHgpr = parseFloat(ikp.dryy_bstp_nmix_hgpr) || 0;
+      const kospiHgDate = ikp.dryy_bstp_nmix_hgpr_date || '';
+      const kospiHgRate = parseFloat(ikp.dryy_hgpr_vrss_prpr_rate) || 0;
+      const kosdaqHgpr = parseFloat(ikq.dryy_bstp_nmix_hgpr) || 0;
+      const kosdaqHgRate = parseFloat(ikq.dryy_hgpr_vrss_prpr_rate) || 0;
+
+      const hgEl = document.getElementById('mktHighInfo');
+      if(hgEl && kospiHgpr > 0) {
+        const dateStr = kospiHgDate ? kospiHgDate.slice(0,4)+'.'+kospiHgDate.slice(4,6)+'.'+kospiHgDate.slice(6) : '';
+        const rateColor = kospiHgRate >= 0 ? 'var(--up)' : 'var(--dn)';
+        hgEl.innerHTML = `
+          <span style="color:var(--tx3);font-size:10px">연중고점 대비</span>
+          <span style="font-size:11px;font-weight:800;color:${rateColor};margin-left:6px">${kospiHgRate > 0 ? '+' : ''}${kospiHgRate.toFixed(1)}%</span>
+          <span style="font-size:10px;color:var(--tx3);margin-left:4px">(${kospiHgpr.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2})} / ${dateStr})</span>
+        `;
+        hgEl.style.display = 'flex';
+      }
+    } catch(e) { console.warn('index_info 실패:', e); }
 
     document.getElementById('mktIndexCard').style.display = 'block';
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
