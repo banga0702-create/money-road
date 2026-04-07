@@ -385,25 +385,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <!-- ══ 탭1: 홈 ══ -->
   <div class="page active" id="pg-home">
 
-    <!-- 코스피/코스닥 + 투자자 현황 -->
+    <!-- 투자자 현황 -->
     <div id="mktIndexCard" style="margin:12px 16px 0;display:none">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
-          <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:2px">코스피</div>
-          <div>
-            <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKospiIdx">—</div>
-            <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKospiChg">—</div>
-          </div>
-        </div>
-        <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
-          <div style="font-size:10px;font-weight:700;color:var(--tx3);margin-bottom:2px">코스닥</div>
-          <div>
-            <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px" id="mktKosdaqIdx">—</div>
-            <div style="font-size:10px;font-weight:700;margin-top:1px" id="mktKosdaqChg">—</div>
-          </div>
-        </div>
-      </div>
-      <!-- 투자자별 -->
       <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:10px 14px">
         <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:4px;align-items:center">
           <div style="font-size:9px;color:var(--tx3);font-weight:700"></div>
@@ -418,7 +401,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
-
         </div>
       </div>
     </div>
@@ -1521,7 +1503,7 @@ function renderHome(){
     const kospiUp = kospiChg === null || kospiChg >= 0;
     const kospiColor = kospiUp ? 'var(--up)' : 'var(--dn)';
     document.getElementById('gIconUp').textContent = kospiUp ? '🔥' : '❄️';
-    document.getElementById('gpUp').style.color = kospiColor;
+    document.getElementById('gpUp').style.color = 'var(--tx)';
     document.getElementById('gpUp').textContent = kospiIdx ? kospiIdx : '—';
     document.getElementById('gUpIdx').style.color = kospiColor;
     document.getElementById('gUpIdx').textContent = kospiChg !== null ? (kospiChg >= 0 ? '+' : '') + kospiChg.toFixed(2) + '%' : '—';
@@ -1532,7 +1514,7 @@ function renderHome(){
     const kosdaqUp = kosdaqChg === null || kosdaqChg >= 0;
     const kosdaqColor = kosdaqUp ? 'var(--up)' : 'var(--dn)';
     document.getElementById('gIconDn').textContent = kosdaqUp ? '🔥' : '❄️';
-    document.getElementById('gpDn').style.color = kosdaqColor;
+    document.getElementById('gpDn').style.color = 'var(--tx)';
     document.getElementById('gpDn').textContent = kosdaqIdx ? kosdaqIdx : '—';
     document.getElementById('gDnIdx').style.color = kosdaqColor;
     document.getElementById('gDnIdx').textContent = kosdaqChg !== null ? (kosdaqChg >= 0 ? '+' : '') + kosdaqChg.toFixed(2) + '%' : '—';
