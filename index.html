@@ -150,6 +150,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .tbar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--dn) 0%,#84CC16 40%,var(--wa) 70%,var(--up) 100%);width:0;transition:width 1.4s cubic-bezier(.22,1,.36,1)}
 .tbar-cur{position:absolute;top:-3px;width:14px;height:14px;background:#fff;border:2.5px solid #222;border-radius:50%;transform:translateX(-50%);transition:left 1.4s cubic-bezier(.22,1,.36,1);box-shadow:0 2px 6px rgba(0,0,0,.5)}
 .tbar-scale{display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);font-weight:600;margin-top:5px}
+/* 구간 블록 게이지 */
+.zone-bar{display:flex;gap:3px;margin-top:12px}
+.zone-block{flex:1;border-radius:8px;padding:8px 4px 6px;text-align:center;opacity:.35;transition:all .3s;border:1.5px solid transparent;cursor:default}
+.zone-block.active{opacity:1;transform:translateY(-2px);border-color:rgba(255,255,255,.3)}
+.zone-block-icon{font-size:16px;line-height:1}
+.zone-block-label{font-size:8px;font-weight:800;margin-top:3px;letter-spacing:-.3px}
+.zone-block-arrow{font-size:9px;font-weight:900;margin-top:2px}
 /* 메모바 */
 .memo-bar{margin:10px 16px 0;background:rgba(79,99,232,.1);border:1px solid rgba(79,99,232,.25);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer}
 .memo-ico{font-size:15px;flex-shrink:0}
@@ -428,13 +435,32 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         </div>
       </div>
       <!-- 온도바 -->
-      <div class="tbar-wrap">
-        <div class="tbar-bg">
-          <div class="tbar-fill" id="tbarFill"></div>
-          <div class="tbar-cur" id="tbarCur" style="left:0%"></div>
+      <!-- 구간 블록 게이지 -->
+      <div class="zone-bar" id="zoneBar">
+        <div class="zone-block" id="zb-panic" style="background:rgba(59,130,246,.25)">
+          <div class="zone-block-icon">🥶</div>
+          <div class="zone-block-label" style="color:#93C5FD">극단공포</div>
+          <div class="zone-block-arrow" style="color:#93C5FD" id="zba-panic"></div>
         </div>
-        <div class="tbar-scale">
-          <span>극단공포</span><span>공포</span><span>중립</span><span>탐욕</span><span>극단탐욕</span>
+        <div class="zone-block" id="zb-fear" style="background:rgba(125,211,252,.2)">
+          <div class="zone-block-icon">😰</div>
+          <div class="zone-block-label" style="color:#7DD3FC">공포</div>
+          <div class="zone-block-arrow" style="color:#7DD3FC" id="zba-fear"></div>
+        </div>
+        <div class="zone-block" id="zb-neutral" style="background:rgba(148,163,184,.2)">
+          <div class="zone-block-icon">😐</div>
+          <div class="zone-block-label" style="color:#94A3B8">중립</div>
+          <div class="zone-block-arrow" style="color:#94A3B8" id="zba-neutral"></div>
+        </div>
+        <div class="zone-block" id="zb-optimism" style="background:rgba(134,239,172,.2)">
+          <div class="zone-block-icon">😊</div>
+          <div class="zone-block-label" style="color:#86EFAC">탐욕</div>
+          <div class="zone-block-arrow" style="color:#86EFAC" id="zba-optimism"></div>
+        </div>
+        <div class="zone-block" id="zb-overHeat" style="background:rgba(252,165,165,.2)">
+          <div class="zone-block-icon">🔥</div>
+          <div class="zone-block-label" style="color:#FCA5A5">극단탐욕</div>
+          <div class="zone-block-arrow" style="color:#FCA5A5" id="zba-overHeat"></div>
         </div>
       </div>
       <!-- 연중고점 대비 -->
@@ -1483,8 +1509,18 @@ function renderHome(){
   setTimeout(()=>{
     document.getElementById('gcUp').style.strokeDashoffset = 0;
     document.getElementById('gcDn').style.strokeDashoffset = 0;
-    document.getElementById('tbarFill').style.width=score+'%';
-    document.getElementById('tbarCur').style.left=score+'%';
+    // 구간 블록 활성화
+    const zones = ['panic','fear','neutral','optimism','overHeat'];
+    const zoneRanges = [[0,25],[25,45],[45,55],[55,75],[75,100]];
+    zones.forEach((z, i) => {
+      const el = document.getElementById('zb-'+z);
+      const arEl = document.getElementById('zba-'+z);
+      if(!el) return;
+      const [min, max] = zoneRanges[i];
+      const isActive = score >= min && score < max || (z === 'overHeat' && score >= 75);
+      el.classList.toggle('active', isActive);
+      if(arEl) arEl.textContent = isActive ? `▲ ${score}pt` : '';
+    });
     animNum('tcScore',score);
 
     const kospiChg  = m.kospiChg  ?? window._mktKospiChg  ?? null;
