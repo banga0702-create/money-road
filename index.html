@@ -1485,8 +1485,8 @@ function renderHome(){
     document.getElementById('tbarFill').style.width=score+'%';
     document.getElementById('tbarCur').style.left=score+'%';
     animNum('tcScore',score);
-    document.getElementById('gpUp').textContent = m.up ? m.up.toLocaleString() : '—';
-    document.getElementById('gpDn').textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
+    document.getElementById('gpUp').textContent = m.total > 0 ? m.up.toLocaleString() : '—';
+    document.getElementById('gpDn').textContent = m.total > 0 ? (m.total - m.up).toLocaleString() : '—';
   },200);
 
   document.getElementById('rbarU').style.flex=upR;
