@@ -129,7 +129,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .gtrk{fill:none;stroke:var(--sf3);stroke-width:11}
 .ghot{fill:none;stroke-width:11;stroke-linecap:round;stroke:url(#gH);filter:drop-shadow(0 0 5px rgba(255,71,87,.4));transition:stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)}
 .gcld{fill:none;stroke-width:11;stroke-linecap:round;stroke:url(#gC);filter:drop-shadow(0 0 5px rgba(59,130,246,.4));transition:stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)}
-.g2center{position:absolute;top:50%;left:50%;transform:translate(-50%,-52%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.g2center{position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
 .g2icon{font-size:18px;line-height:1;margin-bottom:1px}
 .g2pct{font-size:18px;font-weight:900;letter-spacing:-1px;line-height:1.1}
 .g2sub{font-size:8px;font-weight:700;color:var(--tx3);margin-top:1px}
@@ -444,10 +444,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           </svg>
           <div class="g2center">
             <span class="g2icon" id="gIconUp">🔥</span>
-            <span class="g2pct" id="gpUp" style="font-size:15px;font-weight:900;line-height:1.2">—</span>
-            <span class="g2sub" id="gUpIdx" style="font-size:9px;color:var(--tx3);margin-top:1px">—</span>
+            <span style="font-size:17px;font-weight:900;line-height:1.2" id="gpUp">—</span>
+            <span style="font-size:11px;font-weight:700;line-height:1.3" id="gUpIdx">—</span>
           </div>
-          <span class="g2cnt" id="gUpCnt" style="font-size:11px;font-weight:800">—</span>
+          <span class="g2cnt" id="gUpCnt" style="font-size:11px;font-weight:700;color:var(--tx3)">코스피</span>
         </div>
         <div class="g2vs">
           <div class="g2vs-ln"></div><span>VS</span><div class="g2vs-ln"></div>
@@ -459,10 +459,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           </svg>
           <div class="g2center">
             <span class="g2icon" id="gIconDn">❄️</span>
-            <span class="g2pct" id="gpDn" style="font-size:15px;font-weight:900;line-height:1.2">—</span>
-            <span class="g2sub" id="gDnIdx" style="font-size:9px;color:var(--tx3);margin-top:1px">—</span>
+            <span style="font-size:17px;font-weight:900;line-height:1.2" id="gpDn">—</span>
+            <span style="font-size:11px;font-weight:700;line-height:1.3" id="gDnIdx">—</span>
           </div>
-          <span class="g2cnt" id="gDnCnt" style="font-size:11px;font-weight:800">—</span>
+          <span class="g2cnt" id="gDnCnt" style="font-size:11px;font-weight:700;color:var(--tx3)">코스닥</span>
         </div>
       </div>
       <!-- 온도바 -->
@@ -1522,10 +1522,10 @@ function renderHome(){
     const kospiColor = kospiUp ? 'var(--up)' : 'var(--dn)';
     document.getElementById('gIconUp').textContent = kospiUp ? '🔥' : '❄️';
     document.getElementById('gpUp').style.color = kospiColor;
-    document.getElementById('gpUp').textContent = kospiChg !== null ? (kospiChg >= 0 ? '+' : '') + kospiChg.toFixed(2) + '%' : '—';
-    document.getElementById('gUpIdx').textContent = kospiIdx ? kospiIdx : '코스피';
-    document.getElementById('gUpCnt').style.color = kospiColor;
-    document.getElementById('gUpCnt').textContent = kospiIdx ? kospiIdx : '';
+    document.getElementById('gpUp').textContent = kospiIdx ? kospiIdx : '—';
+    document.getElementById('gUpIdx').style.color = kospiColor;
+    document.getElementById('gUpIdx').textContent = kospiChg !== null ? (kospiChg >= 0 ? '+' : '') + kospiChg.toFixed(2) + '%' : '—';
+    document.getElementById('gUpCnt').textContent = '코스피';
     document.getElementById('gcUp').style.stroke = kospiColor;
 
     // 코스닥 동그라미
@@ -1533,10 +1533,10 @@ function renderHome(){
     const kosdaqColor = kosdaqUp ? 'var(--up)' : 'var(--dn)';
     document.getElementById('gIconDn').textContent = kosdaqUp ? '🔥' : '❄️';
     document.getElementById('gpDn').style.color = kosdaqColor;
-    document.getElementById('gpDn').textContent = kosdaqChg !== null ? (kosdaqChg >= 0 ? '+' : '') + kosdaqChg.toFixed(2) + '%' : '—';
-    document.getElementById('gDnIdx').textContent = kosdaqIdx ? kosdaqIdx : '코스닥';
-    document.getElementById('gDnCnt').style.color = kosdaqColor;
-    document.getElementById('gDnCnt').textContent = kosdaqIdx ? kosdaqIdx : '';
+    document.getElementById('gpDn').textContent = kosdaqIdx ? kosdaqIdx : '—';
+    document.getElementById('gDnIdx').style.color = kosdaqColor;
+    document.getElementById('gDnIdx').textContent = kosdaqChg !== null ? (kosdaqChg >= 0 ? '+' : '') + kosdaqChg.toFixed(2) + '%' : '—';
+    document.getElementById('gDnCnt').textContent = '코스닥';
     document.getElementById('gcDn').style.stroke = kosdaqColor;
   },200);
 
