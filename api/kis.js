@@ -289,31 +289,21 @@ export default async function handler(req, res) {
       }
     }
 
-    // 상승/하락 종목 수 (KIS 업종현황 TR)
+    // 상승/하락 종목 수 (KIS 시장 등락현황)
     if (action === 'market_breadth') {
       const token = await getToken();
-      // FHPUP02100000: 업종현황 - 코스피(0001), 코스닥(1001)
-      // up_cnt, dn_cnt, flat_cnt, tot_cnt 필드 제공
+      // FHPST01700000: 시장 등락현황 (코스피:0001, 코스닥:1001)
       const [kospiR, kosdaqR] = await Promise.all([
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-updown?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001`, {
-          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPUP02100000', 'custtype': 'P' }
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-market-updown?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=0001&FID_BLNG_CLS_CODE=0`, {
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPST01700000', 'custtype': 'P' }
         }),
-        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-updown?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=1001`, {
-          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPUP02100000', 'custtype': 'P' }
+        fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-market-updown?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=1001&FID_BLNG_CLS_CODE=0`, {
+          headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPST01700000', 'custtype': 'P' }
         })
       ]);
-      const kospi  = await kospiR.json();
-      const kosdaq = await kosdaqR.json();
-
-      // output 배열 첫번째 항목
-      const kp = (kospi.output  || kospi.output1  || [])[0] || {};
-      const kq = (kosdaq.output || kosdaq.output1 || [])[0] || {};
-
-      const upCnt  = (parseInt(kp.up_cnt )||0) + (parseInt(kq.up_cnt )||0);
-      const dnCnt  = (parseInt(kp.dn_cnt )||0) + (parseInt(kq.dn_cnt )||0);
-      const totCnt = (parseInt(kp.tot_cnt)||0) + (parseInt(kq.tot_cnt)||0);
-
-      return res.status(200).json({ upCnt, dnCnt, totCnt, kp, kq });
+      const kp = await kospiR.json();
+      const kq = await kosdaqR.json();
+      return res.status(200).json({ kp, kq });
     }
 
     // 네이버 지수 차트 (코스피/코스닥 실제 지수)
