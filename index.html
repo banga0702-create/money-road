@@ -441,16 +441,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <!-- ETF 52주 현황 -->
       <div id="mktEtf52" style="display:none;margin-top:8px;grid-template-columns:1fr 1fr;gap:6px">
         <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:9px;font-weight:700;color:var(--tx3)">KODEX 200 (52주)</span>
-            <span id="etf52Kp" style="font-size:11px;font-weight:900">—</span>
-          </div>
+          <span style="font-size:9px;font-weight:700;color:var(--tx3)">KODEX 200 (52주) </span><span id="etf52Kp" style="font-size:10px;font-weight:800">—</span>
         </div>
         <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:9px;font-weight:700;color:var(--tx3)">KODEX 코스닥150 (52주)</span>
-            <span id="etf52Kq" style="font-size:11px;font-weight:900">—</span>
-          </div>
+          <span style="font-size:9px;font-weight:700;color:var(--tx3)">KODEX 코스닥150 (52주) </span><span id="etf52Kq" style="font-size:10px;font-weight:800">—</span>
         </div>
       </div>
     </div>
@@ -1125,7 +1119,10 @@ function calcMktAuto() {
 
   score = Math.min(Math.max(score, 0), 100);
 
-  const prevScore = S.market.score > 0 ? S.market.score : null;
+  // prevScore: weekHist에서 어제 날짜 데이터만 사용 (오늘 데이터로 오인 방지)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const yesterdayHist = S.weekHist ? S.weekHist.find(h => h.date === yesterday) : null;
+  const prevScore = yesterdayHist ? yesterdayHist.score : null;
   S.market = { ...S.market, score, prevScore,
     fBuy, iBuy,
     kospiChg, kosdaqChg,
@@ -1185,7 +1182,10 @@ function calcMkt(){
 function saveMkt(){
   const d=calcMkt();
   // 오늘 저장 전 기존 점수를 prevScore(어제)로 보존
-  const prevScore = S.market.score > 0 ? S.market.score : null;
+  // prevScore: weekHist에서 어제 날짜 데이터만 사용 (오늘 데이터로 오인 방지)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const yesterdayHist = S.weekHist ? S.weekHist.find(h => h.date === yesterday) : null;
+  const prevScore = yesterdayHist ? yesterdayHist.score : null;
   S.market={up:d.up,total:d.total,vol:d.vol,avgVol:d.avg,fBuy:d.fBuy,iBuy:d.iBuy,score:d.score,prevScore};
   // 이번주 히스토리 업데이트
   const now=new Date();
