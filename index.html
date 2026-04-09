@@ -2617,10 +2617,7 @@ window.kisTopFetch = async () => {
         (d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)
       ).length : 0;
       window._kisRows[key] = { ...s, contDays, code: s.code || '' };
-      const isTriple = tripleNames.has(s.name);
-      const bg = isTriple
-        ? 'background:rgba(0,212,170,0.12);border:1.5px solid rgba(0,212,170,0.5)'
-        : 'background:var(--sf);border:1px solid var(--bd)';
+      const bg = 'background:var(--sf);border:1px solid var(--bd)';
       const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
@@ -2715,8 +2712,24 @@ window.kisTopFetch = async () => {
         + '</div>';
     };
 
-    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRowHL(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // 1열+2열 중복 Set (렌더 직전 계산)
+    const fiNameSet = new Set(fi.map(s => s.name));
+    const fNameSet  = new Set(f.map(s => s.name));
+    const dupSet    = new Set([...fiNameSet].filter(n => fNameSet.has(n)));
+
+    // 중복 여부를 렌더 함수에 직접 주입
+    const makeRow = (s, i, isDup) => {
+      const base = makeRowHL(s, i);
+      if(!isDup) return base;
+      // 기존 bg 스타일 교체
+      return base.replace(
+        'background:var(--sf);border:1px solid var(--bd)',
+        'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.6)'
+      );
+    };
+
+    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i, dupSet.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i, dupSet.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> makeRowHL(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
 
     msg.style.color = 'var(--ac)';
@@ -2813,10 +2826,7 @@ window.loadKisHistory = async (date, uid) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'h_' + (++_rowIdx2);
       window._kisRows[key] = s;
-      const isTriple = triple2.has(s.name);
-      const bg = isTriple
-        ? 'background:linear-gradient(135deg,rgba(0,212,170,0.13),rgba(79,99,232,0.10));border:1px solid rgba(0,212,170,0.45);box-shadow:0 0 8px rgba(0,212,170,0.15)'
-        : 'background:var(--sf);border:1px solid var(--bd)';
+      const bg = 'background:var(--sf);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
@@ -2841,8 +2851,22 @@ window.loadKisHistory = async (date, uid) => {
         + '</div>';
     };
 
-    document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i)=>makeRow2(s,i)).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // 히스토리: 1열+2열 중복 Set
+    const fiSet2 = new Set((data.fi||[]).map(s=>s.name));
+    const fSet2  = new Set((data.f||[]).map(s=>s.name));
+    const dupSet2 = new Set([...fiSet2].filter(n => fSet2.has(n)));
+
+    const makeRow2Dup = (s, i, isDup) => {
+      const base = makeRow2(s, i);
+      if(!isDup) return base;
+      return base.replace(
+        'background:var(--sf);border:1px solid var(--bd)',
+        'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.6)'
+      );
+    };
+
+    document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2Dup(s,i, dupSet2.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i) =>makeRow2Dup(s,i, dupSet2.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListI').innerHTML  = (data.inst||[]).length? data.inst.map((s,i)=>makeRow2(s,i)).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
   } catch(e) { console.warn('히스토리 로드 실패:', e); }
 };
