@@ -681,6 +681,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <span class="sh-title">🕯️ 종봉 PICK</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sc btn-sm" onclick="refreshCandlePrices()" id="candleRefreshBtn">🔄 현재가</button>
+          <button class="btn btn-sc btn-sm" onclick="openCandleDateSel()">📅 날짜지정</button>
           <button class="btn btn-ac btn-sm" onclick="openCandleMo()">＋ 추가</button>
         </div>
       </div>
@@ -832,6 +833,19 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
 <!-- ── 추적 추가 모달 ── -->
 <!-- ── 기준봉 추가 모달 ── -->
+<!-- ── 종봉 날짜 선택 모달 ── -->
+<div class="mo" id="moCandleDateSel" onclick="if(event.target===this)closeMo('moCandleDateSel')">
+  <div class="mo-box">
+    <div class="mo-handle"></div>
+    <div class="mo-title">📅 날짜 선택 후 추가</div>
+    <div class="fg" style="margin-bottom:18px">
+      <label>기록할 날짜</label>
+      <input type="date" id="candleDateInput" style="font-size:16px;padding:12px 14px">
+    </div>
+    <button class="btn btn-pr" onclick="confirmCandleDateSel()">이 날짜로 추가하기</button>
+  </div>
+</div>
+
 <div class="mo" id="moCandle" onclick="if(event.target===this)closeMo('moCandle')">
   <div class="mo-box">
     <div class="mo-handle"></div>
@@ -1383,7 +1397,7 @@ function saveEditCandle() {
   });
   save();
   const user = window._curUser;
-  if(user) window.saveCandleToFirestore(user.uid, S.candles);
+  if(user) window.saveCandleToFirestore(user.uid, S.candles, window._candleTargetDate);
   renderCandleFeat();
   closeMo('moCandle');
   document.querySelector('#moCandle .mo-title').textContent = '🕯️ 종봉 PICK 추가';
@@ -1906,13 +1920,33 @@ function calcCandle(){
   }
 }
 
-function openCandleMo(){
+function openCandleMo(targetDate){
   ['cdCode','cdName','cdSector','cdVol','cdH','cdL','cdCur','cdChg','cdFBuy','cdIBuy','cdMemo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const lineEl=document.getElementById('cdLine');if(lineEl)lineEl.textContent='—';
   const stEl=document.getElementById('cdSt');if(stEl)stEl.textContent='—';
   const msgEl=document.getElementById('cdCodeMsg');if(msgEl)msgEl.textContent='';
+  window._candleTargetDate = targetDate || new Date().toISOString().slice(0,10);
+  const titleEl=document.querySelector('#moCandle .mo-title');
+  if(titleEl){
+    const today=new Date().toISOString().slice(0,10);
+    titleEl.textContent = window._candleTargetDate===today ? '🕯️ 종봉 PICK 추가' : `🕯️ 종봉 PICK 추가 (${window._candleTargetDate})`;
+  }
   openMo('moCandle');
 }
+
+window.openCandleDateSel = () => {
+  const today = new Date().toISOString().slice(0,10);
+  const inp = document.getElementById('candleDateInput');
+  if(inp) inp.value = today;
+  openMo('moCandleDateSel');
+};
+
+window.confirmCandleDateSel = () => {
+  const val = document.getElementById('candleDateInput').value;
+  if(!val){ alert('날짜를 선택하세요'); return; }
+  closeMo('moCandleDateSel');
+  openCandleMo(val);
+};
 
 async function fetchCandlePrice(){
   const code=document.getElementById('cdCode').value.trim();
@@ -1952,7 +1986,7 @@ async function fetchCandlePrice(){
   }catch(e){msg.style.color='var(--up)';msg.textContent='❌ 오류: '+e.message;}
 }
 
-function addCandle(){
+async function addCandle(){
   const name=document.getElementById('cdName').value.trim();
   const h=+document.getElementById('cdH').value||0;
   const l=+document.getElementById('cdL').value||0;
@@ -1968,19 +2002,40 @@ function addCandle(){
     high:h,low:l,midLine,curPrice,
     chg:+document.getElementById('cdChg').value||0,
     memo:document.getElementById('cdMemo').value.trim()};
-  S.candles.push(candle);
-  save();
-  // Firestore에 날짜별 저장
-  const user=window._curUser;
-  if(user) window.saveCandleToFirestore(user.uid, S.candles);
-  closeMo('moCandle');
-  renderCandleFeat();
+
+  const today = new Date().toISOString().slice(0,10);
+  const targetDate = window._candleTargetDate || today;
+  const user = window._curUser;
+
+  if(targetDate === today){
+    // 오늘 날짜면 기존 방식 그대로
+    S.candles.push(candle);
+    save();
+    if(user) await window.saveCandleToFirestore(user.uid, S.candles, today);
+    closeMo('moCandle');
+    renderCandleFeat();
+  } else {
+    // 과거 날짜면 Firestore에서 그 날 기존 데이터 불러와서 추가
+    let existing = [];
+    if(user){
+      try{
+        const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', targetDate));
+        if(snap.exists()) existing = snap.data().candles || [];
+      }catch(e){}
+    }
+    existing.push(candle);
+    if(user) await window.saveCandleToFirestore(user.uid, existing, targetDate);
+    // 현재 화면에 그 날짜가 로드돼 있으면 리렌더
+    if(window._cdLatestDate === targetDate){ S.candles = existing; renderCandleFeat(); }
+    closeMo('moCandle');
+    alert(`✓ ${name} 추가됐어요! (${targetDate})`);
+  }
 }
 function delCandle(i){
   S.candles.splice(i,1);
   save();
   const user=window._curUser;
-  if(user) window.saveCandleToFirestore(user.uid, S.candles);
+  if(user) window.saveCandleToFirestore(user.uid, S.candles, window._candleTargetDate);
   renderCandleFeat();
 }
 
@@ -2017,7 +2072,7 @@ window.refreshCandlePrices = async () => {
     renderCandleFeat();
     // Firestore에도 저장
     const user = window._curUser;
-    if(user) window.saveCandleToFirestore(user.uid, S.candles);
+    if(user) window.saveCandleToFirestore(user.uid, S.candles, window._candleTargetDate);
   } catch(e) { console.warn('현재가 새로고침 실패:', e); }
   finally {
     if(btn) { btn.textContent = '🔄 현재가'; btn.disabled = false; }
@@ -3392,11 +3447,11 @@ window.openDatePicker = (dates, type, uid) => {
 
 
 // ── 종봉 PICK Firestore 저장
-window.saveCandleToFirestore = async (uid, candles) => {
+window.saveCandleToFirestore = async (uid, candles, targetDate) => {
   try {
-    const today = new Date().toISOString().slice(0,10);
-    await setDoc(doc(db, 'users', uid, 'candleHistory', today), {
-      date: today, candles, savedAt: Date.now()
+    const saveDate = targetDate || new Date().toISOString().slice(0,10);
+    await setDoc(doc(db, 'users', uid, 'candleHistory', saveDate), {
+      date: saveDate, candles, savedAt: Date.now()
     });
     await renderCandleDateTabs(uid);
   } catch(e) { console.warn('종봉 저장 실패:', e); }
