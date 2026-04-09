@@ -1388,7 +1388,7 @@ function saveEditCandle() {
   });
   save();
   const user = window._curUser;
-  if(user) window.saveCandleToFirestore(user.uid, S.candles, window._candleTargetDate);
+  if(user) window.saveCandleToFirestore(user.uid, S.candles, window._cdLatestDate);
   renderCandleFeat();
   closeMo('moCandle');
   document.querySelector('#moCandle .mo-title').textContent = '🕯️ 종봉 PICK 추가';
@@ -1996,26 +1996,29 @@ async function addCandle(){
   const user = window._curUser;
 
   if(targetDate === today){
-    // 오늘 날짜면 기존 방식 그대로
+    // 오늘 날짜면 기존 방식
     S.candles.push(candle);
     save();
     if(user) await window.saveCandleToFirestore(user.uid, S.candles, today);
     closeMo('moCandle');
     renderCandleFeat();
   } else {
-    // 과거 날짜면 Firestore에서 그 날 기존 데이터 불러와서 추가
-    let existing = [];
-    if(user){
-      try{
-        const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', targetDate));
-        if(snap.exists()) existing = snap.data().candles || [];
-      }catch(e){}
+    // 과거 날짜:
+    // _cdLatestDate가 이미 그 날짜면 S.candles가 그 날 데이터 → 바로 push
+    // 날짜가 다르면(처음 진입) Firestore에서 로드
+    if(window._cdLatestDate !== targetDate){
+      if(user){
+        try{
+          const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', targetDate));
+          S.candles = snap.exists() ? (snap.data().candles || []) : [];
+        }catch(e){ S.candles = []; }
+      } else {
+        S.candles = [];
+      }
+      window._cdLatestDate = targetDate;
     }
-    existing.push(candle);
-    if(user) await window.saveCandleToFirestore(user.uid, existing, targetDate);
-    // 화면을 그 날짜로 전환해서 바로 보이게 + 이후 delCandle/edit도 같은 날짜 기준
-    S.candles = existing;
-    window._cdLatestDate = targetDate;
+    S.candles.push(candle);
+    if(user) await window.saveCandleToFirestore(user.uid, S.candles, targetDate);
     renderCandleFeat();
     closeMo('moCandle');
     alert(`✓ ${name} 추가됐어요! (${targetDate})`);
@@ -2025,7 +2028,7 @@ function delCandle(i){
   S.candles.splice(i,1);
   save();
   const user=window._curUser;
-  if(user) window.saveCandleToFirestore(user.uid, S.candles, window._candleTargetDate);
+  if(user) window.saveCandleToFirestore(user.uid, S.candles, window._cdLatestDate);
   renderCandleFeat();
 }
 
@@ -2062,7 +2065,7 @@ window.refreshCandlePrices = async () => {
     renderCandleFeat();
     // Firestore에도 저장
     const user = window._curUser;
-    if(user) window.saveCandleToFirestore(user.uid, S.candles, window._candleTargetDate);
+    if(user) window.saveCandleToFirestore(user.uid, S.candles, window._cdLatestDate);
   } catch(e) { console.warn('현재가 새로고침 실패:', e); }
   finally {
     if(btn) { btn.textContent = '🔄 현재가'; btn.disabled = false; }
