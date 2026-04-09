@@ -4064,7 +4064,7 @@ window.fetchEtf52Week = async () => {
       return (d.output || [])[0] || null;
     };
     const kpEtf = await fetchOne('069500');
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 3000));
     const kqEtf = await fetchOne('229200');
 
     const render = (etf, valId, rangeId) => {
@@ -4078,7 +4078,7 @@ window.fetchEtf52Week = async () => {
       const color   = fromHiN >= 0 ? 'var(--up)' : 'var(--dn)';
       const valEl = document.getElementById(valId);
       const rngEl = document.getElementById(rangeId);
-      if(valEl) valEl.innerHTML = `<span style="color:${color};font-size:13px;font-weight:900">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span> <span style="font-size:10px;color:var(--tx3)">고 ${hi52.toLocaleString()}</span>`;
+      if(valEl) valEl.innerHTML = `<span style="color:${color};font-weight:800">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span><span style="font-size:11px;color:var(--tx2);margin-left:6px">(고 ${hi52.toLocaleString()})</span>`;
       if(rngEl) rngEl.style.display = 'none';
     };
 
