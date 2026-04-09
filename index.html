@@ -2619,7 +2619,7 @@ window.kisTopFetch = async () => {
       window._kisRows[key] = { ...s, contDays, code: s.code || '' };
       const isTriple = tripleNames.has(s.name);
       const bg = isTriple
-        ? 'background:linear-gradient(135deg,rgba(255,71,87,0.10),rgba(79,99,232,0.08));border:1px solid rgba(255,71,87,0.35)'
+        ? 'background:rgba(0,212,170,0.12);border:1.5px solid rgba(0,212,170,0.5)'
         : 'background:var(--sf);border:1px solid var(--bd)';
       const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
@@ -4028,9 +4028,9 @@ window.fetchMarketIndex = async () => {
 
       const renderEtf52 = (etf, valId, fillId, rangeId) => {
         if(!etf) return;
-        const cur  = parseInt(etf.clpr)  || 0;  // 종가
-        const hi52 = parseInt(etf.hipr)  || 0;  // 52주 고가
-        const lo52 = parseInt(etf.lopr)  || 0;  // 52주 저가
+        const cur  = parseInt(etf.clpr)           || 0;  // 종가
+        const hi52 = parseInt(etf.fiftTwoWeekHgpr) || 0;  // 52주 고가
+        const lo52 = parseInt(etf.fiftTwoWeekLwpr) || 0;  // 52주 저가
         if(!cur || !hi52 || !lo52) return;
 
         const fromHi  = ((cur - hi52) / hi52 * 100).toFixed(1);
@@ -4041,7 +4041,7 @@ window.fetchMarketIndex = async () => {
         const valEl  = document.getElementById(valId);
         const fillEl = document.getElementById(fillId);
         const rngEl  = document.getElementById(rangeId);
-        if(valEl)  valEl.innerHTML = `<span style="color:${color};font-size:13px;font-weight:900">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span><span style="font-size:9px;color:var(--tx3);margin-left:4px">52주고점대비</span>`;
+        if(valEl)  valEl.innerHTML = `<span style="color:${color};font-size:16px;font-weight:900">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span>`;
         if(fillEl) { fillEl.style.width = Math.max(2, pct) + '%'; fillEl.style.background = color; }
         if(rngEl)  rngEl.textContent = `저 ${lo52.toLocaleString()} — 고 ${hi52.toLocaleString()}`;
       };
