@@ -396,7 +396,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="temp-card">
       <div class="tc-top">
         <div>
-          <div class="tc-lbl">오늘의 시장온도</div>
+          <div class="tc-lbl">오늘의 지수</div>
           <div class="tc-status" id="tcStatus" style="color:var(--tx3)">데이터 없음</div>
         </div>
         <div style="text-align:right">
@@ -438,10 +438,26 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <!-- 구간 블록 게이지 -->
       <!-- 연중고점 대비 -->
       <div id="mktHighInfo" style="display:none;align-items:center;margin-top:10px;padding:8px 12px;background:var(--sf2);border-radius:10px;border:1px solid var(--bd)"></div>
+      <!-- ETF 52주 현황 -->
+      <div id="mktEtf52" style="display:none;margin-top:8px;grid-template-columns:1fr 1fr;gap:6px">
+        <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
+          <div style="font-size:9px;font-weight:700;color:var(--tx3);margin-bottom:4px">KODEX 200 (52주)</div>
+          <div id="etf52Kp" style="font-size:13px;font-weight:900">—</div>
+          <div id="etf52KpBar" style="height:4px;background:var(--sf3);border-radius:2px;margin-top:5px;overflow:hidden"><div id="etf52KpFill" style="height:100%;border-radius:2px;width:0%;transition:width 1s"></div></div>
+          <div id="etf52KpRange" style="font-size:8px;color:var(--tx3);margin-top:3px">52주 저가 — 고가</div>
+        </div>
+        <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
+          <div style="font-size:9px;font-weight:700;color:var(--tx3);margin-bottom:4px">TIGER 코스닥150 (52주)</div>
+          <div id="etf52Kq" style="font-size:13px;font-weight:900">—</div>
+          <div id="etf52KqBar" style="height:4px;background:var(--sf3);border-radius:2px;margin-top:5px;overflow:hidden"><div id="etf52KqFill" style="height:100%;border-radius:2px;width:0%;transition:width 1s"></div></div>
+          <div id="etf52KqRange" style="font-size:8px;color:var(--tx3);margin-top:3px">52주 저가 — 고가</div>
+        </div>
+      </div>
     </div>
 
-    <!-- 투자심리 카드 -->
-    <div class="mkt-comment" id="mktComment">
+    <!-- 시장온도 카드 -->
+    <div class="mkt-comment" id="mktComment" style="margin-top:10px">
+      <div style="padding:10px 14px 0;font-size:12px;font-weight:800;color:var(--tx2)">🌡️ 오늘의 시장온도</div>
       <div class="mkt-comment-top">
         <div class="mkt-temp-block">
           <span class="mkt-temp-ico" id="mktTempIco">🌡️</span>
@@ -3994,6 +4010,45 @@ window.fetchMarketIndex = async () => {
     } catch(e) { console.warn('index_info 실패:', e); }
 
     document.getElementById('mktIndexCard').style.display = 'block';
+
+    // ETF 52주 현황 (공공데이터 API)
+    try {
+      const ETF_KEY = 'd7f011931a4f7d1929ddfd4d5423f9d74410918fadd1bbb7a12cdc7b9cf5a5e5';
+      const fetchEtf52 = async (code) => {
+        const url = `https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo?serviceKey=${ETF_KEY}&numOfRows=1&pageNo=1&resultType=json&likeSrtnCd=${code}`;
+        const r = await fetch(url);
+        const j = await r.json();
+        const items = j?.response?.body?.items?.item;
+        if(!items) return null;
+        return Array.isArray(items) ? items[0] : items;
+      };
+      const [kpEtf, kqEtf] = await Promise.all([fetchEtf52('069500'), fetchEtf52('232080')]);
+
+      const renderEtf52 = (etf, valId, fillId, rangeId) => {
+        if(!etf) return;
+        const cur  = parseInt(etf.clpr)  || 0;  // 종가
+        const hi52 = parseInt(etf.hipr)  || 0;  // 52주 고가
+        const lo52 = parseInt(etf.lopr)  || 0;  // 52주 저가
+        if(!cur || !hi52 || !lo52) return;
+
+        const fromHi  = ((cur - hi52) / hi52 * 100).toFixed(1);
+        const fromHiN = parseFloat(fromHi);
+        const pct     = hi52 > lo52 ? Math.round((cur - lo52) / (hi52 - lo52) * 100) : 50;
+        const color   = fromHiN >= 0 ? 'var(--up)' : fromHiN >= -10 ? 'var(--gd)' : 'var(--dn)';
+
+        const valEl  = document.getElementById(valId);
+        const fillEl = document.getElementById(fillId);
+        const rngEl  = document.getElementById(rangeId);
+        if(valEl)  valEl.innerHTML = `<span style="color:${color};font-size:13px;font-weight:900">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span><span style="font-size:9px;color:var(--tx3);margin-left:4px">52주고점대비</span>`;
+        if(fillEl) { fillEl.style.width = Math.max(2, pct) + '%'; fillEl.style.background = color; }
+        if(rngEl)  rngEl.textContent = `저 ${lo52.toLocaleString()} — 고 ${hi52.toLocaleString()}`;
+      };
+
+      renderEtf52(kpEtf, 'etf52Kp', 'etf52KpFill', 'etf52KpRange');
+      renderEtf52(kqEtf, 'etf52Kq', 'etf52KqFill', 'etf52KqRange');
+      document.getElementById('mktEtf52').style.display = 'grid';
+    } catch(e) { console.warn('ETF 52주 조회 실패:', e); }
+
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
