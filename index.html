@@ -681,7 +681,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <span class="sh-title">🕯️ 종봉 PICK</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-sc btn-sm" onclick="refreshCandlePrices()" id="candleRefreshBtn">🔄 현재가</button>
-          <button class="btn btn-sc btn-sm" onclick="openCandleDateSel()">📅 날짜지정</button>
           <button class="btn btn-ac btn-sm" onclick="openCandleMo()">＋ 추가</button>
         </div>
       </div>
@@ -833,23 +832,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
 <!-- ── 추적 추가 모달 ── -->
 <!-- ── 기준봉 추가 모달 ── -->
-<!-- ── 종봉 날짜 선택 모달 ── -->
-<div class="mo" id="moCandleDateSel" onclick="if(event.target===this)closeMo('moCandleDateSel')">
-  <div class="mo-box">
-    <div class="mo-handle"></div>
-    <div class="mo-title">📅 날짜 선택 후 추가</div>
-    <div class="fg" style="margin-bottom:18px">
-      <label>기록할 날짜</label>
-      <input type="date" id="candleDateInput" style="font-size:16px;padding:12px 14px">
-    </div>
-    <button class="btn btn-pr" onclick="confirmCandleDateSel()">이 날짜로 추가하기</button>
-  </div>
-</div>
-
 <div class="mo" id="moCandle" onclick="if(event.target===this)closeMo('moCandle')">
   <div class="mo-box">
     <div class="mo-handle"></div>
     <div class="mo-title">🕯️ 종봉 PICK 추가</div>
+    <!-- 날짜 선택 -->
+    <div class="fg" style="margin-bottom:14px">
+      <label>📅 기록 날짜</label>
+      <input type="date" id="cdDate" style="font-size:14px;padding:10px 12px">
+    </div>
     <!-- 종목코드 검색 -->
     <div style="background:var(--sf2);border-radius:14px;padding:14px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:var(--pr);margin-bottom:10px">🔍 종목코드로 자동 불러오기</div>
@@ -1925,12 +1916,9 @@ function openCandleMo(targetDate){
   const lineEl=document.getElementById('cdLine');if(lineEl)lineEl.textContent='—';
   const stEl=document.getElementById('cdSt');if(stEl)stEl.textContent='—';
   const msgEl=document.getElementById('cdCodeMsg');if(msgEl)msgEl.textContent='';
-  window._candleTargetDate = targetDate || new Date().toISOString().slice(0,10);
-  const titleEl=document.querySelector('#moCandle .mo-title');
-  if(titleEl){
-    const today=new Date().toISOString().slice(0,10);
-    titleEl.textContent = window._candleTargetDate===today ? '🕯️ 종봉 PICK 추가' : `🕯️ 종봉 PICK 추가 (${window._candleTargetDate})`;
-  }
+  // 날짜 input 초기값 세팅
+  const dateEl=document.getElementById('cdDate');
+  if(dateEl) dateEl.value = targetDate || new Date().toISOString().slice(0,10);
   openMo('moCandle');
 }
 
@@ -2004,7 +1992,7 @@ async function addCandle(){
     memo:document.getElementById('cdMemo').value.trim()};
 
   const today = new Date().toISOString().slice(0,10);
-  const targetDate = window._candleTargetDate || today;
+  const targetDate = (document.getElementById('cdDate')?.value) || today;
   const user = window._curUser;
 
   if(targetDate === today){
