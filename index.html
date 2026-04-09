@@ -4052,24 +4052,20 @@ window.fetchMarketIndex = async () => {
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
-    // ETF 52주 현황 (공공데이터 API)
+    // ETF 52주 현황 (KIS stock_price - w52_hgpr/w52_lwpr)
     try {
-      const ETF_KEY = 'd7f011931a4f7d1929ddfd4d5423f9d74410918fadd1bbb7a12cdc7b9cf5a5e5';
       const fetchEtf52 = async (code) => {
-        const url = `https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo?serviceKey=${ETF_KEY}&numOfRows=1&pageNo=1&resultType=json&likeSrtnCd=${code}`;
-        const r = await fetch(url);
-        const j = await r.json();
-        const items = j?.response?.body?.items?.item;
-        if(!items) return null;
-        return Array.isArray(items) ? items[0] : items;
+        const r = await fetch('/api/kis?action=stock_price&codes=' + code);
+        const d = await r.json();
+        return (d.output || [])[0] || null;
       };
       const [kpEtf, kqEtf] = await Promise.all([fetchEtf52('069500'), fetchEtf52('232080')]);
 
       const renderEtf52 = (etf, valId, fillId, rangeId) => {
         if(!etf) return;
-        const cur  = parseInt(etf.clpr)           || 0;  // 종가
-        const hi52 = parseInt(etf.fiftTwoWeekHgpr) || 0;  // 52주 고가
-        const lo52 = parseInt(etf.fiftTwoWeekLwpr) || 0;  // 52주 저가
+        const cur  = parseInt(etf.stck_prpr) || 0;  // 현재가
+        const hi52 = parseInt(etf.w52_hgpr)  || 0;  // 52주 고가
+        const lo52 = parseInt(etf.w52_lwpr)  || 0;  // 52주 저가
         if(!cur || !hi52 || !lo52) return;
 
         const fromHi  = ((cur - hi52) / hi52 * 100).toFixed(1);
