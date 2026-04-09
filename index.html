@@ -2013,8 +2013,10 @@ async function addCandle(){
     }
     existing.push(candle);
     if(user) await window.saveCandleToFirestore(user.uid, existing, targetDate);
-    // 현재 화면에 그 날짜가 로드돼 있으면 리렌더
-    if(window._cdLatestDate === targetDate){ S.candles = existing; renderCandleFeat(); }
+    // 화면을 그 날짜로 전환해서 바로 보이게 + 이후 delCandle/edit도 같은 날짜 기준
+    S.candles = existing;
+    window._cdLatestDate = targetDate;
+    renderCandleFeat();
     closeMo('moCandle');
     alert(`✓ ${name} 추가됐어요! (${targetDate})`);
   }
