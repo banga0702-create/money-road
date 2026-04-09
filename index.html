@@ -580,21 +580,21 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <!-- 3열 가로 레이아웃 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:8px 8px 12px">
 
-        <!-- 외+기 동시 -->
+        <!-- 외국인(+기관) -->
         <div style="min-width:0">
-          <div style="font-size:9px;font-weight:800;color:var(--up);margin-bottom:6px">🔥 외+기 합산</div>
+          <div style="font-size:9px;font-weight:800;color:var(--up);margin-bottom:6px">📝 외국인(+기관)</div>
           <div id="topListFI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
-        <!-- 외국인 -->
+        <!-- 외국인 순매수 -->
         <div style="min-width:0">
-          <div style="font-size:9px;font-weight:800;color:var(--up);margin-bottom:6px">📈 외국인(+기관)</div>
+          <div style="font-size:9px;font-weight:800;color:var(--up);margin-bottom:6px">🌊 외국인순매수</div>
           <div id="topListF" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
-        <!-- 외국인단독 -->
+        <!-- 기관 순매수 -->
         <div style="min-width:0">
-          <div style="font-size:9px;font-weight:800;color:var(--dn);margin-bottom:6px">🌊 외국인순매수</div>
+          <div style="font-size:9px;font-weight:800;color:var(--dn);margin-bottom:6px">🏦 기관순매수</div>
           <div id="topListI" style="display:flex;flex-direction:column;gap:3px"></div>
         </div>
 
@@ -2517,15 +2517,15 @@ window.kisTopFetch = async () => {
     // 외탑30+기탑30 60종목 전체 기준
     const all60 = all; // ETF 제외된 전체 풀
 
-    // 외+기 합산: 60종목 중 둘 다 매수, 합산금액 순
-    const fi = all60.filter(s => s.fBuy > 0 && s.iBuy > 0)
-      .sort((a,b) => (b.fBuy+b.iBuy) - (a.fBuy+a.iBuy)).slice(0,15);
     // 외국인(+기관): 60종목 중 둘 다 매수, 외국인 금액 순
-    const f = all60.filter(s => s.fBuy > 0 && s.iBuy > 0)
+    const fi = all60.filter(s => s.fBuy > 0 && s.iBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
     // 외국인 순매수: 60종목 전체, 기관 무관, 외국인 금액 순
-    const inst = all60.filter(s => s.fBuy > 0)
+    const f = all60.filter(s => s.fBuy > 0)
       .sort((a,b) => b.fBuy - a.fBuy).slice(0,15);
+    // 기관 순매수: 60종목 전체, 외국인 무관, 기관 금액 순
+    const inst = all60.filter(s => s.iBuy > 0)
+      .sort((a,b) => b.iBuy - a.iBuy).slice(0,15);
 
     // ⭐ 배지: fi(합산순)과 f(외국인순) 모두 상위권 + inst(전체)에도 있는 종목
     const fiNames = new Set(fi.map(s => s.name));
