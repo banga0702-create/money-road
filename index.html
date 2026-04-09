@@ -2324,13 +2324,19 @@ window.addEventListener('load',()=>{
   // 특징주 탭 데이터 자동 로드 (로그인 후 처리됨)
 
   if(S.market.up){
-    document.getElementById('mUp').value=S.market.up||'';
-    document.getElementById('mTotal').value=S.market.total||'';
-    document.getElementById('mVol').value=S.market.vol||'';
-    document.getElementById('mAvg').value=S.market.avgVol||'';
-    document.getElementById('mFBuy').value=S.market.fBuy||'';
-    document.getElementById('mIBuy').value=S.market.iBuy||'';
-    calcMkt();
+    const mUpEl = document.getElementById('mUp');
+    const mTotalEl = document.getElementById('mTotal');
+    const mVolEl = document.getElementById('mVol');
+    const mAvgEl = document.getElementById('mAvg');
+    const mFBuyEl = document.getElementById('mFBuy');
+    const mIBuyEl = document.getElementById('mIBuy');
+    if(mUpEl) mUpEl.value=S.market.up||'';
+    if(mTotalEl) mTotalEl.value=S.market.total||'';
+    if(mVolEl) mVolEl.value=S.market.vol||'';
+    if(mAvgEl) mAvgEl.value=S.market.avgVol||'';
+    if(mFBuyEl) mFBuyEl.value=S.market.fBuy||'';
+    if(mIBuyEl) mIBuyEl.value=S.market.iBuy||'';
+    if(mUpEl) calcMkt();
   }
 });
 </script>
