@@ -4375,7 +4375,7 @@ onAuthStateChanged(auth, async (user) => {
       window._kisUid = user.uid;
       // 홈화면 시장현황 카드 자동 로드
       fetchMarketIndex();
-      fetchEtf52Week();
+      setTimeout(fetchEtf52Week, 3000); // 토큰 충돌 방지 딜레이
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
