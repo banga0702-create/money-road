@@ -2617,6 +2617,7 @@ window.kisTopFetch = async () => {
         (d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)
       ).length : 0;
       window._kisRows[key] = { ...s, contDays, code: s.code || '' };
+      const isTriple = tripleNames.has(s.name);
       const bg = isTriple
         ? 'background:linear-gradient(135deg,rgba(255,71,87,0.10),rgba(79,99,232,0.08));border:1px solid rgba(255,71,87,0.35)'
         : 'background:var(--sf);border:1px solid var(--bd)';
@@ -2696,7 +2697,6 @@ window.kisTopFetch = async () => {
       };
       window._stockThemeMap = stockThemeMap;
       const displaySector = stockThemeMap[s.name] || (s.sector ? (sectorMap[s.sector] || s.sector) : '');
-      const isTriple = tripleNames.has(s.name);
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
