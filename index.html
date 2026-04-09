@@ -1016,6 +1016,7 @@ function switchTab(tab){
   document.getElementById(PAGE_MAP[tab]).classList.add('active');
   document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
   curTab=tab;
+  localStorage.setItem('lastTab', tab); // 마지막 탭 저장
   const fab=document.getElementById('fabBtn');
   fab.style.display=tab==='supply'?'flex':'none';
   if(tab==='home') renderHome();
@@ -4250,6 +4251,11 @@ onAuthStateChanged(auth, async (user) => {
           }
         }
       } catch(e) { console.warn('오늘 데이터 확인 실패:', e); }
+      // 마지막 탭 복원
+      const lastTab = localStorage.getItem('lastTab');
+      if(lastTab && PAGE_MAP[lastTab]) {
+        switchTab(lastTab);
+      }
     }, 1000);
 
   } else {
