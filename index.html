@@ -2607,7 +2607,7 @@ window.kisTopFetch = async () => {
     const fiNames = new Set(fi.map(s => s.name));
     const fNames  = new Set(f.map(s => s.name));
     const iNames  = new Set(inst.map(s => s.name));
-    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n) && iNames.has(n)));
+    const tripleNames = new Set([...fiNames].filter(n => fNames.has(n))); // 1열+2열 중복만
 
     // 종목 카드 HTML 생성
     const makeRowHL = (s, i) => {
@@ -2617,7 +2617,9 @@ window.kisTopFetch = async () => {
         (d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)
       ).length : 0;
       window._kisRows[key] = { ...s, contDays, code: s.code || '' };
-      const bg = 'background:var(--sf);border:1px solid var(--bd)';
+      const bg = isTriple
+        ? 'background:linear-gradient(135deg,rgba(255,71,87,0.10),rgba(79,99,232,0.08));border:1px solid rgba(255,71,87,0.35)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
       const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
@@ -2696,7 +2698,7 @@ window.kisTopFetch = async () => {
       const displaySector = stockThemeMap[s.name] || (s.sector ? (sectorMap[s.sector] || s.sector) : '');
       const isTriple = tripleNames.has(s.name);
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (isTriple ? '⭐' : (i+1)) + '</div>'
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
@@ -2805,7 +2807,7 @@ window.loadKisHistory = async (date, uid) => {
     const fiNames2 = new Set((data.fi||[]).map(s=>s.name));
     const fNames2  = new Set((data.f||[]).map(s=>s.name));
     const iNames2  = new Set((data.inst||[]).map(s=>s.name));
-    const triple2  = new Set([...fiNames2].filter(n => fNames2.has(n) && iNames2.has(n)));
+    const triple2  = new Set([...fiNames2].filter(n => fNames2.has(n))); // 1열+2열 중복만
 
     const makeRow2 = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
