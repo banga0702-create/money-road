@@ -395,13 +395,12 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 시장온도 카드 -->
     <div class="temp-card">
       <div class="tc-top">
-        <div>
-          <div class="tc-lbl">오늘의 지수</div>
-          <div class="tc-status" id="tcStatus" style="color:var(--tx3)">데이터 없음</div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span style="font-size:12px;font-weight:800;color:var(--tx2)">📊 오늘의 지수</span>
+          <span class="tc-status" id="tcStatus" style="color:var(--tx3);font-size:14px;font-weight:900"></span>
         </div>
         <div style="text-align:right">
-          <div class="tc-score" style="display:none"><span id="tcScore">0</span><span class="tc-unit">pt</span></div>
-          <div class="tc-time" id="tcTime">15:35 기준</div>
+          <div class="tc-time" id="tcTime"></div>
         </div>
       </div>
       <!-- 원형 게이지 2개 -->
@@ -1647,12 +1646,12 @@ function renderHome(){
   if(upNumEl) upNumEl.textContent = m.up ? m.up.toLocaleString() : '—';
   if(dnNumEl) dnNumEl.textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
 
-  const st=score>=75?{txt:'🤑 강세',col:'var(--up)'}:
-    score>=55?{txt:'📈 상승장',col:'#F97316'}:
-    score>=45?{txt:'➡️ 중립',col:'var(--tx2)'}:
-    score>=25?{txt:'📉 약세',col:'var(--dn)'}:
-    score>0?{txt:'❄️ 급락장',col:'#93C5FD'}:
-    {txt:'데이터 없음',col:'var(--tx3)'};
+  const st=score>=75?{txt:'강세',col:'var(--up)'}:
+    score>=55?{txt:'상승장',col:'#F97316'}:
+    score>=45?{txt:'중립',col:'var(--tx2)'}:
+    score>=25?{txt:'약세',col:'var(--dn)'}:
+    score>0?{txt:'급락장',col:'#93C5FD'}:
+    {txt:'',col:'var(--tx3)'};
   const stEl=document.getElementById('tcStatus');
   stEl.textContent=st.txt; stEl.style.color=st.col;
 
