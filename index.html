@@ -1529,11 +1529,12 @@ function renderMarketComment(score, prevScore) {
   // 7일 막대그래프
   const weekBarEl = document.getElementById('mktWeekBar');
   if(weekBarEl && S.weekHist && S.weekHist.length) {
-    weekBarEl.innerHTML = S.weekHist.map(d => {
+    const validHist = S.weekHist.filter(d => d.date); // date 없는 이전 데이터 제외
+    weekBarEl.innerHTML = validHist.map(d => {
       const isToday = d.isToday;
       const h = isToday ? Math.max(Math.round(d.score * 0.48), 6) : Math.max(Math.round(d.score * 0.24), 2);
       const c = d.score >= 55 ? 'var(--up)' : d.score >= 45 ? 'var(--tx3)' : 'var(--dn)';
-      const label = d.date ? d.date.slice(5).replace('-','/') : d.day;
+      const label = d.date.slice(5).replace('-','/');
       return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <div style="width:${isToday?'10px':'7px'};height:${h}px;background:${c};border-radius:3px 3px 0 0;opacity:${isToday?'1':'0.55'};transition:height .8s"></div>
         <div style="font-size:7px;font-weight:${isToday?'900':'600'};color:${isToday?color:'var(--tx3)'};">${label}</div>
@@ -1578,6 +1579,13 @@ function renderHome(){
       if(arEl) arEl.textContent = isActive ? `▲ ${score}pt` : '';
     });
     animNum('tcScore',score);
+
+    // 현재 시각으로 기준 시간 업데이트
+    const nowT = new Date();
+    const hh = String(nowT.getHours()).padStart(2,'0');
+    const mm = String(nowT.getMinutes()).padStart(2,'0');
+    const tcTimeEl = document.getElementById('tcTime');
+    if(tcTimeEl) tcTimeEl.textContent = `${hh}:${mm} 기준`;
 
     const kospiChg  = m.kospiChg  ?? window._mktKospiChg  ?? null;
     const kosdaqChg = m.kosdaqChg ?? window._mktKosdaqChg ?? null;
