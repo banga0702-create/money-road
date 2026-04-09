@@ -443,13 +443,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
           <div style="font-size:9px;font-weight:700;color:var(--tx3);margin-bottom:4px">KODEX 200 (52주)</div>
           <div id="etf52Kp" style="font-size:13px;font-weight:900">—</div>
-          <div id="etf52KpBar" style="height:4px;background:var(--sf3);border-radius:2px;margin-top:5px;overflow:hidden"><div id="etf52KpFill" style="height:100%;border-radius:2px;width:0%;transition:width 1s"></div></div>
+
           <div id="etf52KpRange" style="font-size:8px;color:var(--tx3);margin-top:3px">52주 저가 — 고가</div>
         </div>
         <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
           <div style="font-size:9px;font-weight:700;color:var(--tx3);margin-bottom:4px">KODEX 코스닥150 (52주)</div>
           <div id="etf52Kq" style="font-size:13px;font-weight:900">—</div>
-          <div id="etf52KqBar" style="height:4px;background:var(--sf3);border-radius:2px;margin-top:5px;overflow:hidden"><div id="etf52KqFill" style="height:100%;border-radius:2px;width:0%;transition:width 1s"></div></div>
+
           <div id="etf52KqRange" style="font-size:8px;color:var(--tx3);margin-top:3px">52주 저가 — 고가</div>
         </div>
       </div>
@@ -4052,41 +4052,38 @@ window.fetchMarketIndex = async () => {
 
     document.getElementById('mktIndexCard').style.display = 'block';
 
-    // ETF 52주 현황 (KIS stock_price - w52_hgpr/w52_lwpr)
-    try {
-      const fetchEtf52 = async (code) => {
-        const r = await fetch('/api/kis?action=stock_price&codes=' + code);
-        const d = await r.json();
-        return (d.output || [])[0] || null;
-      };
-      const [kpEtf, kqEtf] = await Promise.all([fetchEtf52('069500'), fetchEtf52('229200')]);
-
-      const renderEtf52 = (etf, valId, fillId, rangeId) => {
-        if(!etf) return;
-        const cur  = parseInt(etf.stck_prpr) || 0;  // 현재가
-        const hi52 = parseInt(etf.w52_hgpr)  || 0;  // 52주 고가
-        const lo52 = parseInt(etf.w52_lwpr)  || 0;  // 52주 저가
-        if(!cur || !hi52 || !lo52) { console.warn('ETF 52주 데이터 없음:', etf); return; }
-
-        const fromHi  = ((cur - hi52) / hi52 * 100).toFixed(1);
-        const fromHiN = parseFloat(fromHi);
-        const pct     = hi52 > lo52 ? Math.round((cur - lo52) / (hi52 - lo52) * 100) : 50;
-        const color   = fromHiN >= 0 ? 'var(--up)' : fromHiN >= -10 ? 'var(--gd)' : 'var(--dn)';
-
-        const valEl  = document.getElementById(valId);
-        const fillEl = document.getElementById(fillId);
-        const rngEl  = document.getElementById(rangeId);
-        if(valEl)  valEl.innerHTML = `<span style="color:${color};font-size:16px;font-weight:900">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span>`;
-        if(fillEl) { fillEl.style.width = Math.max(2, pct) + '%'; fillEl.style.background = color; }
-        if(rngEl)  rngEl.textContent = `고 ${hi52.toLocaleString()}`;
-      };
-
-      renderEtf52(kpEtf, 'etf52Kp', 'etf52KpFill', 'etf52KpRange');
-      renderEtf52(kqEtf, 'etf52Kq', 'etf52KqFill', 'etf52KqRange');
-      document.getElementById('mktEtf52').style.display = 'grid';
-    } catch(e) { console.warn('ETF 52주 조회 실패:', e); }
-
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
+};
+
+// ETF 52주 현황 - fetchMarketIndex와 독립 실행
+window.fetchEtf52Week = async () => {
+  try {
+    const fetchOne = async (code) => {
+      const r = await fetch('/api/kis?action=stock_price&codes=' + code);
+      const d = await r.json();
+      return (d.output || [])[0] || null;
+    };
+    const [kpEtf, kqEtf] = await Promise.all([fetchOne('069500'), fetchOne('229200')]);
+
+    const render = (etf, valId, rangeId) => {
+      if(!etf) return;
+      const cur  = parseInt(etf.stck_prpr) || 0;
+      const hi52 = parseInt(etf.w52_hgpr)  || 0;
+      const lo52 = parseInt(etf.w52_lwpr)  || 0;
+      if(!cur || !hi52 || !lo52) { console.warn('ETF 52주 데이터 없음:', etf); return; }
+      const fromHi  = ((cur - hi52) / hi52 * 100).toFixed(1);
+      const fromHiN = parseFloat(fromHi);
+      const color   = fromHiN >= 0 ? 'var(--up)' : 'var(--dn)';
+      const valEl = document.getElementById(valId);
+      const rngEl = document.getElementById(rangeId);
+      if(valEl) valEl.innerHTML = `<span style="color:${color};font-size:16px;font-weight:900">${fromHiN >= 0 ? '+' : ''}${fromHi}%</span>`;
+      if(rngEl) rngEl.textContent = `고 ${hi52.toLocaleString()}`;
+    };
+
+    render(kpEtf, 'etf52Kp', 'etf52KpRange');
+    render(kqEtf, 'etf52Kq', 'etf52KqRange');
+    document.getElementById('mktEtf52').style.display = 'grid';
+  } catch(e) { console.warn('ETF 52주 조회 실패:', e); }
 };
 
 window.kisAutoFetch = async () => {
@@ -4378,6 +4375,7 @@ onAuthStateChanged(auth, async (user) => {
       window._kisUid = user.uid;
       // 홈화면 시장현황 카드 자동 로드
       fetchMarketIndex();
+      fetchEtf52Week();
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
