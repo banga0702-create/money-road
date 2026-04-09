@@ -2007,36 +2007,30 @@ async function addCandle(){
   const targetDate = (document.getElementById('cdDate')?.value) || today;
   const user = window._curUser;
 
-  if(targetDate === today){
-    // 오늘이면 S.candles 그대로 사용
-    S.candles.push(candle);
-    save();
-    if(user) await window.saveCandleToFirestore(user.uid, S.candles, today);
-    closeMo('moCandle');
-    renderCandleFeat();
-  } else {
-    // 과거 날짜: onchange로 미리 로드된 캐시 사용
-    // 캐시가 없거나 날짜가 다르면 지금 Firestore에서 로드
-    if(!window._candleDateCache || window._candleDateCache.date !== targetDate){
-      let loaded = [];
-      if(user){
-        try{
-          const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', targetDate));
-          loaded = snap.exists() ? (snap.data().candles || []) : [];
-        }catch(e){ loaded = []; }
-      }
-      window._candleDateCache = { date: targetDate, candles: loaded };
+  // 캐시가 없거나 날짜가 다르면 Firestore에서 로드
+  if(!window._candleDateCache || window._candleDateCache.date !== targetDate){
+    let loaded = [];
+    if(user){
+      try{
+        const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', targetDate));
+        loaded = snap.exists() ? (snap.data().candles || []) : [];
+      }catch(e){ loaded = []; }
     }
-    // 캐시에 추가
-    window._candleDateCache.candles.push(candle);
-    if(user) await window.saveCandleToFirestore(user.uid, window._candleDateCache.candles, targetDate);
-    // 화면 반영
-    S.candles = window._candleDateCache.candles;
-    window._cdLatestDate = targetDate;
-    renderCandleFeat();
-    closeMo('moCandle');
-    alert(`✓ ${name} 추가됐어요! (${targetDate})`);
+    window._candleDateCache = { date: targetDate, candles: loaded };
   }
+
+  // 캐시에 추가 후 저장
+  window._candleDateCache.candles.push(candle);
+  if(user) await window.saveCandleToFirestore(user.uid, window._candleDateCache.candles, targetDate);
+
+  // 오늘 날짜면 S.candles도 동기화
+  if(targetDate === today) S.candles = window._candleDateCache.candles;
+
+  // 화면: 현재 보고 있는 탭이 저장한 날짜면 바로 반영
+  window._cdLatestDate = targetDate;
+  renderCandleFeat();
+  closeMo('moCandle');
+  if(targetDate !== today) alert(`✓ ${name} 추가됐어요! (${targetDate})`);
 }
 function delCandle(i){
   S.candles.splice(i,1);
@@ -2089,9 +2083,13 @@ window.refreshCandlePrices = async () => {
 function renderCandleFeat(){
   const cl=document.getElementById('candleList');
   const ce=document.getElementById('candleEmpty');
-  if(!S.candles.length){if(cl)cl.innerHTML='';if(ce)ce.style.display='flex';return;}
+  // 현재 보고 있는 날짜의 캐시 우선, 없으면 S.candles
+  const displayCandles = (window._candleDateCache && window._candleDateCache.date === window._cdLatestDate)
+    ? window._candleDateCache.candles
+    : S.candles;
+  if(!displayCandles.length){if(cl)cl.innerHTML='';if(ce)ce.style.display='flex';return;}
   if(ce)ce.style.display='none';
-  if(cl)cl.innerHTML=S.candles.map((c,i)=>{
+  if(cl)cl.innerHTML=displayCandles.map((c,i)=>{
     const hasHL = c.high && c.low && c.midLine;
     const st = !hasHL ? null :
       c.curPrice>c.midLine?{cls:'cs-strong',txt:'🔥 수급 강함'}:
@@ -3493,9 +3491,11 @@ window.loadCandleHistory = async (date, uid) => {
   if(activeBtn) { activeBtn.style.background = 'var(--pr)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--pr)'; }
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'candleHistory', date));
-    if(!snap.exists()) return;
-    const data = snap.data();
-    S.candles = data.candles || [];
+    const candles = snap.exists() ? (snap.data().candles || []) : [];
+    window._cdLatestDate = date;
+    window._candleDateCache = { date, candles };
+    const today = new Date().toISOString().slice(0,10);
+    if(date === today) S.candles = candles;
     renderCandleFeat();
   } catch(e) { console.warn('종봉 히스토리 로드 실패:', e); }
 };
