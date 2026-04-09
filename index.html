@@ -839,7 +839,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 날짜 선택 -->
     <div class="fg" style="margin-bottom:14px">
       <label>📅 기록 날짜</label>
-      <input type="date" id="cdDate" style="font-size:14px;padding:10px 12px">
+      <input type="date" id="cdDate" style="font-size:14px;padding:10px 12px" onchange="onCdDateChange()">
     </div>
     <!-- 종목코드 검색 -->
     <div style="background:var(--sf2);border-radius:14px;padding:14px;margin-bottom:16px">
@@ -1916,11 +1916,23 @@ function openCandleMo(targetDate){
   const lineEl=document.getElementById('cdLine');if(lineEl)lineEl.textContent='—';
   const stEl=document.getElementById('cdSt');if(stEl)stEl.textContent='—';
   const msgEl=document.getElementById('cdCodeMsg');if(msgEl)msgEl.textContent='';
-  // 날짜 input 초기값 세팅
   const dateEl=document.getElementById('cdDate');
   if(dateEl) dateEl.value = targetDate || new Date().toISOString().slice(0,10);
   openMo('moCandle');
 }
+
+// 날짜 input 변경 시 그 날짜 캐시 미리 로드
+window.onCdDateChange = async () => {
+  const val = document.getElementById('cdDate')?.value;
+  const today = new Date().toISOString().slice(0,10);
+  if(!val || val === today) return; // 오늘은 S.candles 그대로
+  const user = window._curUser;
+  if(!user) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', val));
+    window._candleDateCache = { date: val, candles: snap.exists() ? (snap.data().candles || []) : [] };
+  } catch(e) { window._candleDateCache = { date: val, candles: [] }; }
+};
 
 window.openCandleDateSel = () => {
   const today = new Date().toISOString().slice(0,10);
@@ -1996,29 +2008,31 @@ async function addCandle(){
   const user = window._curUser;
 
   if(targetDate === today){
-    // 오늘 날짜면 기존 방식
+    // 오늘이면 S.candles 그대로 사용
     S.candles.push(candle);
     save();
     if(user) await window.saveCandleToFirestore(user.uid, S.candles, today);
     closeMo('moCandle');
     renderCandleFeat();
   } else {
-    // 과거 날짜:
-    // _cdLatestDate가 이미 그 날짜면 S.candles가 그 날 데이터 → 바로 push
-    // 날짜가 다르면(처음 진입) Firestore에서 로드
-    if(window._cdLatestDate !== targetDate){
+    // 과거 날짜: onchange로 미리 로드된 캐시 사용
+    // 캐시가 없거나 날짜가 다르면 지금 Firestore에서 로드
+    if(!window._candleDateCache || window._candleDateCache.date !== targetDate){
+      let loaded = [];
       if(user){
         try{
           const snap = await getDoc(doc(db, 'users', user.uid, 'candleHistory', targetDate));
-          S.candles = snap.exists() ? (snap.data().candles || []) : [];
-        }catch(e){ S.candles = []; }
-      } else {
-        S.candles = [];
+          loaded = snap.exists() ? (snap.data().candles || []) : [];
+        }catch(e){ loaded = []; }
       }
-      window._cdLatestDate = targetDate;
+      window._candleDateCache = { date: targetDate, candles: loaded };
     }
-    S.candles.push(candle);
-    if(user) await window.saveCandleToFirestore(user.uid, S.candles, targetDate);
+    // 캐시에 추가
+    window._candleDateCache.candles.push(candle);
+    if(user) await window.saveCandleToFirestore(user.uid, window._candleDateCache.candles, targetDate);
+    // 화면 반영
+    S.candles = window._candleDateCache.candles;
+    window._cdLatestDate = targetDate;
     renderCandleFeat();
     closeMo('moCandle');
     alert(`✓ ${name} 추가됐어요! (${targetDate})`);
