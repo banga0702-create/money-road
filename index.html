@@ -1370,6 +1370,7 @@ function editCandle(i) {
   if(!c) return;
   _editCandleIdx = i;
   document.getElementById('cdCode').value = c.code || '';
+  document.getElementById('cdSearchName').value = c.name || '';
   document.getElementById('cdName').value = c.name || '';
   document.getElementById('cdSector').value = c.sector || '';
   document.getElementById('cdVol').value = c.vol || '';
@@ -2017,8 +2018,10 @@ window.selectCandleStock = async (code, name) => {
     const pRes = await fetch('/api/kis?action=stock_price&codes=' + code);
     const pData = await pRes.json();
     const p = (pData.output || [])[0];
+    let curPrice = 0;
     if(p){
-      if(p.stck_prpr) document.getElementById('cdCur').value = parseInt(p.stck_prpr);
+      curPrice = parseInt(p.stck_prpr)||0;
+      if(curPrice) document.getElementById('cdCur').value = curPrice;
       if(p.prdy_ctrt) document.getElementById('cdChg').value = parseFloat(p.prdy_ctrt);
       if(p.stck_hgpr) document.getElementById('cdH').value = parseInt(p.stck_hgpr);
       if(p.stck_lwpr) document.getElementById('cdL').value = parseInt(p.stck_lwpr);
@@ -2026,21 +2029,20 @@ window.selectCandleStock = async (code, name) => {
       if(p.bstp_kor_isnm) document.getElementById('cdSector').value = p.bstp_kor_isnm;
       calcCandle();
       const rate = parseFloat(p.prdy_ctrt)||0;
-      msg.textContent = `✓ ${name} | ${parseInt(p.stck_prpr).toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
+      msg.textContent = `✓ ${name} | ${curPrice.toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
     }
-    // 외국인/기관 순매수 (수량 × 현재가 → 억원)
+    // 외국인/기관 순매수 (foreign_inst_combined에서 해당 종목 찾기)
     try {
-      const iRes = await fetch('/api/kis?action=investor&code=' + code);
-      const iData = await iRes.json();
-      const row = (iData.output||[])[0];
-      const curPrice = parseInt(p?.stck_prpr||0);
-      if(row && curPrice){
-        const fBuy = Math.round(parseFloat(row.frgn_ntby_qty||0) * curPrice / 100000000);
-        const iBuy = Math.round(parseFloat(row.orgn_ntby_qty||0) * curPrice / 100000000);
+      const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
+      const fiData = await fiRes.json();
+      const match = (fiData.output||[]).find(s => s.mksc_shrn_iscd === code);
+      if(match){
+        const fBuy = Math.round(parseFloat(match.frgn_ntby_tr_pbmn||0) / 100);
+        const iBuy = Math.round(parseFloat(match.orgn_ntby_tr_pbmn||0) / 100);
         if(fBuy) document.getElementById('cdFBuy').value = fBuy;
         if(iBuy) document.getElementById('cdIBuy').value = iBuy;
       }
-    } catch(e){}
+    } catch(e){ console.warn('외기 조회 실패:', e); }
   } catch(e){ msg.style.color='var(--up)'; msg.textContent='❌ 시세 조회 실패: '+e.message; }
 };
 
