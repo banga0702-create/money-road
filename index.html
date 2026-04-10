@@ -3173,7 +3173,7 @@ window.upSudFetch = async () => {
       result.forEach((s, idx) => {
         const n = s.hts_kor_isnm;
         const k = 'us_' + n.replace(/[^a-zA-Z0-9가-힣]/g,'');
-        setTimeout(() => autoLoadStreak(k, s.mksc_shrn_iscd||'', fBuyMap[n]||0, iBuyMap[n]||0), idx * 1200);
+        setTimeout(() => autoLoadStreak(k, s.mksc_shrn_iscd||'', fBuyMap[n]||0, iBuyMap[n]||0), idx * 1500);
       });
     }
 
@@ -3315,7 +3315,7 @@ window.reverseFetch = async () => {
       const key = 'rv_' + s.name.replace(/\s/g,'');
       const todayF = fBuyMap[s.name] || 0;
       const todayI = iBuyMap[s.name] || 0;
-      setTimeout(() => autoLoadStreak(key, codeMap[s.name] || '', todayF, todayI), idx * 1200);
+      setTimeout(() => autoLoadStreak(key, codeMap[s.name] || '', todayF, todayI), idx * 1500);
     });
 
     msg.textContent = `✓ 완료! 외+기 합산 ${fNames.length}개 종목 중 하락+1000억↑ ${fResult.length}개 / 외+기 ${fiResult.length}개`;
@@ -3419,7 +3419,7 @@ window.loadUpSudHistory = async (date, uid) => {
     // 자동으로 연속매수/매도 조회 - 딜레이 순차 호출
     list.forEach((s, i) => {
       const k = 'usd_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'') + '_' + i;
-      setTimeout(() => autoLoadStreak(k, s.code||'', s.fBuy||0, s.iBuy||0), i * 1200);
+      setTimeout(() => autoLoadStreak(k, s.code||'', s.fBuy||0, s.iBuy||0), i * 1500);
     });
   } catch(e) { console.warn('상승수급 히스토리 로드 실패:', e); }
 };
@@ -3484,7 +3484,7 @@ window.loadReverseHistory = async (date, uid) => {
     // 자동으로 연속매수/매도 조회 - 딜레이 순차 호출
     [...(data.fResult||[]), ...(data.fiResult||[])].forEach((s, idx) => {
       const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'');
-      setTimeout(() => autoLoadStreak(key, s.code||'', s.fBuy||0, s.iBuy||0), idx * 1200);
+      setTimeout(() => autoLoadStreak(key, s.code||'', s.fBuy||0, s.iBuy||0), idx * 1500);
     });
   } catch(e) { console.warn('역발상 히스토리 로드 실패:', e); }
 };
