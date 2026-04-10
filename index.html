@@ -3153,7 +3153,7 @@ window.upSudFetch = async () => {
         const iBuy = iBuyMap[name] || 0;
         window._kisRows = window._kisRows || {};
         window._kisRows[key] = { name, code, fBuy, iBuy };
-        const sector = s.bstp_kor_isnm || '';
+        const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
         return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
@@ -3163,9 +3163,9 @@ window.upSudFetch = async () => {
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
           + '</div>'
           + '<div style="font-size:9px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">'
+          + '<span id="inv_' + key + '"></span>'
           + (fBuy > 0 ? '<span style="color:var(--up)">외 +' + fBuy + '억</span>' : '')
           + (iBuy > 0 ? '<span style="color:var(--dn)">기 +' + iBuy + '억</span>' : '')
-          + '<span id="inv_' + key + '"></span>'
           + '</div>'
           + '</div>';
       }).join('');
@@ -3401,17 +3401,19 @@ window.loadUpSudHistory = async (date, uid) => {
       const key = 'usd_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g,'') + '_' + i;
       window._kisRows[key] = { name: s.name, code: s.code||'', fBuy: s.fBuy||0, iBuy: s.iBuy||0 };
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
+      const hSector = (window._stockThemeMap && window._stockThemeMap[s.name]) || '';
       return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;gap:5px">'
         + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
         + '<span style="font-size:12px;font-weight:700">' + s.name + '</span>'
+        + (hSector ? '<span style="font-size:9px;color:var(--tx3)">' + hSector + '</span>' : '')
         + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + (s.trPbmn||0) + '억</span>'
         + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">' + chgStr + '</span>'
         + '</div>'
         + '<div style="font-size:9px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">'
+        + '<span id="inv_' + key + '"></span>'
         + (s.fBuy > 0 ? '<span style="color:var(--up)">외 +' + s.fBuy + '억</span>' : '')
         + (s.iBuy > 0 ? '<span style="color:var(--dn)">기 +' + s.iBuy + '억</span>' : '')
-        + '<span id="inv_' + key + '"></span>'
         + '</div>'
         + '</div>';
     }).join('');
