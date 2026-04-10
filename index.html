@@ -3154,7 +3154,14 @@ window.upSudFetch = async () => {
         window._kisRows = window._kisRows || {};
         window._kisRows[key] = { name, code, fBuy, iBuy };
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
-        return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
+        const cardBg = fBuy > 0 && iBuy > 0
+          ? 'background:linear-gradient(135deg,rgba(255,71,87,0.12),rgba(255,71,87,0.06));border:1px solid rgba(255,71,87,0.4)'
+          : fBuy > 0
+          ? 'background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35)'
+          : iBuy > 0
+          ? 'background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3)'
+          : 'background:var(--sf);border:1px solid var(--bd)';
+        return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
           + '<span style="font-size:12px;font-weight:700">' + name + '</span>'
@@ -3402,7 +3409,14 @@ window.loadUpSudHistory = async (date, uid) => {
       window._kisRows[key] = { name: s.name, code: s.code||'', fBuy: s.fBuy||0, iBuy: s.iBuy||0 };
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const hSector = (window._stockThemeMap && window._stockThemeMap[s.name]) || '';
-      return '<div style="background:linear-gradient(135deg,rgba(255,71,87,0.08),rgba(255,71,87,0.04));border:1px solid rgba(255,71,87,0.3);border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
+      const hCardBg = s.fBuy > 0 && s.iBuy > 0
+        ? 'background:linear-gradient(135deg,rgba(255,71,87,0.12),rgba(255,71,87,0.06));border:1px solid rgba(255,71,87,0.4)'
+        : s.fBuy > 0
+        ? 'background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35)'
+        : s.iBuy > 0
+        ? 'background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3)'
+        : 'background:var(--sf);border:1px solid var(--bd)';
+      return '<div style="' + hCardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;gap:5px">'
         + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
         + '<span style="font-size:12px;font-weight:700">' + s.name + '</span>'
@@ -3612,6 +3626,18 @@ window.loadCandleHistory = async (date, uid) => {
 
 // ── 역발상 자동 연속매수/매도 조회
 // todayFBuy, todayIBuy: foreign_inst API의 오늘 순매수 금액 (정확한 값)
+
+// 연속매수매도 태그 생성 헬퍼
+window._streakTag = (who, days, isBuy) => {
+  const buyColor = 'var(--up)';
+  const sellColor = 'var(--dn)';
+  const action = isBuy ? '매수' : '매도';
+  const icon = isBuy ? '📈' : '📉';
+  return '<span style="color:#6B7280;font-weight:700">' + who + '</span>'
+    + '<span style="color:var(--tx);font-weight:800"> ' + days + '일 </span>'
+    + '<span style="color:' + (isBuy ? buyColor : sellColor) + ';font-weight:800">' + action + icon + '</span>';
+};
+
 window.autoLoadStreak = async (key, code, todayFBuy, todayIBuy) => {
   const invEl = document.getElementById('inv_' + key);
   if(!invEl) return;
@@ -3622,14 +3648,8 @@ window.autoLoadStreak = async (key, code, todayFBuy, todayIBuy) => {
   if(!code || !isValidCode) {
     // 코드 없으면 오늘 매수/매도만 표시
     if(todayFBuy !== undefined) {
-      const fTag = todayFBuy >= 0
-        ? '<span style="color:var(--up);font-weight:800">외국인 1일 매수📈</span>'
-        : '<span style="color:var(--dn);font-weight:800">외국인 1일 매도📉</span>';
-      const iTag = todayIBuy !== undefined
-        ? (todayIBuy >= 0
-          ? ' &nbsp;<span style="color:var(--up);font-weight:800">기관 1일 매수📈</span>'
-          : ' &nbsp;<span style="color:var(--dn);font-weight:800">기관 1일 매도📉</span>')
-        : '';
+      const fTag = window._streakTag('외국인', 1, todayFBuy >= 0);
+      const iTag = todayIBuy !== undefined ? ' &nbsp;' + window._streakTag('기관', 1, todayIBuy >= 0) : '';
       invEl.innerHTML = fTag + iTag;
     } else {
       invEl.textContent = '';
@@ -3664,14 +3684,8 @@ window.autoLoadStreak = async (key, code, todayFBuy, todayIBuy) => {
     const fStreak = calcHistStreak(todayF, 'frgn_ntby_qty', 'frgn_ntby_tr_pbmn');
     const iStreak = calcHistStreak(todayI, 'orgn_ntby_qty', 'orgn_ntby_tr_pbmn');
 
-    const fTag = fStreak > 0
-      ? '<span style="color:var(--up);font-weight:800">외국인 ' + fStreak + '일 매수📈</span>'
-      : '<span style="color:var(--dn);font-weight:800">외국인 ' + Math.abs(fStreak) + '일 매도📉</span>';
-    const iTag = iStreak !== 0
-      ? (iStreak > 0
-        ? ' &nbsp;<span style="color:var(--up);font-weight:800">기관 ' + iStreak + '일 매수📈</span>'
-        : ' &nbsp;<span style="color:var(--dn);font-weight:800">기관 ' + Math.abs(iStreak) + '일 매도📉</span>')
-      : '';
+    const fTag = window._streakTag('외국인', Math.abs(fStreak), fStreak > 0);
+    const iTag = iStreak !== 0 ? ' &nbsp;' + window._streakTag('기관', Math.abs(iStreak), iStreak > 0) : '';
 
     invEl.innerHTML = fTag + iTag;
   } catch(e) {
