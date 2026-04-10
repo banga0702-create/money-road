@@ -2182,8 +2182,8 @@ function renderCandleFeat(){
       <div class="sli-body">
         ${c.curPrice?`<span class="sli-chip" style="color:var(--tx)">${parseInt(c.curPrice).toLocaleString()}원</span>`:''}
         ${c.vol?`<span class="sli-chip">💰 ${c.vol}억</span>`:''}
-        ${c.fBuy?`<span class="sli-chip" style="color:var(--up)">외 ${c.fBuy}억</span>`:''}
-        ${c.iBuy?`<span class="sli-chip" style="color:var(--dn)">기 ${c.iBuy}억</span>`:''}
+        ${c.fBuy!=null&&c.fBuy!==0?`<span class="sli-chip" style="color:${c.fBuy>0?'var(--up)':'var(--dn)'}">외 ${c.fBuy>0?'+':''}${c.fBuy}억</span>`:''}
+        ${c.iBuy!=null&&c.iBuy!==0?`<span class="sli-chip" style="color:${c.iBuy>0?'var(--up)':'var(--dn)'}">기 ${c.iBuy>0?'+':''}${c.iBuy}억</span>`:''}
         ${hasHL?`<span class="sli-chip" style="color:var(--gd)">기준선 ${c.midLine.toLocaleString()}원</span>`:''}
         ${c.memo?`<span class="sli-chip" style="color:var(--tx2)">${c.memo}</span>`:''}
       </div>
