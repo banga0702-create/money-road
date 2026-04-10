@@ -3154,13 +3154,7 @@ window.upSudFetch = async () => {
         window._kisRows = window._kisRows || {};
         window._kisRows[key] = { name, code, fBuy, iBuy };
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
-        const cardBg = fBuy > 0 && iBuy > 0
-          ? 'background:linear-gradient(135deg,rgba(255,71,87,0.12),rgba(255,71,87,0.06));border:1px solid rgba(255,71,87,0.4)'
-          : fBuy > 0
-          ? 'background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35)'
-          : iBuy > 0
-          ? 'background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3)'
-          : 'background:var(--sf);border:1px solid var(--bd)';
+        const cardBg = 'background:var(--sf);border:1px solid var(--bd)';
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
@@ -3169,10 +3163,8 @@ window.upSudFetch = async () => {
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
           + '</div>'
-          + '<div style="font-size:9px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">'
+          + '<div style="font-size:9px;margin-top:3px">'
           + '<span id="inv_' + key + '"></span>'
-          + (fBuy > 0 ? '<span style="color:var(--up)">외 +' + fBuy + '억</span>' : '')
-          + (iBuy > 0 ? '<span style="color:var(--dn)">기 +' + iBuy + '억</span>' : '')
           + '</div>'
           + '</div>';
       }).join('');
@@ -3409,13 +3401,7 @@ window.loadUpSudHistory = async (date, uid) => {
       window._kisRows[key] = { name: s.name, code: s.code||'', fBuy: s.fBuy||0, iBuy: s.iBuy||0 };
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const hSector = (window._stockThemeMap && window._stockThemeMap[s.name]) || '';
-      const hCardBg = s.fBuy > 0 && s.iBuy > 0
-        ? 'background:linear-gradient(135deg,rgba(255,71,87,0.12),rgba(255,71,87,0.06));border:1px solid rgba(255,71,87,0.4)'
-        : s.fBuy > 0
-        ? 'background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.35)'
-        : s.iBuy > 0
-        ? 'background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3)'
-        : 'background:var(--sf);border:1px solid var(--bd)';
+      const hCardBg = 'background:var(--sf);border:1px solid var(--bd)';
       return '<div style="' + hCardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;gap:5px">'
         + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
@@ -3424,10 +3410,8 @@ window.loadUpSudHistory = async (date, uid) => {
         + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + (s.trPbmn||0) + '억</span>'
         + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">' + chgStr + '</span>'
         + '</div>'
-        + '<div style="font-size:9px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap">'
+        + '<div style="font-size:9px;margin-top:3px">'
         + '<span id="inv_' + key + '"></span>'
-        + (s.fBuy > 0 ? '<span style="color:var(--up)">외 +' + s.fBuy + '억</span>' : '')
-        + (s.iBuy > 0 ? '<span style="color:var(--dn)">기 +' + s.iBuy + '억</span>' : '')
         + '</div>'
         + '</div>';
     }).join('');
