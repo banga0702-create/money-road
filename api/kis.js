@@ -344,6 +344,19 @@ export default async function handler(req, res) {
       }
     }
 
+    // 종목명으로 종목코드 검색
+    if (action === 'search_stock') {
+      const token = await getToken();
+      const { name } = req.query;
+      if (!name) return res.status(400).json({ error: 'name 파라미터 필요' });
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/search-stock-info?PRDT_TYPE_CD=300&PDNO=${encodeURIComponent(name)}`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'CTPF1002R', 'custtype': 'P' } }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
