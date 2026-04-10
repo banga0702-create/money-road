@@ -850,12 +850,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <label>📅 기록 날짜</label>
       <input type="date" id="cdDate" style="font-size:14px;padding:10px 12px" onchange="onCdDateChange()">
     </div>
-    <!-- 종목코드 검색 -->
+    <!-- 종목명 검색 -->
     <div style="background:var(--sf2);border-radius:14px;padding:14px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--pr);margin-bottom:10px">🔍 종목코드로 자동 불러오기</div>
-      <input type="text" id="cdCode" placeholder="종목코드 입력 (예: 000660)" inputmode="numeric" style="font-size:16px;padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--pr);margin-bottom:10px">🔍 종목명으로 자동 불러오기</div>
+      <input type="text" id="cdSearchName" placeholder="종목명 입력 (예: SK하이닉스)" style="font-size:16px;padding:12px 14px;margin-bottom:8px">
       <button class="btn btn-pr" onclick="fetchCandlePrice()" style="font-size:14px;padding:12px">검색하기</button>
       <div id="cdCodeMsg" style="font-size:12px;margin-top:8px;min-height:16px;color:var(--ac);font-weight:600"></div>
+      <!-- 검색 결과 목록 -->
+      <div id="cdSearchList" style="display:none;margin-top:8px;display:flex;flex-direction:column;gap:4px"></div>
+      <input type="hidden" id="cdCode">
     </div>
     <div class="f-row c2">
       <div class="fg"><label>종목명 *</label><input type="text" id="cdName" placeholder="예) SK하이닉스"></div>
@@ -1927,8 +1930,9 @@ function calcCandle(){
 }
 
 function openCandleMo(targetDate){
-  ['cdCode','cdName','cdSector','cdVol','cdH','cdL','cdCur','cdChg','cdFBuy','cdIBuy','cdMemo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['cdCode','cdSearchName','cdName','cdSector','cdVol','cdH','cdL','cdCur','cdChg','cdFBuy','cdIBuy','cdMemo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const lineEl=document.getElementById('cdLine');if(lineEl)lineEl.textContent='—';
+  const slEl=document.getElementById('cdSearchList');if(slEl){slEl.style.display='none';slEl.innerHTML='';}
   const stEl=document.getElementById('cdSt');if(stEl)stEl.textContent='—';
   const msgEl=document.getElementById('cdCodeMsg');if(msgEl)msgEl.textContent='';
   const dateEl=document.getElementById('cdDate');
@@ -1964,42 +1968,73 @@ window.confirmCandleDateSel = () => {
 };
 
 async function fetchCandlePrice(){
-  const code=document.getElementById('cdCode').value.trim();
-  const msg=document.getElementById('cdCodeMsg');
-  if(!code){msg.style.color='var(--up)';msg.textContent='종목코드를 입력하세요';return;}
-  msg.style.color='var(--ac)';msg.textContent='🔍 검색 중...';
-  try{
-    const API_KEY='d7f011931a4f7d1929ddfd4d5423f9d74410918fadd1bbb7a12cdc7b9cf5a5e5';
-    const url=`https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo?serviceKey=${API_KEY}&numOfRows=1&pageNo=1&resultType=json&likeSrtnCd=${code}`;
-    const res=await fetch(url);
-    const json=await res.json();
-    const items=json?.response?.body?.items?.item;
-    if(!items){msg.style.color='var(--up)';msg.textContent='❌ 종목을 찾을 수 없어요';return;}
-    const data=Array.isArray(items)?items[0]:items;
-    document.getElementById('cdName').value=data.itmsNm||'';
-    if(data.hipr)document.getElementById('cdH').value=parseInt(data.hipr);
-    if(data.lopr)document.getElementById('cdL').value=parseInt(data.lopr);
-    if(data.clpr)document.getElementById('cdCur').value=parseInt(data.clpr);
-    if(data.trPrc)document.getElementById('cdVol').value=Math.round(parseInt(data.trPrc)/100000000);
-    if(data.fltRt)document.getElementById('cdChg').value=parseFloat(data.fltRt);
-    calcCandle();
-    // KIS API로 외국인/기관 순매수 추가 조회
+  const searchName = document.getElementById('cdSearchName').value.trim();
+  const msg = document.getElementById('cdCodeMsg');
+  const listEl = document.getElementById('cdSearchList');
+  if(!searchName){ msg.style.color='var(--up)'; msg.textContent='종목명을 입력하세요'; return; }
+  msg.style.color='var(--ac)'; msg.textContent='🔍 검색 중...';
+  listEl.style.display='none'; listEl.innerHTML='';
+  try {
+    // 1단계: 종목명으로 코드 검색
+    const sRes = await fetch('/api/kis?action=search_stock&name=' + encodeURIComponent(searchName));
+    const sData = await sRes.json();
+    const items = sData.output || [];
+    // 주식(300)만 필터, 최대 5개
+    const stocks = items.filter(s => s.pdno && s.prdt_abrv_name).slice(0, 5);
+    if(!stocks.length){ msg.style.color='var(--up)'; msg.textContent='❌ 종목을 찾을 수 없어요'; return; }
+
+    // 결과 1개면 바로 선택, 여러개면 목록 표시
+    if(stocks.length === 1){
+      await selectCandleStock(stocks[0].pdno, stocks[0].prdt_abrv_name);
+    } else {
+      msg.textContent = `${stocks.length}개 종목 검색됨 - 선택하세요`;
+      listEl.style.display = 'flex';
+      listEl.innerHTML = stocks.map(s =>
+        `<div style="padding:8px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700"
+          onclick="selectCandleStock('${s.pdno}','${s.prdt_abrv_name}')">
+          ${s.prdt_abrv_name} <span style="font-size:10px;color:var(--tx3)">${s.pdno}</span>
+        </div>`
+      ).join('');
+    }
+  } catch(e){ msg.style.color='var(--up)'; msg.textContent='❌ 오류: '+e.message; }
+}
+
+window.selectCandleStock = async (code, name) => {
+  const msg = document.getElementById('cdCodeMsg');
+  const listEl = document.getElementById('cdSearchList');
+  listEl.style.display = 'none';
+  msg.style.color='var(--ac)'; msg.textContent='📊 실시간 시세 조회 중...';
+  document.getElementById('cdCode').value = code;
+  document.getElementById('cdName').value = name;
+  try {
+    // KIS 실시간 현재가
+    const pRes = await fetch('/api/kis?action=stock_price&codes=' + code);
+    const pData = await pRes.json();
+    const p = (pData.output || [])[0];
+    if(p){
+      if(p.stck_prpr) document.getElementById('cdCur').value = parseInt(p.stck_prpr);
+      if(p.prdy_ctrt) document.getElementById('cdChg').value = parseFloat(p.prdy_ctrt);
+      if(p.stck_hgpr) document.getElementById('cdH').value = parseInt(p.stck_hgpr);
+      if(p.stck_lwpr) document.getElementById('cdL').value = parseInt(p.stck_lwpr);
+      if(p.acml_tr_pbmn) document.getElementById('cdVol').value = Math.round(parseFloat(p.acml_tr_pbmn)/100000000);
+      calcCandle();
+      const rate = parseFloat(p.prdy_ctrt)||0;
+      msg.textContent = `✓ ${name} | ${parseInt(p.stck_prpr).toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
+    }
+    // 외국인/기관 순매수
     try {
-      const kisRes = await fetch('/api/kis?action=investor&code='+code);
-      const kisData = await kisRes.json();
-      const row = (kisData.output||[])[0];
-      if(row) {
-        const fBuy = Math.round((parseFloat(row.frgn_ntby_qty||0)*parseInt(data.clpr||0))/100000000);
-        const iBuy = Math.round((parseFloat(row.orgn_ntby_qty||0)*parseInt(data.clpr||0))/100000000);
+      const iRes = await fetch('/api/kis?action=investor&code=' + code);
+      const iData = await iRes.json();
+      const row = (iData.output||[])[0];
+      if(row && p?.stck_prpr){
+        const fBuy = Math.round((parseFloat(row.frgn_ntby_qty||0)*parseInt(p.stck_prpr))/100000000);
+        const iBuy = Math.round((parseFloat(row.orgn_ntby_qty||0)*parseInt(p.stck_prpr))/100000000);
         if(fBuy) document.getElementById('cdFBuy').value = fBuy;
         if(iBuy) document.getElementById('cdIBuy').value = iBuy;
       }
-    } catch(e) {}
-    const rate=parseFloat(data.fltRt);
-    msg.style.color='var(--ac)';
-    msg.textContent=`✓ ${data.itmsNm} | ${parseInt(data.clpr).toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
-  }catch(e){msg.style.color='var(--up)';msg.textContent='❌ 오류: '+e.message;}
-}
+    } catch(e){}
+  } catch(e){ msg.style.color='var(--up)'; msg.textContent='❌ 시세 조회 실패: '+e.message; }
+};
 
 async function addCandle(){
   const name=document.getElementById('cdName').value.trim();
