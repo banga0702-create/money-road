@@ -1985,13 +1985,17 @@ async function fetchCandlePrice(){
     const arr = Array.isArray(items) ? items : [items];
     if(!arr.length){ msg.style.color='var(--up)'; msg.textContent='❌ 종목을 찾을 수 없어요'; return; }
 
+    // 종목코드 기준 중복 제거
+    const seen = new Set();
+    const unique = arr.filter(s => { if(seen.has(s.srtnCd)) return false; seen.add(s.srtnCd); return true; });
+
     // 결과 1개면 바로 선택, 여러개면 목록 표시
-    if(arr.length === 1){
-      await selectCandleStock(arr[0].srtnCd, arr[0].itmsNm);
+    if(unique.length === 1){
+      await selectCandleStock(unique[0].srtnCd, unique[0].itmsNm);
     } else {
-      msg.textContent = `${arr.length}개 종목 검색됨 - 선택하세요`;
+      msg.textContent = `${unique.length}개 종목 검색됨 - 선택하세요`;
       listEl.style.display = 'flex';
-      listEl.innerHTML = arr.map(s =>
+      listEl.innerHTML = unique.map(s =>
         `<div style="padding:8px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700"
           onclick="selectCandleStock('${s.srtnCd}','${s.itmsNm}')">
           ${s.itmsNm} <span style="font-size:10px;color:var(--tx3)">${s.srtnCd}</span>
@@ -2019,18 +2023,19 @@ window.selectCandleStock = async (code, name) => {
       if(p.stck_hgpr) document.getElementById('cdH').value = parseInt(p.stck_hgpr);
       if(p.stck_lwpr) document.getElementById('cdL').value = parseInt(p.stck_lwpr);
       if(p.acml_tr_pbmn) document.getElementById('cdVol').value = Math.round(parseFloat(p.acml_tr_pbmn)/100000000);
+      if(p.bstp_kor_isnm) document.getElementById('cdSector').value = p.bstp_kor_isnm;
       calcCandle();
       const rate = parseFloat(p.prdy_ctrt)||0;
       msg.textContent = `✓ ${name} | ${parseInt(p.stck_prpr).toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
     }
-    // 외국인/기관 순매수
+    // 외국인/기관 순매수 (tr_pbmn: 거래대금 기준 억원)
     try {
       const iRes = await fetch('/api/kis?action=investor&code=' + code);
       const iData = await iRes.json();
       const row = (iData.output||[])[0];
-      if(row && p?.stck_prpr){
-        const fBuy = Math.round((parseFloat(row.frgn_ntby_qty||0)*parseInt(p.stck_prpr))/100000000);
-        const iBuy = Math.round((parseFloat(row.orgn_ntby_qty||0)*parseInt(p.stck_prpr))/100000000);
+      if(row){
+        const fBuy = Math.round(parseFloat(row.frgn_ntby_tr_pbmn||0) / 100);
+        const iBuy = Math.round(parseFloat(row.orgn_ntby_tr_pbmn||0) / 100);
         if(fBuy) document.getElementById('cdFBuy').value = fBuy;
         if(iBuy) document.getElementById('cdIBuy').value = iBuy;
       }
