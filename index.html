@@ -3152,8 +3152,8 @@ window.upSudFetch = async () => {
         const fBuy = fBuyMap[name] || 0;
         const iBuy = iBuyMap[name] || 0;
         window._kisRows = window._kisRows || {};
-        window._kisRows[key] = { name, code, fBuy, iBuy };
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
+        window._kisRows[key] = { name, code, fBuy, iBuy, sector };
         const cardBg = 'background:var(--sf);border:1px solid var(--bd)';
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
