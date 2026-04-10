@@ -2031,7 +2031,7 @@ window.selectCandleStock = async (code, name) => {
       const rate = parseFloat(p.prdy_ctrt)||0;
       msg.textContent = `✓ ${name} | ${curPrice.toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
     }
-    // 외국인/기관 순매수 (foreign_inst_combined에서 해당 종목 찾기)
+    // 외국인/기관 순매수: foreign_inst_combined 먼저, 없으면 investor로 폴백
     try {
       const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
       const fiData = await fiRes.json();
@@ -2041,6 +2041,18 @@ window.selectCandleStock = async (code, name) => {
         const iBuy = Math.round(parseFloat(match.orgn_ntby_tr_pbmn||0) / 100);
         if(fBuy) document.getElementById('cdFBuy').value = fBuy;
         if(iBuy) document.getElementById('cdIBuy').value = iBuy;
+      } else {
+        // 폴백: investor API (수량 × 현재가)
+        const iRes = await fetch('/api/kis?action=investor&code=' + code);
+        const iData = await iRes.json();
+        const row = (iData.output||[])[0];
+        const curPrice = parseInt(p?.stck_prpr||0);
+        if(row && curPrice){
+          const fBuy = Math.round(parseFloat(row.frgn_ntby_qty||0) * curPrice / 100000000);
+          const iBuy = Math.round(parseFloat(row.orgn_ntby_qty||0) * curPrice / 100000000);
+          if(fBuy) document.getElementById('cdFBuy').value = fBuy;
+          if(iBuy) document.getElementById('cdIBuy').value = iBuy;
+        }
       }
     } catch(e){ console.warn('외기 조회 실패:', e); }
   } catch(e){ msg.style.color='var(--up)'; msg.textContent='❌ 시세 조회 실패: '+e.message; }
