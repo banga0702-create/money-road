@@ -1975,24 +1975,26 @@ async function fetchCandlePrice(){
   msg.style.color='var(--ac)'; msg.textContent='🔍 검색 중...';
   listEl.style.display='none'; listEl.innerHTML='';
   try {
-    // 1단계: 종목명으로 코드 검색
-    const sRes = await fetch('/api/kis?action=search_stock&name=' + encodeURIComponent(searchName));
-    const sData = await sRes.json();
-    const items = sData.output || [];
-    // 주식(300)만 필터, 최대 5개
-    const stocks = items.filter(s => s.pdno && s.prdt_abrv_name).slice(0, 5);
-    if(!stocks.length){ msg.style.color='var(--up)'; msg.textContent='❌ 종목을 찾을 수 없어요'; return; }
+    // 1단계: 공공데이터 API로 종목명 → 코드 검색
+    const API_KEY='d7f011931a4f7d1929ddfd4d5423f9d74410918fadd1bbb7a12cdc7b9cf5a5e5';
+    const url=`https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo?serviceKey=${API_KEY}&numOfRows=5&pageNo=1&resultType=json&likeItmsNm=${encodeURIComponent(searchName)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const items = json?.response?.body?.items?.item;
+    if(!items){ msg.style.color='var(--up)'; msg.textContent='❌ 종목을 찾을 수 없어요'; return; }
+    const arr = Array.isArray(items) ? items : [items];
+    if(!arr.length){ msg.style.color='var(--up)'; msg.textContent='❌ 종목을 찾을 수 없어요'; return; }
 
     // 결과 1개면 바로 선택, 여러개면 목록 표시
-    if(stocks.length === 1){
-      await selectCandleStock(stocks[0].pdno, stocks[0].prdt_abrv_name);
+    if(arr.length === 1){
+      await selectCandleStock(arr[0].srtnCd, arr[0].itmsNm);
     } else {
-      msg.textContent = `${stocks.length}개 종목 검색됨 - 선택하세요`;
+      msg.textContent = `${arr.length}개 종목 검색됨 - 선택하세요`;
       listEl.style.display = 'flex';
-      listEl.innerHTML = stocks.map(s =>
+      listEl.innerHTML = arr.map(s =>
         `<div style="padding:8px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;cursor:pointer;font-size:13px;font-weight:700"
-          onclick="selectCandleStock('${s.pdno}','${s.prdt_abrv_name}')">
-          ${s.prdt_abrv_name} <span style="font-size:10px;color:var(--tx3)">${s.pdno}</span>
+          onclick="selectCandleStock('${s.srtnCd}','${s.itmsNm}')">
+          ${s.itmsNm} <span style="font-size:10px;color:var(--tx3)">${s.srtnCd}</span>
         </div>`
       ).join('');
     }
