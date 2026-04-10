@@ -2231,7 +2231,7 @@ function renderCandleFeat(){
         <div class="sli-num">${i+1}</div>
         <div class="sli-name">
           ${c.name}
-          ${c.sector?`<span class="badge b-gr">${c.sector}</span>`:''}
+          ${(window._stockThemeMap?.[c.name]||c.sector)?`<span class="badge b-gr">${window._stockThemeMap?.[c.name]||c.sector}</span>`:''}
           ${c.chg?`<span class="badge" style="background:${c.chg>=0?'var(--up2)':'var(--dn2)'};color:${chgColor};border:1px solid ${chgColor}">${c.chg>=0?'▲':'▼'}${Math.abs(c.chg)}%</span>`:''}
         </div>
         <button class="btn btn-sm" style="width:auto;padding:4px 8px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;font-size:11px" onclick="editCandle(${i})">✏️</button>
