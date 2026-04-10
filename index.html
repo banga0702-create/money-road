@@ -2028,14 +2028,15 @@ window.selectCandleStock = async (code, name) => {
       const rate = parseFloat(p.prdy_ctrt)||0;
       msg.textContent = `✓ ${name} | ${parseInt(p.stck_prpr).toLocaleString()}원 | ${rate>=0?'▲':'▼'}${Math.abs(rate)}%`;
     }
-    // 외국인/기관 순매수 (tr_pbmn: 거래대금 기준 억원)
+    // 외국인/기관 순매수 (수량 × 현재가 → 억원)
     try {
       const iRes = await fetch('/api/kis?action=investor&code=' + code);
       const iData = await iRes.json();
       const row = (iData.output||[])[0];
-      if(row){
-        const fBuy = Math.round(parseFloat(row.frgn_ntby_tr_pbmn||0) / 100);
-        const iBuy = Math.round(parseFloat(row.orgn_ntby_tr_pbmn||0) / 100);
+      const curPrice = parseInt(p?.stck_prpr||0);
+      if(row && curPrice){
+        const fBuy = Math.round(parseFloat(row.frgn_ntby_qty||0) * curPrice / 100000000);
+        const iBuy = Math.round(parseFloat(row.orgn_ntby_qty||0) * curPrice / 100000000);
         if(fBuy) document.getElementById('cdFBuy').value = fBuy;
         if(iBuy) document.getElementById('cdIBuy').value = iBuy;
       }
