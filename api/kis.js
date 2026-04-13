@@ -1,6 +1,7 @@
 // Vercel 서버리스 함수 - KIS API 프록시
 let _token = null;
 let _tokenExp = 0;
+let _tokenLock = null; // 동시 토큰 발급 방지 락
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,29 +19,42 @@ export default async function handler(req, res) {
     async function getToken() {
       const now = Date.now();
       if (_token && now < _tokenExp) return _token;
-      // 토큰 만료 or 없으면 새로 발급 (최대 2회 재시도)
-      for(let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const r = await fetch(`${BASE_URL}/oauth2/tokenP`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ grant_type: 'client_credentials', appkey: APP_KEY, appsecret: APP_SECRET })
-          });
-          const data = await r.json();
-          if(data.error_code === 'EGW00133') {
-            // 1분당 1회 제한 - 잠시 대기 후 재시도
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            continue;
-          }
-          if (!data.access_token) throw new Error('토큰 발급 실패: ' + JSON.stringify(data));
-          _token = data.access_token;
-          _tokenExp = now + 23 * 60 * 1000; // 23분 캐시
-          return _token;
-        } catch(e) {
-          if(attempt === 1) throw e;
-        }
+
+      // 이미 발급 중이면 완료될 때까지 대기 (동시 발급 방지)
+      if (_tokenLock) {
+        await _tokenLock;
+        if (_token && Date.now() < _tokenExp) return _token;
       }
-      throw new Error('토큰 발급 실패');
+
+      let resolveLock;
+      _tokenLock = new Promise(resolve => { resolveLock = resolve; });
+
+      try {
+        for(let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const r = await fetch(`${BASE_URL}/oauth2/tokenP`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ grant_type: 'client_credentials', appkey: APP_KEY, appsecret: APP_SECRET })
+            });
+            const data = await r.json();
+            if(data.error_code === 'EGW00133') {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              continue;
+            }
+            if (!data.access_token) throw new Error('토큰 발급 실패: ' + JSON.stringify(data));
+            _token = data.access_token;
+            _tokenExp = Date.now() + 23 * 60 * 1000;
+            return _token;
+          } catch(e) {
+            if(attempt === 1) throw e;
+          }
+        }
+        throw new Error('토큰 발급 실패');
+      } finally {
+        _tokenLock = null;
+        resolveLock();
+      }
     }
 
     if (action === 'test') {
@@ -342,19 +356,6 @@ export default async function handler(req, res) {
       } catch(e) {
         return res.status(500).json({ error: e.message });
       }
-    }
-
-    // 종목명으로 종목코드 검색
-    if (action === 'search_stock') {
-      const token = await getToken();
-      const { name } = req.query;
-      if (!name) return res.status(400).json({ error: 'name 파라미터 필요' });
-      const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/search-stock-info?PRDT_TYPE_CD=300&PDNO=${encodeURIComponent(name)}`,
-        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'CTPF1002R', 'custtype': 'P' } }
-      );
-      const data = await r.json();
-      return res.status(200).json(data);
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
