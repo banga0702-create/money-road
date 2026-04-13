@@ -2125,7 +2125,7 @@ async function addCandle(){
   const curPrice=+document.getElementById('cdCur').value||midLine;
   const code = document.getElementById('cdCode').value.trim();
   const candle={id:Date.now(),name,code,
-    sector:document.getElementById('cdSector').value.trim(),
+    sector:window._stockThemeMap?.[name] || document.getElementById('cdSector').value.trim(),
     vol:+document.getElementById('cdVol').value||0,
     fBuy:+document.getElementById('cdFBuy').value||0,
     iBuy:+document.getElementById('cdIBuy').value||0,
@@ -3142,6 +3142,27 @@ window.upSudFetch = async () => {
       return trb - tra; // 거래대금 높은 순
     });
 
+    // 과거 upSudHistory에서 연속 등장 횟수 계산
+    let upSudStreakMap = {};
+    try {
+      const user = window._curUser;
+      if(user) {
+        const histSnap = await getDocs(collection(db, 'users', user.uid, 'upSudHistory'));
+        const today = new Date().toISOString().slice(0,10);
+        const allDocs = histSnap.docs.filter(d => d.id !== today).sort((a,b) => b.id.localeCompare(a.id));
+        const todayNames = new Set(result.map(s => s.hts_kor_isnm));
+        todayNames.forEach(name => {
+          let streak = 0;
+          for(const d of allDocs) {
+            const list = d.data()?.list || [];
+            if(list.some(s => s.name === name)) streak++;
+            else break;
+          }
+          if(streak > 0) upSudStreakMap[name] = streak;
+        });
+      }
+    } catch(e) { console.warn('연속등장 계산 실패:', e); }
+
     const listEl = document.getElementById('upSudList');
     if(!result.length) {
       listEl.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">📈</div><p>해당 종목 없음</p></div>';
@@ -3159,12 +3180,15 @@ window.upSudFetch = async () => {
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
         window._kisRows[key] = { name, code, fBuy, iBuy, sector };
         const cardBg = 'background:var(--sf);border:1px solid var(--bd)';
+        const streak = upSudStreakMap[name] || 0;
+        const stars = streak > 0 ? '<span style="font-size:10px;margin-left:1px">' + '⭐'.repeat(Math.min(streak,5)) + '</span>' : '';
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
           + '<span style="font-size:12px;font-weight:700">' + name + '</span>'
           + (sector ? '<span style="font-size:9px;color:var(--tx3)">' + sector + '</span>' : '')
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
+          + stars
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
           + '</div>'
           + '<div style="font-size:9px;margin-top:3px">'
