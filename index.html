@@ -1510,8 +1510,9 @@ function renderMarketComment(score, prevScore) {
   const bg     = isLight ? zone.lightBg    : zone.bg;
   const border = zone.border;
 
-  // 카드 색상
+  // 카드 색상 (카드 삭제된 경우 early return)
   const card = document.getElementById('mktComment');
+  if(!card) return;
   card.style.background = bg;
   card.style.borderColor = border;
 
