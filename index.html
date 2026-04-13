@@ -399,23 +399,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <span style="font-size:12px;font-weight:800;color:var(--tx2)">📊 오늘의 지수</span>
           <span class="tc-status" id="tcStatus" style="color:var(--tx3);font-size:14px;font-weight:900"></span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div id="mktWeekBar" style="display:flex;align-items:flex-end;gap:3px;height:28px"></div>
-          <button onclick="toggleMktCal()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">📅</button>
+        <div style="text-align:right">
           <div class="tc-time" id="tcTime"></div>
         </div>
-      </div>
-      <!-- 달력 -->
-      <div id="mktCalWrap" style="display:none;padding:8px 4px 0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <button onclick="mktCalMove(-1)" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--tx2)">‹</button>
-          <span id="mktCalTitle" style="font-size:12px;font-weight:700;color:var(--tx)"></span>
-          <button onclick="mktCalMove(1)" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--tx2)">›</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">
-          <div style="font-size:9px;color:var(--tx3);font-weight:700">일</div><div style="font-size:9px;color:var(--tx3);font-weight:700">월</div><div style="font-size:9px;color:var(--tx3);font-weight:700">화</div><div style="font-size:9px;color:var(--tx3);font-weight:700">수</div><div style="font-size:9px;color:var(--tx3);font-weight:700">목</div><div style="font-size:9px;color:var(--tx3);font-weight:700">금</div><div style="font-size:9px;color:var(--tx3);font-weight:700">토</div>
-        </div>
-        <div id="mktCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px"></div>
       </div>
       <!-- 원형 게이지 2개 -->
       <div class="g2row">
@@ -463,6 +449,78 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
 
 
+
+    <!-- 시장온도 카드 -->
+    <div class="mkt-comment" id="mktComment" style="margin-top:10px">
+      <div style="padding:10px 14px 0;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🌡️ 오늘의 시장온도</span>
+        <button onclick="toggleMktCal()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">📅</button>
+      </div>
+      <!-- 달력 -->
+      <div id="mktCalWrap" style="display:none;padding:10px 14px 4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <button onclick="mktCalMove(-1)" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--tx2)">‹</button>
+          <span id="mktCalTitle" style="font-size:12px;font-weight:700;color:var(--tx)"></span>
+          <button onclick="mktCalMove(1)" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--tx2)">›</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center">
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">일</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">월</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">화</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">수</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">목</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">금</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700">토</div>
+        </div>
+        <div id="mktCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px"></div>
+      </div>
+      <div class="mkt-comment-top">
+        <div class="mkt-temp-block">
+          <span class="mkt-temp-ico" id="mktTempIco">🌡️</span>
+          <span class="mkt-temp-deg" id="mktTempDeg">—</span>
+          <span class="mkt-temp-unit">°C</span>
+        </div>
+        <div class="mkt-psych-block" style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;font-weight:700;color:var(--tx3)">투자심리</span>
+          <span class="mkt-psych-badge" id="mktPsych">—</span>
+        </div>
+      </div>
+      <div class="mkt-divider"></div>
+      <div class="zone-bar" id="zoneBar" style="padding:10px 14px 0">
+        <div class="zone-block" id="zb-panic" style="background:rgba(59,130,246,.15)">
+          <div class="zone-block-icon">🥶</div>
+          <div class="zone-block-label" style="color:#93C5FD">극단공포</div>
+          <div class="zone-block-arrow" style="color:#93C5FD" id="zba-panic"></div>
+        </div>
+        <div class="zone-block" id="zb-fear" style="background:rgba(125,211,252,.15)">
+          <div class="zone-block-icon">😰</div>
+          <div class="zone-block-label" style="color:#7DD3FC">공포</div>
+          <div class="zone-block-arrow" style="color:#7DD3FC" id="zba-fear"></div>
+        </div>
+        <div class="zone-block" id="zb-neutral" style="background:rgba(148,163,184,.15)">
+          <div class="zone-block-icon">😐</div>
+          <div class="zone-block-label" style="color:#94A3B8">중립</div>
+          <div class="zone-block-arrow" style="color:#94A3B8" id="zba-neutral"></div>
+        </div>
+        <div class="zone-block" id="zb-optimism" style="background:rgba(134,239,172,.15)">
+          <div class="zone-block-icon">😊</div>
+          <div class="zone-block-label" style="color:#86EFAC">탐욕</div>
+          <div class="zone-block-arrow" style="color:#86EFAC" id="zba-optimism"></div>
+        </div>
+        <div class="zone-block" id="zb-overHeat" style="background:rgba(252,165,165,.15)">
+          <div class="zone-block-icon">🤑</div>
+          <div class="zone-block-label" style="color:#FCA5A5">극단탐욕</div>
+          <div class="zone-block-arrow" style="color:#FCA5A5" id="zba-overHeat"></div>
+        </div>
+      </div>
+      <div class="mkt-comment-body">
+        <span class="mkt-comment-icon">💬</span>
+        <span class="mkt-comment-text" id="mktCommentTxt">시장 데이터를 입력하면 오늘의 시장 한 줄이 표시됩니다.</span>
+      </div>
+      <div id="mktDiffRow" style="display:none">
+        <div id="mktWeekBar" style="display:none"></div>
+      </div>
+    </div>
 
     <!-- 투자자 현황 -->
     <div id="mktIndexCard" style="margin:10px 16px 0;display:none">
@@ -1510,20 +1568,8 @@ function renderMarketComment(score, prevScore) {
   const bg     = isLight ? zone.lightBg    : zone.bg;
   const border = zone.border;
 
-  // 카드 색상 (카드 삭제된 경우 early return)
-  const card = document.getElementById('mktComment');
-  if(!card) return;
-  card.style.background = bg;
-  card.style.borderColor = border;
-
-  // 온도 & 아이콘
-  document.getElementById('mktTempIco').textContent = zone.icon;
-  document.getElementById('mktTempDeg').textContent = temp;
-  document.getElementById('mktTempDeg').style.color = 'var(--tx)';
-
-  // 투자심리 뱃지
-  const psych = document.getElementById('mktPsych');
-  psych.textContent = zone.label;
+  // mktComment 카드 삭제됨 - 이 함수는 더이상 사용하지 않음
+  return;
   psych.style.color = color;
   psych.style.background = bg;
   psych.style.border = `1.5px solid ${border}`;
