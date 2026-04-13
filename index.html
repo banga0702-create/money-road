@@ -3323,7 +3323,7 @@ window.reverseFetch = async () => {
       const key = 'rv_' + name.replace(/\s/g,'');
       window._kisRows = window._kisRows || {};
       window._kisRows[key] = { name, fBuy, iBuy, code: codeMap[name] || '' };
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px">'
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(chg).toFixed(2) + '%</span>'
@@ -3495,7 +3495,7 @@ window.loadReverseHistory = async (date, uid) => {
       const key = 'rv_' + s.name.replace(/[^a-zA-Z0-9가-힣]/g, '');
       window._kisRows = window._kisRows || {};
       window._kisRows[key] = { name: s.name, fBuy: s.fBuy, iBuy: s.iBuy, code: s.code||'' };
-      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px">'
+      return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + s.name + '</span>'
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(s.chg).toFixed(2) + '%</span>'
