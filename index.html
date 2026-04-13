@@ -1568,8 +1568,20 @@ function renderMarketComment(score, prevScore) {
   const bg     = isLight ? zone.lightBg    : zone.bg;
   const border = zone.border;
 
-  // mktComment 카드 삭제됨 - 이 함수는 더이상 사용하지 않음
-  return;
+  // 카드 색상
+  const card = document.getElementById('mktComment');
+  if(!card) return;
+  card.style.background = bg;
+  card.style.borderColor = border;
+
+  // 온도 & 아이콘
+  document.getElementById('mktTempIco').textContent = zone.icon;
+  document.getElementById('mktTempDeg').textContent = temp;
+  document.getElementById('mktTempDeg').style.color = 'var(--tx)';
+
+  // 투자심리 뱃지
+  const psych = document.getElementById('mktPsych');
+  psych.textContent = zone.label;
   psych.style.color = color;
   psych.style.background = bg;
   psych.style.border = `1.5px solid ${border}`;
