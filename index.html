@@ -759,6 +759,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <div class="mo-box">
     <div class="mo-handle"></div>
     <div id="moKisDetailBody"></div>
+    <div id="moKisNews" style="margin-top:14px;display:none">
+      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:8px">📰 관련 뉴스</div>
+      <div id="moKisNewsList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
   </div>
 </div>
 
@@ -2229,7 +2233,7 @@ function renderCandleFeat(){
     return`<div class="sli">
       <div class="sli-hdr">
         <div class="sli-num">${i+1}</div>
-        <div class="sli-name">
+        <div class="sli-name" style="cursor:pointer" onclick="openStockNewsModal('${c.name}')">
           ${c.name}
           ${(window._stockThemeMap?.[c.name]||c.sector)?`<span class="badge b-gr">${window._stockThemeMap?.[c.name]||c.sector}</span>`:''}
           ${c.chg?`<span class="badge" style="background:${c.chg>=0?'var(--up2)':'var(--dn2)'};color:${chgColor};border:1px solid ${chgColor}">${c.chg>=0?'▲':'▼'}${Math.abs(c.chg)}%</span>`:''}
@@ -3708,85 +3712,80 @@ window.autoLoadStreak = async (key, code, todayFBuy, todayIBuy) => {
 window.revRowClick = async (key) => {
   const s = window._kisRows && window._kisRows[key];
   if(!s) return;
-  const invEl = document.getElementById('inv_' + key);
-  if(!invEl) return;
 
-  if(invEl.style.display !== 'none') {
-    invEl.style.display = 'none';
-    return;
-  }
+  // 바텀시트로 열기
+  const mo = document.getElementById('moKisDetail');
+  const moBody = document.getElementById('moKisDetailBody');
+  if(!mo || !moBody) return;
 
-  invEl.style.display = 'block';
-  invEl.textContent = '📊 연속 매수/매도 조회 중...';
+  const fBuy = s.fBuy || 0;
+  const iBuy = s.iBuy || 0;
+  moBody.innerHTML = '<div style="font-size:15px;font-weight:900;margin-bottom:10px">' + s.name + '</div>'
+    + (s.sector ? '<div style="font-size:11px;color:var(--tx3);margin-bottom:10px">' + s.sector + '</div>' : '')
+    + (fBuy || iBuy ? '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+      + (fBuy ? '<span style="background:var(--up2);color:var(--up);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700">외국인 ' + (fBuy>0?'+':'') + fBuy + '억</span>' : '')
+      + (iBuy ? '<span style="background:var(--dn2);color:var(--dn);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700">기관 ' + (iBuy>0?'+':'') + iBuy + '억</span>' : '')
+      + '</div>' : '')
+    + '<div id="kisDetailStreak" style="font-size:11px;color:var(--tx3);margin-bottom:14px">📊 연속 매수/매도 조회 중...</div>'
+    + '<button class="btn btn-pr" onclick="kisAddTop(\'' + s.name + '\',' + fBuy + ',' + iBuy + ');closeMo(\'moKisDetail\')">➕ 관심종목에 추가</button>';
+  mo.classList.add('show');
+
+  // 뉴스 fetch
+  const newsEl = document.getElementById('moKisNews');
+  if(newsEl) newsEl.style.display = 'none';
+  window.fetchStockNews(s.name);
 
   if(!s.code) {
-    invEl.innerHTML = '<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
+    document.getElementById('kisDetailStreak').textContent = '종목코드 없음';
     return;
   }
-
   try {
     const r = await fetch('/api/kis?action=investor&code=' + s.code);
     const data = await r.json();
     const rows = (data.output || data.output2 || []).slice(0, 5);
-
+    const streakEl = document.getElementById('kisDetailStreak');
     const calcStreak = (f1, f2) => {
       let streak = 0;
       for(let i = 0; i < rows.length; i++) {
         const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
         if(i === 0) { streak = v >= 0 ? 1 : -1; }
-        else {
-          const sign = streak > 0 ? 1 : -1;
-          if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign;
-          else break;
-        }
+        else { const sign = streak > 0 ? 1 : -1; if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign; else break; }
       }
       return streak;
     };
-
     const fStreak = rows.length ? calcStreak('frgn_ntby_qty', 'frgn_ntby_tr_pbmn') : 0;
     const iStreak = rows.length ? calcStreak('orgn_ntby_qty', 'orgn_ntby_tr_pbmn') : 0;
-
-    const fTag = fStreak > 0
-      ? '<span style="color:var(--up);font-weight:800">외국인 +' + fStreak + '일 연속매수 📈</span>'
-      : '<span style="color:var(--dn);font-weight:800">외국인 ' + fStreak + '일 연속매도 📉</span>';
-    const iTag = iStreak !== 0
-      ? (iStreak > 0
-        ? '<span style="color:var(--up);font-weight:800">기관 +' + iStreak + '일 연속매수 📈</span>'
-        : '<span style="color:var(--dn);font-weight:800">기관 ' + iStreak + '일 연속매도 📉</span>')
-      : '';
-
-    invEl.innerHTML = fTag + (iTag ? '&nbsp;&nbsp;' + iTag : '')
-      + '&nbsp;&nbsp;<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
-
+    if(streakEl) streakEl.innerHTML = window._streakTag('외국인', Math.abs(fStreak), fStreak > 0) + ' &nbsp;&nbsp; ' + window._streakTag('기관', Math.abs(iStreak), iStreak > 0);
   } catch(e) {
-    invEl.innerHTML = '조회 실패 &nbsp;<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
+    const streakEl = document.getElementById('kisDetailStreak');
+    if(streakEl) streakEl.textContent = '수급 조회 실패';
   }
 };
 
 window.upSudClick = async (key) => {
   const s = window._kisRows && window._kisRows[key];
   if(!s) return;
-  const invEl = document.getElementById('inv_' + key);
-  if(!invEl) return;
 
-  // 이미 열려있으면 닫기
-  if(invEl.style.display !== 'none') {
-    invEl.style.display = 'none';
-    return;
-  }
+  // 바텀시트로 열기
+  const mo = document.getElementById('moKisDetail');
+  const moBody = document.getElementById('moKisDetailBody');
+  if(!mo || !moBody) return;
 
-  invEl.style.display = 'block';
-  invEl.textContent = '📊 수급 현황 조회 중...';
+  const fBuy = s.fBuy || 0;
+  const iBuy = s.iBuy || 0;
+  moBody.innerHTML = '<div style="font-size:15px;font-weight:900;margin-bottom:10px">' + s.name + '</div>'
+    + (s.sector ? '<div style="font-size:11px;color:var(--tx3);margin-bottom:10px">' + s.sector + '</div>' : '')
+    + '<div id="kisDetailStreak" style="font-size:11px;color:var(--tx3);margin-bottom:14px">📊 연속 매수/매도 조회 중...</div>'
+    + '<button class="btn btn-pr" onclick="kisAddTop('' + s.name + '',' + fBuy + ',' + iBuy + ');closeMo('moKisDetail')">➕ 관심종목에 추가</button>';
+  mo.classList.add('show');
 
-  // 기본 정보 표시 (코드 없어도)
-  let baseHtml = '';
-  if(s.fBuy > 0 || s.iBuy > 0) {
-    baseHtml = '<span style="color:var(--up)">외 ' + (s.fBuy > 0 ? '+' : '') + s.fBuy + '억</span> '
-             + '<span style="color:var(--dn)">기 ' + (s.iBuy > 0 ? '+' : '') + s.iBuy + '억</span>';
-  }
+  // 뉴스 fetch
+  const newsEl = document.getElementById('moKisNews');
+  if(newsEl) newsEl.style.display = 'none';
+  window.fetchStockNews(s.name);
 
   if(!s.code) {
-    invEl.innerHTML = baseHtml || '종목코드 없음';
+    document.getElementById('kisDetailStreak').textContent = '종목코드 없음';
     return;
   }
 
@@ -3794,47 +3793,73 @@ window.upSudClick = async (key) => {
     const r = await fetch('/api/kis?action=investor&code=' + s.code);
     const data = await r.json();
     const rows = (data.output || data.output2 || []).slice(0, 5);
-
+    const streakEl = document.getElementById('kisDetailStreak');
     if(!rows.length) {
-      invEl.innerHTML = baseHtml + (baseHtml ? '<br>' : '') + '일별 데이터 없음';
+      if(streakEl) streakEl.textContent = '일별 데이터 없음';
       return;
     }
-
-    // 최근 5일 외국인/기관 연속 매수/매도 계산 (오늘 포함)
     let fStreak = 0, iStreak = 0;
     for(let i = 0; i < rows.length; i++) {
       const fv = parseFloat(rows[i].frgn_ntby_qty || rows[i].frgn_ntby_tr_pbmn || 0);
       if(i === 0) { fStreak = fv >= 0 ? 1 : -1; }
-      else {
-        const sign = fStreak > 0 ? 1 : -1;
-        if((fv >= 0 && sign > 0) || (fv < 0 && sign < 0)) fStreak += sign;
-        else break;
-      }
+      else { const sign = fStreak > 0 ? 1 : -1; if((fv >= 0 && sign > 0) || (fv < 0 && sign < 0)) fStreak += sign; else break; }
     }
     for(let i = 0; i < rows.length; i++) {
       const iv = parseFloat(rows[i].orgn_ntby_qty || rows[i].orgn_ntby_tr_pbmn || 0);
       if(i === 0) { iStreak = iv >= 0 ? 1 : -1; }
-      else {
-        const sign = iStreak > 0 ? 1 : -1;
-        if((iv >= 0 && sign > 0) || (iv < 0 && sign < 0)) iStreak += sign;
-        else break;
-      }
+      else { const sign = iStreak > 0 ? 1 : -1; if((iv >= 0 && sign > 0) || (iv < 0 && sign < 0)) iStreak += sign; else break; }
     }
-
-    const fTag = fStreak > 0
-      ? '<span style="color:var(--up);font-weight:800">외국인 +' + fStreak + '일 연속매수</span>'
-      : '<span style="color:var(--dn);font-weight:800">외국인 ' + fStreak + '일 연속매도</span>';
-    const iTag = iStreak > 0
-      ? '<span style="color:var(--up);font-weight:800">기관 +' + iStreak + '일 연속매수</span>'
-      : '<span style="color:var(--dn);font-weight:800">기관 ' + iStreak + '일 연속매도</span>';
-
-    const addBtn = '<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer;margin-left:6px">➕ 추가</button>';
-    invEl.innerHTML = fTag + ' &nbsp; ' + iTag + ' &nbsp;' + addBtn;
-
+    if(streakEl) streakEl.innerHTML = window._streakTag('외국인', Math.abs(fStreak), fStreak > 0) + ' &nbsp;&nbsp; ' + window._streakTag('기관', Math.abs(iStreak), iStreak > 0);
   } catch(e) {
-    const addBtn2 = '<button onclick="kisAddTop(\'' + s.name + '\',' + (s.fBuy||0) + ',' + (s.iBuy||0) + ')" style="font-size:9px;background:var(--pr);color:#fff;border:none;border-radius:5px;padding:2px 7px;cursor:pointer">➕ 추가</button>';
-    invEl.innerHTML = (baseHtml || '조회 실패') + ' &nbsp;' + addBtn2;
+    const streakEl = document.getElementById('kisDetailStreak');
+    if(streakEl) streakEl.textContent = '수급 조회 실패';
   }
+};
+};
+
+// ── 종목 뉴스 fetch 공통 함수
+window.fetchStockNews = async (name) => {
+  const newsEl = document.getElementById('moKisNews');
+  const listEl = document.getElementById('moKisNewsList');
+  if(!newsEl || !listEl) return;
+  newsEl.style.display = 'block';
+  listEl.innerHTML = '<div style="font-size:11px;color:var(--tx3)">뉴스 불러오는 중...</div>';
+  try {
+    const r = await fetch('/api/kis?action=news&q=' + encodeURIComponent(name));
+    const data = await r.json();
+    const items = (data.items || []).slice(0, 3);
+    if(!items.length) { listEl.innerHTML = '<div style="font-size:11px;color:var(--tx3)">관련 뉴스 없음</div>'; return; }
+    listEl.innerHTML = items.map(item => {
+      const title = item.title || '';
+      const time = item.pubDate ? (() => {
+        try {
+          const d = new Date(item.pubDate);
+          const kst = new Date(d.getTime() + 9*60*60*1000);
+          return (kst.getUTCMonth()+1) + '/' + kst.getUTCDate() + ' ' + String(kst.getUTCHours()).padStart(2,'0') + ':' + String(kst.getUTCMinutes()).padStart(2,'0');
+        } catch { return ''; }
+      })() : '';
+      const safeLink = (item.link||'').replace(/'/g,'%27');
+      return '<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;cursor:pointer" onclick="window.open('' + safeLink + '','_blank')">'
+        + '<div style="font-size:11px;font-weight:700;line-height:1.5;color:var(--tx);margin-bottom:3px">' + title + '</div>'
+        + '<div style="display:flex;gap:6px;align-items:center">'
+        + (item.source ? '<span style="font-size:9px;color:var(--pr);font-weight:700">' + item.source + '</span>' : '')
+        + (time ? '<span style="font-size:9px;color:var(--tx3)">' + time + '</span>' : '')
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) { listEl.innerHTML = '<div style="font-size:11px;color:var(--tx3)">뉴스 로드 실패</div>'; }
+};
+
+// 종봉픽 등 이름 클릭 시 뉴스만 바텀시트로 열기
+window.openStockNewsModal = (name) => {
+  const mo = document.getElementById('moKisDetail');
+  const moBody = document.getElementById('moKisDetailBody');
+  if(!mo || !moBody) return;
+  moBody.innerHTML = '<div style="font-size:15px;font-weight:900;margin-bottom:4px">' + name + '</div>';
+  const newsEl = document.getElementById('moKisNews');
+  if(newsEl) newsEl.style.display = 'none';
+  mo.classList.add('show');
+  window.fetchStockNews(name);
 };
 
 window.kisRowClick = async (key) => {
@@ -3860,6 +3885,11 @@ window.kisRowClick = async (key) => {
     + '<button class="btn btn-pr" onclick="kisAddTop(\'' + s.name + '\',' + fBuy + ',' + iBuy + ');closeMo(\'moKisDetail\')">➕ 관심종목에 추가</button>';
 
   mo.classList.add('show');
+
+  // 뉴스 초기화 후 fetch
+  const newsEl = document.getElementById('moKisNews');
+  if(newsEl) newsEl.style.display = 'none';
+  window.fetchStockNews(s.name);
 
   // 연속일수 조회
   if(s.code) {
