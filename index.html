@@ -3069,31 +3069,93 @@ window.openJungBaeDatePicker = () => {
   }
 };
 
+// 섹터 이동 맵 (드래그로 변경된 섹터 저장)
+window._jungBaeSectorOverride = {};
+
+// 섹터 이동 저장
+window.saveJungBaeSectorOverride = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'settings', 'jungbaeSectorOverride'),
+      { map: window._jungBaeSectorOverride, updatedAt: new Date().toISOString() });
+  } catch(e) { console.warn('섹터 저장 실패:', e); }
+};
+
+// 섹터 이동 로드
+window.loadJungBaeSectorOverride = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'settings', 'jungbaeSectorOverride'));
+    if(snap.exists()) window._jungBaeSectorOverride = snap.data().map || {};
+  } catch(e) {}
+};
+
+// 드래그 이벤트
+window._jbDragStock = null;
+window.jbDragStart = (name, code, chg, ma5, ma20, ma60) => {
+  window._jbDragStock = { name, code, chg, ma5, ma20, ma60 };
+};
+window.jbDragOver = (e) => { e.preventDefault(); e.currentTarget.style.background = 'rgba(0,212,170,0.15)'; };
+window.jbDragLeave = (e) => { e.currentTarget.style.background = ''; };
+window.jbDropToSector = async (e, sectorName) => {
+  e.preventDefault();
+  e.currentTarget.style.background = '';
+  if(!window._jbDragStock) return;
+  window._jungBaeSectorOverride[window._jbDragStock.code] = sectorName;
+  await saveJungBaeSectorOverride();
+  // 현재 결과 다시 렌더링
+  if(window._jbLastResults) renderJungBae(window._jbLastResults, window._jbLastDate);
+  window._jbDragStock = null;
+};
+
 // 정배열 결과 렌더링
 function renderJungBae(results, date) {
+  window._jbLastResults = results;
+  window._jbLastDate = date;
   const listEl = document.getElementById('jungBaeList');
   const emptyEl = document.getElementById('jungBaeEmpty');
   if(!listEl) return;
-  const total = results.reduce((a,s)=>a+s.stocks.length,0);
+
+  // 섹터 오버라이드 적용
+  const override = window._jungBaeSectorOverride || {};
+  const sectorMap = {};
+  results.forEach(sec => {
+    sec.stocks.forEach(s => {
+      const finalSector = override[s.code] || sec.name;
+      if(!sectorMap[finalSector]) sectorMap[finalSector] = [];
+      sectorMap[finalSector].push(s);
+    });
+  });
+
+  const total = Object.values(sectorMap).reduce((a,b)=>a+b.length,0);
   if(!total) {
     listEl.innerHTML = '';
     if(emptyEl) { emptyEl.style.display='block'; emptyEl.querySelector('p').textContent='정배열 종목 없음'; }
     return;
   }
   if(emptyEl) emptyEl.style.display='none';
-  listEl.innerHTML = results.filter(s=>s.stocks.length).map(sector => `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px;padding:0 2px">
-        📌 ${sector.name} <span style="font-size:10px;color:var(--pr);font-weight:700">${sector.stocks.length}개</span>
+
+  // 기타 맨 아래로
+  const sectors = Object.entries(sectorMap).sort((a,b) => {
+    if(a[0]==='기타') return 1;
+    if(b[0]==='기타') return -1;
+    return b[1].length - a[1].length;
+  });
+
+  listEl.innerHTML = sectors.map(([sName, stocks]) => `
+    <div style="margin-bottom:14px" ondragover="jbDragOver(event)" ondragleave="jbDragLeave(event)" ondrop="jbDropToSector(event,'${sName}')">
+      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px">
+        📌 ${sName} <span style="font-size:10px;color:var(--pr);font-weight:700">${stocks.length}개</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        ${sector.stocks.map(s => `
-          <div style="background:var(--sf2);border:1px solid rgba(0,212,170,0.35);border-radius:8px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="openStockNewsModal('${s.name}')">
-            <div>
-              <span style="font-size:12px;font-weight:700">${s.name}</span>
-              <span style="font-size:9px;color:var(--tx3);margin-left:6px">5일 ${s.ma5?.toFixed(0)||'-'} / 20일 ${s.ma20?.toFixed(0)||'-'}</span>
-            </div>
-            <span style="font-size:11px;color:${s.chg>=0?'var(--up)':'var(--dn)'};font-weight:800">${s.chg>=0?'+':''}${s.chg}%</span>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${stocks.map(s => `
+          <div draggable="true"
+            ondragstart="jbDragStart('${s.name}','${s.code}',${s.chg},${s.ma5?.toFixed(0)||0},${s.ma20?.toFixed(0)||0},${s.ma60?.toFixed(0)||0})"
+            onclick="openStockNewsModal('${s.name}')"
+            style="background:var(--sf2);border:1px solid rgba(0,212,170,0.35);border-radius:20px;padding:4px 10px;cursor:grab;font-size:11px;font-weight:700;color:var(--tx);white-space:nowrap">
+            ${s.name}
           </div>`).join('')}
       </div>
     </div>`).join('');
@@ -3190,6 +3252,7 @@ window.jungBaeFetch = async () => {
     // 5. Firestore 저장
     const uid = window._curUser?.uid;
     if(uid) {
+      await loadJungBaeSectorOverride();
       await saveJungBaeHistory(uid, results, today);
       await renderJungBaeDateTabs(today, uid);
     }
