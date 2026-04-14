@@ -2762,8 +2762,8 @@ window.kisTopFetch = async () => {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1px solid var(--bd)');
       }
       if(isJB(s.name)) {
-        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(0,212,170,0.7)');
-        base = base.replace('background:rgba(0,212,170,0.15);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.7)');
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
+        base = base.replace('background:rgba(0,212,170,0.15);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1.5px solid rgba(255,105,180,0.8)');
       }
       return base;
     };
@@ -2776,7 +2776,7 @@ window.kisTopFetch = async () => {
         base = base.replace(/(<div class="rank-badge [^"]*" style="[^"]*)(")>/, (m,p1,p2)=>p1+';outline:2px solid rgba(0,212,170,0.8)'+p2+'>');
       }
       if(isJB(s.name)) {
-        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(0,212,170,0.7)');
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
       }
       return base;
     }).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
@@ -2912,8 +2912,8 @@ window.loadKisHistory = async (date, uid) => {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1px solid var(--bd)');
       }
       if(isJB2(s.name)) {
-        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(0,212,170,0.7)');
-        base = base.replace('background:rgba(0,212,170,0.15);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.7)');
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
+        base = base.replace('background:rgba(0,212,170,0.15);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1.5px solid rgba(255,105,180,0.8)');
       }
       return base;
     };
