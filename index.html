@@ -3631,6 +3631,7 @@ window.upSudFetch = async () => {
           + (sector ? '<span style="font-size:9px;color:var(--tx3)">' + sector + '</span>' : '')
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
           + stars
+          + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(s=>s.name===name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
           + '</div>'
           + '<div style="font-size:9px;margin-top:3px">'
@@ -3878,6 +3879,7 @@ window.loadUpSudHistory = async (date, uid) => {
         + '<span style="font-size:12px;font-weight:700">' + s.name + '</span>'
         + (hSector ? '<span style="font-size:9px;color:var(--tx3)">' + hSector + '</span>' : '')
         + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + (s.trPbmn||0) + '억</span>'
+        + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===s.name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
         + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">' + chgStr + '</span>'
         + '</div>'
         + '<div style="font-size:9px;margin-top:3px">'
