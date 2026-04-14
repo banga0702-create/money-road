@@ -374,15 +374,21 @@ export default async function handler(req, res) {
     // 정배열 배치 조회 - 여러 종목 한번에 처리
     if (action === 'jungbae_batch') {
       const token = await getToken();
-      const { codes } = req.query; // 쉼표로 구분된 종목코드
+      const { codes } = req.query;
       if (!codes) return res.status(400).json({ error: 'codes 파라미터 필요' });
-      const codeList = codes.split(',').filter(Boolean).slice(0, 30); // 최대 30개
+      const codeList = codes.split(',').filter(Boolean).slice(0, 25);
+      // 120일 전 날짜 계산
+      const today = new Date();
+      const from = new Date(today);
+      from.setDate(from.getDate() - 180);
+      const toStr = today.toISOString().slice(0,10).replace(/-/g,'');
+      const fromStr = from.toISOString().slice(0,10).replace(/-/g,'');
       const results = {};
       for (const code of codeList) {
         try {
           await new Promise(r => setTimeout(r, 300));
           const r = await fetch(
-            `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`,
+            `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=${fromStr}&FID_INPUT_DATE_2=${toStr}&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`,
             { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010100', 'custtype': 'P' } }
           );
           const data = await r.json();
