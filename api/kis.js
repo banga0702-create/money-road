@@ -358,6 +358,19 @@ export default async function handler(req, res) {
       }
     }
 
+    // 일봉 데이터 조회 (이평선 계산용) - FHKST03010100
+    if (action === 'daily_price') {
+      const token = await getToken();
+      const { code } = req.query;
+      if (!code) return res.status(400).json({ error: 'code 파라미터 필요' });
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010100', 'custtype': 'P' } }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
