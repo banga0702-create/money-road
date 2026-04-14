@@ -3041,6 +3041,12 @@ window.loadJungBaeHistory = async (date, uid) => {
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'jungBaeHistory', date));
     if(!snap.exists()) return false;
+    // 오버라이드/순서/커스텀섹터 먼저 로드
+    await Promise.all([
+      loadJungBaeSectorOverride(),
+      loadJungBaeSectorOrder(),
+      loadJungBaeCustomSectors(),
+    ]);
     renderJungBae(snap.data().results, date);
     renderJungBaeDateTabs(date, uid);
     return true;
