@@ -3152,13 +3152,19 @@ window.jungBaeFetch = async () => {
         batch.forEach(({ name, code }) => {
           const rows = results[code] || [];
           if(rows.length < 20) return;
-          const prices = rows.map(d => parseFloat(d.stck_clpr || 0)).filter(p => p > 0);
+          // 최신순 정렬 확인 (stck_bsop_date 내림차순)
+          const sorted = [...rows].sort((a,b) => b.stck_bsop_date.localeCompare(a.stck_bsop_date));
+          const prices = sorted.map(d => parseFloat(d.stck_clpr || 0)).filter(p => p > 0);
           if(prices.length < 20) return;
           const ma5  = calcMA(prices, 5);
           const ma20 = calcMA(prices, 20);
           const ma60 = calcMA(prices, 60);
           if(!ma5 || !ma20 || !ma60) return;
-          const chg = parseFloat(rows[0]?.prdy_ctrt || 0);
+          // 등락률: (오늘종가 - 전일종가) / 전일종가 * 100
+          const todayClose = prices[0];
+          const prevClose = prices[1] || todayClose;
+          const chg = prevClose ? parseFloat(((todayClose - prevClose) / prevClose * 100).toFixed(2)) : 0;
+          console.log(name, 'ma5:', ma5?.toFixed(0), 'ma20:', ma20?.toFixed(0), 'ma60:', ma60?.toFixed(0), 'jungbae:', isJungBae(prices));
           if(isJungBae(prices)) {
             const sector = (window._stockThemeMap && window._stockThemeMap[name]) || '기타';
             jbStocks.push({ name, code, chg, ma5, ma20, ma60, sector });
