@@ -358,7 +358,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 일봉 데이터 조회 (이평선 계산용) - FHKST03010100
+    // 일봉 데이터 단건 조회
     if (action === 'daily_price') {
       const token = await getToken();
       const { code } = req.query;
@@ -369,6 +369,27 @@ export default async function handler(req, res) {
       );
       const data = await r.json();
       return res.status(200).json(data);
+    }
+
+    // 정배열 배치 조회 - 여러 종목 한번에 처리
+    if (action === 'jungbae_batch') {
+      const token = await getToken();
+      const { codes } = req.query; // 쉼표로 구분된 종목코드
+      if (!codes) return res.status(400).json({ error: 'codes 파라미터 필요' });
+      const codeList = codes.split(',').filter(Boolean).slice(0, 30); // 최대 30개
+      const results = {};
+      for (const code of codeList) {
+        try {
+          await new Promise(r => setTimeout(r, 300));
+          const r = await fetch(
+            `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`,
+            { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010100', 'custtype': 'P' } }
+          );
+          const data = await r.json();
+          results[code] = data.output2 || [];
+        } catch(e) { results[code] = []; }
+      }
+      return res.status(200).json({ results });
     }
 
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
