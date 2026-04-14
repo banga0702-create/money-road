@@ -2967,17 +2967,25 @@ window.loadKisWeekly = async (uid) => {
       Object.keys(counter).filter(n => fCounter[n] && iCounter[n])
     );
 
+    const freqColor = (cnt, max) => {
+      const ratio = cnt / max;
+      if(ratio >= 0.85) return '#FF4757'; // 6~7/7 빨강
+      if(ratio >= 0.57) return '#FF8C00'; // 4~5/7 주황
+      if(ratio >= 0.28) return '#FFB400'; // 2~3/7 노랑
+      return '#94A3B8'; // 1/7 회색
+    };
+
     const makeWeekRow = ([name, cnt], i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const isTriple = weekTriple.has(name);
+      const color = freqColor(cnt, maxCount);
       const bg = isTriple
-        ? 'background:linear-gradient(135deg,rgba(255,180,0,0.13),rgba(255,100,0,0.08));border:1px solid rgba(255,180,0,0.45);box-shadow:0 0 7px rgba(255,180,0,0.13)'
+        ? 'background:linear-gradient(135deg,rgba(255,180,0,0.13),rgba(255,100,0,0.08));border:1px solid rgba(255,180,0,0.45)'
         : 'background:var(--sf);border:1px solid var(--bd)';
-      const cntColor = isTriple ? 'color:#FFB400' : 'color:var(--ac)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;' + bg + '">'
         + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + (i<3?'':'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)') + '">' + (i+1) + '</div>'
         + '<span style="font-size:11px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + name + '</span>'
-        + '<span style="font-size:10px;font-weight:800;flex-shrink:0;' + cntColor + '">' + cnt + '/' + maxCount + '일</span>'
+        + '<span style="font-size:10px;font-weight:900;flex-shrink:0;color:' + color + '">' + cnt + '/' + maxCount + '일</span>'
         + '</div>';
     };
 
