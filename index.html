@@ -3110,16 +3110,16 @@ window.jungBaeFetch = async () => {
   const today = new Date().toISOString().slice(0,10);
 
   try {
-    // 1. 종목 풀 수집 (상승수급과 동일)
-    const [volRes, fiRes] = await Promise.all([
-      fetch('/api/kis?action=vol_rank'),
-      fetch('/api/kis?action=foreign_inst_combined'),
-    ]);
+    // 1. 종목 풀 수집 - 순차 호출 (토큰 충돌 방지)
+    const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
+    const fiData = await fiRes.json();
+    await new Promise(r => setTimeout(r, 1000));
+    const volRes = await fetch('/api/kis?action=vol_rank');
     const volData = await volRes.json();
-    const fiData  = await fiRes.json();
 
     let priceData = { output: [] };
     try {
+      await new Promise(r => setTimeout(r, 1000));
       const pr = await fetch('/api/kis?action=price_rank');
       priceData = await pr.json();
     } catch(e) {}
