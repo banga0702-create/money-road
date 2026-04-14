@@ -570,7 +570,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
       <div class="ftab" onclick="showFTab('역발상',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('reverseList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);if(uid){const r=await loadReverseHistory(today,uid);const b=document.getElementById('revDateBtn-'+today);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(r===false||!listEl||!listEl.children.length||listEl.querySelector('.empty'))reverseFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadReverseHistory(today,uid2).then(r=>{if(r===false)reverseFetch();}).catch(()=>reverseFetch());}else reverseFetch();},1500);}})()">역발상</div>
       <div class="ftab" onclick="showFTab('상승수급',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('upSudList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);const loadDate=window._upSudLatestDate||today;if(uid){const r=await loadUpSudHistory(loadDate,uid);const b=document.getElementById('upSudDateBtn-'+loadDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadUpSudHistory(today,uid2).then(()=>{if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}).catch(()=>upSudFetch());}else upSudFetch();},1500);}})()">상승수급</div>
-      <div class="ftab" onclick="showFTab('정배열',this);(async()=>{const uid=window._kisUid;if(uid){const today=new Date().toISOString().slice(0,10);const r=await loadJungBaeHistory(today,uid);if(!r)jungBaeFetch();}else jungBaeFetch();})()">정배열</div>
+      <div class="ftab" onclick="showFTab('정배열',this);(async()=>{const uid=window._kisUid;if(uid){await loadJungBaeCustomSectors();const today=new Date().toISOString().slice(0,10);const r=await loadJungBaeHistory(today,uid);if(!r)jungBaeFetch();}else{renderJungBaeCustomSectors();jungBaeFetch();}})()">정배열</div>
       <div class="ftab" onclick="showFTab('기준봉',this);const _cu=window._curUser;if(_cu&&window._cdLatestDate)loadCandleHistory(window._cdLatestDate,_cu.uid)">종봉 PICK</div>
     </div>
 
@@ -3072,6 +3072,30 @@ window.openJungBaeDatePicker = () => {
 
 // 커스텀 섹터 목록
 window._jungBaeCustomSectors = [];
+// 섹터 순서
+window._jungBaeSectorOrder = [];
+// 섹터 드래그 상태
+window._jbSectorDrag = null;
+
+// 섹터 순서 저장
+window.saveJungBaeSectorOrder = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'settings', 'jungbaeSectorOrder'),
+      { order: window._jungBaeSectorOrder, updatedAt: new Date().toISOString() });
+  } catch(e) {}
+};
+
+// 섹터 순서 로드
+window.loadJungBaeSectorOrder = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'settings', 'jungbaeSectorOrder'));
+    if(snap.exists()) window._jungBaeSectorOrder = snap.data().order || [];
+  } catch(e) {}
+};
 
 // 커스텀 섹터 저장
 window.saveJungBaeCustomSectors = async () => {
@@ -3114,7 +3138,13 @@ window.addCustomSector = async () => {
   const trimmed = name.trim();
   if(window._jungBaeCustomSectors.includes(trimmed)) { alert('이미 있는 섹터예요'); return; }
   window._jungBaeCustomSectors.push(trimmed);
+  // 섹터 순서에도 맨 뒤(기타 앞)에 추가
+  const orderArr = window._jungBaeSectorOrder;
+  const gIdx = orderArr.indexOf('기타');
+  if(gIdx >= 0) orderArr.splice(gIdx, 0, trimmed);
+  else orderArr.push(trimmed);
   await saveJungBaeCustomSectors();
+  await saveJungBaeSectorOrder();
   renderJungBaeCustomSectors();
   if(window._jbLastResults) renderJungBae(window._jbLastResults, window._jbLastDate);
 };
@@ -3156,7 +3186,62 @@ window.loadJungBaeSectorOverride = async () => {
   } catch(e) {}
 };
 
-// 드래그 이벤트
+// 섹터 드래그 이벤트
+window._jbSectorDragName = null;
+window.jbSecDragStart = (e, name) => {
+  window._jbSectorDragName = name;
+  e.dataTransfer.effectAllowed = 'move';
+};
+window.jbSecDragOver = (e, name) => {
+  // 종목 드래그 or 섹터 드래그 모두 허용
+  if(window._jbDragStock) {
+    e.preventDefault();
+    e.currentTarget.style.borderTop = '2px solid rgba(0,212,170,0.6)';
+    return;
+  }
+  if(!window._jbSectorDragName || window._jbSectorDragName === name) return;
+  e.preventDefault();
+  e.currentTarget.style.borderTop = '2px solid var(--pr)';
+};
+window.jbSecDragLeave = (e) => {
+  e.currentTarget.style.borderTop = '';
+};
+window.jbSecDrop = async (e, targetName) => {
+  e.preventDefault();
+  e.currentTarget.style.borderTop = '';
+
+  // 종목 드래그인 경우 → 섹터 이동
+  if(window._jbDragStock) {
+    window._jungBaeSectorOverride[window._jbDragStock.code] = targetName;
+    await saveJungBaeSectorOverride();
+    if(window._jbLastResults) renderJungBae(window._jbLastResults, window._jbLastDate);
+    window._jbDragStock = null;
+    return;
+  }
+
+  // 섹터 드래그인 경우 → 순서 변경
+  const fromName = window._jbSectorDragName;
+  if(!fromName || fromName === targetName) return;
+  window._jbSectorDragName = null;
+
+  const order = window._jungBaeSectorOrder.length
+    ? [...window._jungBaeSectorOrder]
+    : (window._jbLastResults||[]).map(s=>s.name).filter(s=>s!=='기타');
+
+  if(!order.includes(fromName)) order.push(fromName);
+  if(!order.includes(targetName)) order.push(targetName);
+
+  const fromIdx = order.indexOf(fromName);
+  const toIdx = order.indexOf(targetName);
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, fromName);
+
+  window._jungBaeSectorOrder = order;
+  await saveJungBaeSectorOrder();
+  if(window._jbLastResults) renderJungBae(window._jbLastResults, window._jbLastDate);
+};
+
+// 드래그 이벤트 (종목)
 window._jbDragStock = null;
 window.jbDragStart = (name, code, chg, ma5, ma20, ma60) => {
   window._jbDragStock = { name, code, chg, ma5, ma20, ma60 };
@@ -3206,19 +3291,25 @@ function renderJungBae(results, date) {
     if(!sectorMap[s]) sectorMap[s] = [];
   });
 
-  // 기타 맨 아래로, 커스텀 섹터 우선
-  const customSet = new Set(window._jungBaeCustomSectors || []);
-  const sectors = Object.entries(sectorMap).sort((a,b) => {
-    if(a[0]==='기타') return 1;
-    if(b[0]==='기타') return -1;
-    if(customSet.has(a[0]) && !customSet.has(b[0])) return -1;
-    if(!customSet.has(a[0]) && customSet.has(b[0])) return 1;
-    return b[1].length - a[1].length;
-  });
+  // 저장된 순서 적용
+  const savedOrder = window._jungBaeSectorOrder || [];
+  const allSectorNames = Object.keys(sectorMap);
+  const ordered = [
+    ...savedOrder.filter(s => allSectorNames.includes(s) && s !== '기타'),
+    ...allSectorNames.filter(s => !savedOrder.includes(s) && s !== '기타').sort((a,b) => (sectorMap[b]?.length||0)-(sectorMap[a]?.length||0)),
+    ...(allSectorNames.includes('기타') ? ['기타'] : [])
+  ];
+  const sectors = ordered.map(s => [s, sectorMap[s] || []]);
+
+  // 각 섹터 종목 등락률 높은 순 정렬
+  sectors.forEach(([, stocks]) => stocks.sort((a,b) => (b.chg||0)-(a.chg||0)));
 
   listEl.innerHTML = sectors.map(([sName, stocks]) => `
-    <div style="margin-bottom:14px" ondragover="jbDragOver(event)" ondragleave="jbDragLeave(event)" ondrop="jbDropToSector(event,'${sName}')">
-      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px">
+    <div style="margin-bottom:14px" id="jbSec-${sName}"
+      ondragover="jbSecDragOver(event,'${sName}')" ondragleave="jbSecDragLeave(event)" ondrop="jbSecDrop(event,'${sName}')">
+      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px;display:flex;align-items:center;gap:6px;cursor:grab"
+        draggable="true" ondragstart="jbSecDragStart(event,'${sName}')">
+        <span style="color:var(--tx3);font-size:13px">⠿</span>
         📌 ${sName} <span style="font-size:10px;color:var(--pr);font-weight:700">${stocks.length}개</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:5px">
@@ -3327,6 +3418,7 @@ window.jungBaeFetch = async () => {
     if(uid) {
       await loadJungBaeSectorOverride();
       await loadJungBaeCustomSectors();
+      await loadJungBaeSectorOrder();
       await saveJungBaeHistory(uid, results, today);
       await renderJungBaeDateTabs(today, uid);
     }
