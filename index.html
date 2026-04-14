@@ -570,7 +570,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
       <div class="ftab" onclick="showFTab('역발상',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('reverseList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);if(uid){const r=await loadReverseHistory(today,uid);const b=document.getElementById('revDateBtn-'+today);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(r===false||!listEl||!listEl.children.length||listEl.querySelector('.empty'))reverseFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadReverseHistory(today,uid2).then(r=>{if(r===false)reverseFetch();}).catch(()=>reverseFetch());}else reverseFetch();},1500);}})()">역발상</div>
       <div class="ftab" onclick="showFTab('상승수급',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('upSudList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);const loadDate=window._upSudLatestDate||today;if(uid){const r=await loadUpSudHistory(loadDate,uid);const b=document.getElementById('upSudDateBtn-'+loadDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadUpSudHistory(today,uid2).then(()=>{if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}).catch(()=>upSudFetch());}else upSudFetch();},1500);}})()">상승수급</div>
-      <div class="ftab" onclick="showFTab('ETF',this);if(!document.getElementById('etfAutoList').children.length)etfReverseFetch()">오늘의 ETF</div>
+      <div class="ftab" onclick="showFTab('정배열',this);(async()=>{const uid=window._kisUid;if(uid){const today=new Date().toISOString().slice(0,10);const r=await loadJungBaeHistory(today,uid);if(!r)jungBaeFetch();}else jungBaeFetch();})()">정배열</div>
       <div class="ftab" onclick="showFTab('기준봉',this);const _cu=window._curUser;if(_cu&&window._cdLatestDate)loadCandleHistory(window._cdLatestDate,_cu.uid)">종봉 PICK</div>
     </div>
 
@@ -609,41 +609,17 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     </div>
 
-    <!-- ETF -->
-    <div class="fpanel" id="fp-ETF">
-      <!-- ETF 역발상 자동조회 -->
+    <!-- 정배열 -->
+    <div class="fpanel" id="fp-정배열">
       <div class="sh">
-        <span class="sh-title">📉 역발상 ETF</span>
-        <button class="btn btn-ac btn-sm" onclick="etfReverseFetch()" id="etfReverseBtn">⚡ 불러오기</button>
+        <span class="sh-title">📈 정배열 종목</span>
+        <button class="btn btn-ac btn-sm" onclick="jungBaeFetch()" id="jungBaeBtn">⚡ 불러오기</button>
       </div>
-      <div id="etfReverseMsg" style="margin:0 16px 6px;font-size:11px;color:var(--ac);display:none"></div>
-      <div style="margin:0 16px 6px;font-size:10px;color:var(--tx3)">거래대금 1000억↑ 하락 ETF 중 외국인/기관 순매수</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 16px 12px">
-        <div>
-          <div style="font-size:10px;font-weight:800;color:var(--up);margin-bottom:6px">📈 외국인 매수</div>
-          <div id="etfAutoListF" style="display:flex;flex-direction:column;gap:3px"></div>
-        </div>
-        <div>
-          <div style="font-size:10px;font-weight:800;color:var(--ac);margin-bottom:6px">🔥 외+기 동시</div>
-          <div id="etfAutoList" style="display:flex;flex-direction:column;gap:3px"></div>
-        </div>
-      </div>
-      <div class="sh" style="margin-top:4px"><span class="sh-title">강세 ETF</span></div>
-      <div class="card card-p0" id="etfList"><div class="empty" style="padding:28px"><div class="ico">📊</div><p>ETF를 추가해주세요</p></div></div>
-      <div class="sh" style="margin-top:8px"><span class="sh-title">ETF 추가</span></div>
-      <div class="card">
-        <div class="f-row c2">
-          <div class="fg"><label>ETF 이름</label><input type="text" id="etName" placeholder="KODEX 반도체"></div>
-          <div class="fg"><label>상승률 %</label><input type="number" id="etChg" placeholder="예) 3.2" step="0.1" inputmode="decimal"></div>
-        </div>
-        <div class="fg" style="margin-bottom:10px"><label>거래대금(억)</label><input type="number" id="etVol" placeholder="예) 5000" inputmode="numeric"></div>
-        <div>
-          <div class="tog-row"><span class="tog-lbl">외국인 매수</span><div class="tog" id="etF" onclick="this.classList.toggle('on')"></div></div>
-          <div class="tog-row"><span class="tog-lbl">기관 매수</span><div class="tog" id="etI" onclick="this.classList.toggle('on')"></div></div>
-          <div class="tog-row"><span class="tog-lbl">외국인 + 기관 동시 매수</span><div class="tog" id="etFI" onclick="this.classList.toggle('on')"></div></div>
-        </div>
-        <button class="btn btn-pr" style="margin-top:10px" onclick="addEtf()">추가</button>
-      </div>
+      <div id="jungBaeMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div id="jungBaeDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
+      <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">5일 &gt; 20일 &gt; 60일 순 정배열 종목 (섹터별)</div>
+      <div id="jungBaeList" style="margin:0 16px 12px"></div>
+      <div id="jungBaeEmpty" class="empty" style="display:none"><div class="ico">📈</div><p>불러오기를 눌러 정배열 종목을 확인하세요</p></div>
     </div>
 
     <!-- 상승수급 -->
@@ -2994,6 +2970,194 @@ window.loadKisWeekly = async (uid) => {
 
 // 종목 행 클릭 핸들러
 // ── ETF 역발상 - 거래대금 1000억↑ 하락 ETF 중 외국인/기관 순매수
+
+// ── 정배열 섹터별 종목 풀 (종목명 → 종목코드)
+const JUNGBAE_SECTORS = [
+  { name: '반도체', stocks: [
+    {n:'삼성전기',c:'009150'},{n:'SK하이닉스',c:'000660'},{n:'삼성전자',c:'005930'},
+    {n:'두산',c:'000150'},{n:'테스',c:'095610'},{n:'심텍',c:'222800'},
+    {n:'이오테크닉스',c:'039030'},{n:'네패스',c:'033640'},{n:'GST',c:'083450'},
+  ]},
+  { name: '광학/광통신', stocks: [
+    {n:'대한광통신',c:'010170'},{n:'빛과전자',c:'069540'},{n:'RF머트리얼즈',c:'327260'},
+    {n:'머큐리',c:'100590'},{n:'우리로',c:'046970'},{n:'쏠리드',c:'050890'},
+    {n:'광전자',c:'026150'},{n:'라이콤',c:'098120'},
+  ]},
+  { name: '통신장비/6G', stocks: [
+    {n:'대한광통신',c:'010170'},{n:'에이스테크',c:'088800'},{n:'머큐리',c:'100590'},
+    {n:'우리로',c:'046970'},{n:'와이어블',c:'032080'},{n:'쏠리드',c:'050890'},
+    {n:'코위버',c:'056360'},
+  ]},
+  { name: '방산', stocks: [
+    {n:'LIG넥스원',c:'079550'},{n:'기산텔레콤',c:'035460'},{n:'웨이브일렉트로',c:'095270'},
+    {n:'퍼스텍',c:'010820'},{n:'우리넷',c:'115440'},{n:'한화에어로스페이스',c:'012450'},
+    {n:'비즈로셀',c:'122900'},
+  ]},
+  { name: '건설/주택', stocks: [
+    {n:'대우건설',c:'047040'},{n:'DL이앤씨',c:'375500'},{n:'GS건설',c:'006360'},
+    {n:'현대건설',c:'000720'},{n:'삼성물산',c:'028260'},
+  ]},
+  { name: '금융/지주/밸류업', stocks: [
+    {n:'SK텔레콤',c:'017670'},{n:'두산',c:'000150'},{n:'삼성물산',c:'028260'},
+  ]},
+  { name: '자율주행', stocks: [
+    {n:'광전자',c:'026150'},{n:'에이스테크',c:'088800'},{n:'라이콤',c:'098120'},
+  ]},
+];
+
+// 이평선 계산
+function calcMA(prices, n) {
+  if(prices.length < n) return null;
+  return prices.slice(0, n).reduce((a,b) => a+b, 0) / n;
+}
+
+// 정배열 여부 판단 (5>20>60)
+function isJungBae(prices) {
+  const ma5  = calcMA(prices, 5);
+  const ma20 = calcMA(prices, 20);
+  const ma60 = calcMA(prices, 60);
+  if(!ma5 || !ma20 || !ma60) return false;
+  return ma5 > ma20 && ma20 > ma60;
+}
+
+// 정배열 Firestore 저장
+window.saveJungBaeHistory = async (uid, results, targetDate) => {
+  try {
+    await setDoc(doc(db, 'users', uid, 'jungBaeHistory', targetDate), {
+      date: targetDate, results, savedAt: new Date().toISOString()
+    });
+  } catch(e) { console.warn('정배열 저장 실패:', e); }
+};
+
+// 정배열 Firestore 로드
+window.loadJungBaeHistory = async (date, uid) => {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'jungBaeHistory', date));
+    if(!snap.exists()) return false;
+    renderJungBae(snap.data().results, date);
+    renderJungBaeDateTabs(date, uid);
+    return true;
+  } catch(e) { return false; }
+};
+
+// 날짜탭 렌더링
+window.renderJungBaeDateTabs = async (activeDate, uid) => {
+  try {
+    const snap = await getDocs(collection(db, 'users', uid, 'jungBaeHistory'));
+    const dates = snap.docs.map(d=>d.id).sort().reverse().slice(0,7);
+    const tabsEl = document.getElementById('jungBaeDateTabs');
+    if(!tabsEl) return;
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    tabsEl.innerHTML = dates.map(d => {
+      const lbl = d===today?'오늘':d===yesterday?'어제':d.slice(5).replace('-','/');
+      const isActive = d===activeDate;
+      return `<button id="jungBaeDateBtn-${d}" onclick="loadJungBaeHistory('${d}',window._curUser?.uid)"
+        style="flex-shrink:0;padding:4px 12px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};
+        background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:11px;font-weight:700;cursor:pointer">${lbl}</button>`;
+    }).join('');
+    tabsEl.innerHTML += `<button onclick="openJungBaeDatePicker()" style="flex-shrink:0;padding:4px 10px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:13px;cursor:pointer">📅</button>`;
+  } catch(e) {}
+};
+
+window.openJungBaeDatePicker = () => {
+  const d = prompt('날짜 입력 (YYYY-MM-DD)', new Date().toISOString().slice(0,10));
+  if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    const uid = window._curUser?.uid;
+    if(uid) loadJungBaeHistory(d, uid);
+  }
+};
+
+// 정배열 결과 렌더링
+function renderJungBae(results, date) {
+  const listEl = document.getElementById('jungBaeList');
+  const emptyEl = document.getElementById('jungBaeEmpty');
+  if(!listEl) return;
+  const total = results.reduce((a,s)=>a+s.stocks.length,0);
+  if(!total) {
+    listEl.innerHTML = '';
+    if(emptyEl) { emptyEl.style.display='block'; emptyEl.querySelector('p').textContent='정배열 종목 없음'; }
+    return;
+  }
+  if(emptyEl) emptyEl.style.display='none';
+  listEl.innerHTML = results.filter(s=>s.stocks.length).map(sector => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px;padding:0 2px">
+        📌 ${sector.name} <span style="font-size:10px;color:var(--pr);font-weight:700">${sector.stocks.length}개</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${sector.stocks.map(s => `
+          <div style="background:var(--sf2);border:1px solid ${s.ma5>s.ma20&&s.ma20>s.ma60?'rgba(0,212,170,0.4)':'var(--bd)'};border-radius:8px;padding:5px 10px;cursor:pointer" onclick="openStockNewsModal('${s.name}')">
+            <div style="font-size:11px;font-weight:700">${s.name}</div>
+            <div style="font-size:9px;color:${s.chg>=0?'var(--up)':'var(--dn)'};font-weight:700">${s.chg>=0?'+':''}${s.chg}%</div>
+            <div style="font-size:8px;color:var(--tx3);margin-top:2px">5일 ${s.ma5?.toFixed(0)||'-'} / 20일 ${s.ma20?.toFixed(0)||'-'}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// 정배열 자동 조회
+window.jungBaeFetch = async () => {
+  const btn = document.getElementById('jungBaeBtn');
+  const msg = document.getElementById('jungBaeMsg');
+  btn.textContent = '⏳ 분석 중...';
+  btn.disabled = true;
+  msg.style.display = 'block';
+  msg.style.color = 'var(--ac)';
+  msg.textContent = '📊 섹터별 이평선 계산 중...';
+
+  const today = new Date().toISOString().slice(0,10);
+  const results = [];
+
+  try {
+    // 섹터별 순차 조회
+    for(const sector of JUNGBAE_SECTORS) {
+      const jbStocks = [];
+      for(const stock of sector.stocks) {
+        try {
+          await new Promise(r => setTimeout(r, 600));
+          const r = await fetch('/api/kis?action=daily_price&code=' + stock.c);
+          const data = await r.json();
+          const output2 = data.output2 || [];
+          if(!output2.length) continue;
+          const prices = output2.map(d => parseFloat(d.stck_clpr)).filter(p=>p>0);
+          if(prices.length < 20) continue;
+          const ma5  = calcMA(prices, 5);
+          const ma20 = calcMA(prices, 20);
+          const ma60 = calcMA(prices, 60);
+          const chg  = parseFloat(output2[0]?.prdy_ctrt || 0).toFixed(2);
+          if(isJungBae(prices)) {
+            jbStocks.push({ name: stock.n, code: stock.c, chg: parseFloat(chg), ma5, ma20, ma60 });
+          }
+        } catch(e) { continue; }
+      }
+      results.push({ name: sector.name, stocks: jbStocks });
+      const done = results.reduce((a,s)=>a+s.stocks.length,0);
+      msg.textContent = `📊 ${sector.name} 완료... (정배열 ${done}개 발견)`;
+    }
+
+    renderJungBae(results, today);
+
+    // Firestore 저장
+    const uid = window._curUser?.uid;
+    if(uid) {
+      await saveJungBaeHistory(uid, results, today);
+      await renderJungBaeDateTabs(today, uid);
+    }
+
+    const total = results.reduce((a,s)=>a+s.stocks.length,0);
+    msg.textContent = `✓ 완료! 정배열 종목 ${total}개 발견`;
+    setTimeout(() => { msg.style.display='none'; }, 4000);
+
+  } catch(e) {
+    msg.style.color = 'var(--dn)';
+    msg.textContent = '⚠️ 조회 실패: ' + e.message;
+  } finally {
+    btn.textContent = '⚡ 불러오기';
+    btn.disabled = false;
+  }
+};
+
 window.etfReverseFetch = async () => {
   const btn = document.getElementById('etfReverseBtn');
   const msg = document.getElementById('etfReverseMsg');
