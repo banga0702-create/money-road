@@ -2754,27 +2754,31 @@ window.kisTopFetch = async () => {
     const fNameSet  = new Set(f.map(s => s.name));
     const dupSet    = new Set([...fiNameSet].filter(n => fNameSet.has(n)));
 
-    // 중복 여부를 렌더 함수에 직접 주입
+    // 중복=배경색만, 정배열=민트 테두리
+    const isJB = (name) => window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===name));
     const makeRow = (s, i, isDup) => {
-      const base = makeRowHL(s, i);
-      if(!isDup) return base;
-      // 기존 bg 스타일 교체
-      return base.replace(
-        'background:var(--sf);border:1px solid var(--bd)',
-        'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.6)'
-      );
+      let base = makeRowHL(s, i);
+      if(isDup) {
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1px solid var(--bd)');
+      }
+      if(isJB(s.name)) {
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(0,212,170,0.7)');
+        base = base.replace('background:rgba(0,212,170,0.15);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.7)');
+      }
+      return base;
     };
 
     document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i, dupSet.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i, dupSet.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> {
-      const base = makeRowHL(s,i);
-      if(!dupSet.has(s.name)) return base;
-      // 번호뱃지에 민트 테두리
-      return base.replace(
-        /(<div class="rank-badge [^"]*" style="[^"]*)(")>/,
-        (m, p1, p2) => p1 + ';outline:2px solid rgba(0,212,170,0.8)' + p2 + '>'
-      );
+      let base = makeRowHL(s,i);
+      if(dupSet.has(s.name)) {
+        base = base.replace(/(<div class="rank-badge [^"]*" style="[^"]*)(")>/, (m,p1,p2)=>p1+';outline:2px solid rgba(0,212,170,0.8)'+p2+'>');
+      }
+      if(isJB(s.name)) {
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(0,212,170,0.7)');
+      }
+      return base;
     }).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
 
     msg.style.color = 'var(--ac)';
@@ -2901,13 +2905,17 @@ window.loadKisHistory = async (date, uid) => {
     const fSet2  = new Set((data.f||[]).map(s=>s.name));
     const dupSet2 = new Set([...fiSet2].filter(n => fSet2.has(n)));
 
+    const isJB2 = (name) => window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===name));
     const makeRow2Dup = (s, i, isDup) => {
-      const base = makeRow2(s, i);
-      if(!isDup) return base;
-      return base.replace(
-        'background:var(--sf);border:1px solid var(--bd)',
-        'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.6)'
-      );
+      let base = makeRow2(s, i);
+      if(isDup) {
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1px solid var(--bd)');
+      }
+      if(isJB2(s.name)) {
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(0,212,170,0.7)');
+        base = base.replace('background:rgba(0,212,170,0.15);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1.5px solid rgba(0,212,170,0.7)');
+      }
+      return base;
     };
 
     document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2Dup(s,i, dupSet2.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
