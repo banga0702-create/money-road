@@ -490,26 +490,31 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <div class="zone-block" id="zb-panic" style="background:rgba(59,130,246,.15)">
           <div class="zone-block-icon">🥶</div>
           <div class="zone-block-label" style="color:#93C5FD">극단공포</div>
+          <div class="zone-block-label" style="color:#93C5FD;font-size:7px;opacity:0.85">매수 찬스</div>
           <div class="zone-block-arrow" style="color:#93C5FD" id="zba-panic"></div>
         </div>
         <div class="zone-block" id="zb-fear" style="background:rgba(125,211,252,.15)">
           <div class="zone-block-icon">😰</div>
           <div class="zone-block-label" style="color:#7DD3FC">공포</div>
+          <div class="zone-block-label" style="color:#7DD3FC;font-size:7px;opacity:0.85">분할 매수</div>
           <div class="zone-block-arrow" style="color:#7DD3FC" id="zba-fear"></div>
         </div>
         <div class="zone-block" id="zb-neutral" style="background:rgba(148,163,184,.15)">
           <div class="zone-block-icon">😐</div>
           <div class="zone-block-label" style="color:#94A3B8">중립</div>
+          <div class="zone-block-label" style="color:#94A3B8;font-size:7px;opacity:0.85">대기</div>
           <div class="zone-block-arrow" style="color:#94A3B8" id="zba-neutral"></div>
         </div>
         <div class="zone-block" id="zb-optimism" style="background:rgba(134,239,172,.15)">
           <div class="zone-block-icon">😊</div>
           <div class="zone-block-label" style="color:#86EFAC">탐욕</div>
+          <div class="zone-block-label" style="color:#86EFAC;font-size:7px;opacity:0.85">분할 매도</div>
           <div class="zone-block-arrow" style="color:#86EFAC" id="zba-optimism"></div>
         </div>
         <div class="zone-block" id="zb-overHeat" style="background:rgba(252,165,165,.15)">
           <div class="zone-block-icon">🤑</div>
           <div class="zone-block-label" style="color:#FCA5A5">극단탐욕</div>
+          <div class="zone-block-label" style="color:#FCA5A5;font-size:7px;opacity:0.85">매도 찬스</div>
           <div class="zone-block-arrow" style="color:#FCA5A5" id="zba-overHeat"></div>
         </div>
       </div>
@@ -568,9 +573,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <div class="page" id="pg-feat">
     <div class="ftabs">
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
-      <div class="ftab" onclick="showFTab('역발상',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('reverseList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);if(uid){const r=await loadReverseHistory(today,uid);const b=document.getElementById('revDateBtn-'+today);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(r===false||!listEl||!listEl.children.length||listEl.querySelector('.empty'))reverseFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadReverseHistory(today,uid2).then(r=>{if(r===false)reverseFetch();}).catch(()=>reverseFetch());}else reverseFetch();},1500);}})()">역발상</div>
       <div class="ftab" onclick="showFTab('상승수급',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('upSudList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);const loadDate=window._upSudLatestDate||today;if(uid){const r=await loadUpSudHistory(loadDate,uid);const b=document.getElementById('upSudDateBtn-'+loadDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadUpSudHistory(today,uid2).then(()=>{if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}).catch(()=>upSudFetch());}else upSudFetch();},1500);}})()">상승수급</div>
       <div class="ftab" onclick="showFTab('정배열',this);(async()=>{const uid=window._kisUid;if(uid){await loadJungBaeCustomSectors();const today=new Date().toISOString().slice(0,10);const r=await loadJungBaeHistory(today,uid);if(!r)jungBaeFetch();}else{renderJungBaeCustomSectors();jungBaeFetch();}})()">정배열</div>
+      <div class="ftab" onclick="showFTab('역발상',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('reverseList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);if(uid){const r=await loadReverseHistory(today,uid);const b=document.getElementById('revDateBtn-'+today);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(r===false||!listEl||!listEl.children.length||listEl.querySelector('.empty'))reverseFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadReverseHistory(today,uid2).then(r=>{if(r===false)reverseFetch();}).catch(()=>reverseFetch());}else reverseFetch();},1500);}})()">역발상</div>
       <div class="ftab" onclick="showFTab('기준봉',this);const _cu=window._curUser;if(_cu&&window._cdLatestDate)loadCandleHistory(window._cdLatestDate,_cu.uid)">종봉 PICK</div>
     </div>
 
