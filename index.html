@@ -1902,6 +1902,7 @@ function renderFeat(){
 
   // ETF
   const el=document.getElementById('etfList');
+  if(!el) return;
   if(!S.etfs.length){
     el.innerHTML='<div class="empty" style="padding:28px"><div class="ico">📊</div><p>ETF를 추가해주세요</p></div>';
   } else {
@@ -3118,9 +3119,9 @@ window.jungBaeFetch = async () => {
           await new Promise(r => setTimeout(r, 600));
           const r = await fetch('/api/kis?action=daily_price&code=' + stock.c);
           const data = await r.json();
-          const output2 = data.output2 || [];
+          const output2 = data.output2 || data.output || [];
           if(!output2.length) continue;
-          const prices = output2.map(d => parseFloat(d.stck_clpr)).filter(p=>p>0);
+          const prices = output2.map(d => parseFloat(d.stck_clpr || d.stck_prpr || 0)).filter(p=>p>0);
           if(prices.length < 20) continue;
           const ma5  = calcMA(prices, 5);
           const ma20 = calcMA(prices, 20);
