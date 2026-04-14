@@ -3138,28 +3138,33 @@ window.jungBaeFetch = async () => {
 
     msg.textContent = `📊 ${pool.length}개 종목 이평선 분석 중...`;
 
-    // 3. 종목별 일봉 조회 → 정배열 필터
+    // 3. 배치로 일봉 조회 → 정배열 필터 (30개씩 서버에서 처리)
     const jbStocks = [];
-    for(let i = 0; i < pool.length; i++) {
-      const { name, code } = pool[i];
+    const batchSize = 25;
+    for(let b = 0; b < pool.length; b += batchSize) {
+      const batch = pool.slice(b, b + batchSize);
+      const codes = batch.map(s => s.code).join(',');
       try {
-        await new Promise(r => setTimeout(r, 500));
-        const r = await fetch('/api/kis?action=daily_price&code=' + code);
+        await new Promise(r => setTimeout(r, 1000));
+        const r = await fetch('/api/kis?action=jungbae_batch&codes=' + codes);
         const data = await r.json();
-        const rows = data.output2 || data.output || [];
-        if(rows.length < 20) continue;
-        const prices = rows.map(d => parseFloat(d.stck_clpr || 0)).filter(p => p > 0);
-        if(prices.length < 20) continue;
-        const ma5  = calcMA(prices, 5);
-        const ma20 = calcMA(prices, 20);
-        const ma60 = calcMA(prices, 60);
-        if(!ma5 || !ma20 || !ma60) continue;
-        const chg = parseFloat(rows[0]?.prdy_ctrt || 0);
-        if(isJungBae(prices)) {
-          const sector = (window._stockThemeMap && window._stockThemeMap[name]) || '기타';
-          jbStocks.push({ name, code, chg, ma5, ma20, ma60, sector });
-        }
-        msg.textContent = `📊 (${i+1}/${pool.length}) 분석 중... 정배열 ${jbStocks.length}개 발견`;
+        const results = data.results || {};
+        batch.forEach(({ name, code }) => {
+          const rows = results[code] || [];
+          if(rows.length < 20) return;
+          const prices = rows.map(d => parseFloat(d.stck_clpr || 0)).filter(p => p > 0);
+          if(prices.length < 20) return;
+          const ma5  = calcMA(prices, 5);
+          const ma20 = calcMA(prices, 20);
+          const ma60 = calcMA(prices, 60);
+          if(!ma5 || !ma20 || !ma60) return;
+          const chg = parseFloat(rows[0]?.prdy_ctrt || 0);
+          if(isJungBae(prices)) {
+            const sector = (window._stockThemeMap && window._stockThemeMap[name]) || '기타';
+            jbStocks.push({ name, code, chg, ma5, ma20, ma60, sector });
+          }
+        });
+        msg.textContent = `📊 (${Math.min(b+batchSize, pool.length)}/${pool.length}) 분석 중... 정배열 ${jbStocks.length}개 발견`;
       } catch(e) { continue; }
     }
 
