@@ -618,6 +618,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div id="jungBaeMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <div id="jungBaeDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
       <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">5일 &gt; 20일 &gt; 60일 순 정배열 종목 (섹터별)</div>
+      <div id="jungBaeCustomSectors" style="margin:0 16px 4px;display:flex;flex-wrap:wrap;gap:6px"></div>
       <div id="jungBaeList" style="margin:0 16px 12px"></div>
       <div id="jungBaeEmpty" class="empty" style="display:none"><div class="ico">📈</div><p>불러오기를 눌러 정배열 종목을 확인하세요</p></div>
     </div>
@@ -3069,6 +3070,69 @@ window.openJungBaeDatePicker = () => {
   }
 };
 
+// 커스텀 섹터 목록
+window._jungBaeCustomSectors = [];
+
+// 커스텀 섹터 저장
+window.saveJungBaeCustomSectors = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'settings', 'jungbaeCustomSectors'),
+      { sectors: window._jungBaeCustomSectors, updatedAt: new Date().toISOString() });
+  } catch(e) {}
+};
+
+// 커스텀 섹터 로드
+window.loadJungBaeCustomSectors = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'settings', 'jungbaeCustomSectors'));
+    if(snap.exists()) window._jungBaeCustomSectors = snap.data().sectors || [];
+    renderJungBaeCustomSectors();
+  } catch(e) {}
+};
+
+// 커스텀 섹터 버튼 렌더링
+window.renderJungBaeCustomSectors = () => {
+  const el = document.getElementById('jungBaeCustomSectors');
+  if(!el) return;
+  el.innerHTML = window._jungBaeCustomSectors.map(s =>
+    `<div style="display:flex;align-items:center;gap:3px;background:var(--sf2);border:1px solid var(--bd);border-radius:20px;padding:3px 8px 3px 10px">
+      <span style="font-size:11px;font-weight:700;color:var(--tx2)">${s}</span>
+      <button onclick="removeCustomSector('${s}')" style="background:none;border:none;font-size:10px;color:var(--tx3);cursor:pointer;padding:0 2px">✕</button>
+    </div>`
+  ).join('') +
+  `<button onclick="addCustomSector()" style="background:var(--pr);border:none;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;color:#fff;cursor:pointer">+ 섹터 추가</button>`;
+};
+
+// 섹터 추가
+window.addCustomSector = async () => {
+  const name = prompt('새 섹터 이름을 입력하세요 (예: 우주, 전력, AI)');
+  if(!name || !name.trim()) return;
+  const trimmed = name.trim();
+  if(window._jungBaeCustomSectors.includes(trimmed)) { alert('이미 있는 섹터예요'); return; }
+  window._jungBaeCustomSectors.push(trimmed);
+  await saveJungBaeCustomSectors();
+  renderJungBaeCustomSectors();
+  if(window._jbLastResults) renderJungBae(window._jbLastResults, window._jbLastDate);
+};
+
+// 섹터 삭제
+window.removeCustomSector = async (name) => {
+  if(!confirm(`'${name}' 섹터를 삭제할까요? 이 섹터의 종목은 기타로 이동돼요.`)) return;
+  window._jungBaeCustomSectors = window._jungBaeCustomSectors.filter(s => s !== name);
+  // 해당 섹터 오버라이드도 초기화
+  Object.keys(window._jungBaeSectorOverride).forEach(code => {
+    if(window._jungBaeSectorOverride[code] === name) delete window._jungBaeSectorOverride[code];
+  });
+  await saveJungBaeCustomSectors();
+  await saveJungBaeSectorOverride();
+  renderJungBaeCustomSectors();
+  if(window._jbLastResults) renderJungBae(window._jbLastResults, window._jbLastDate);
+};
+
 // 섹터 이동 맵 (드래그로 변경된 섹터 저장)
 window._jungBaeSectorOverride = {};
 
@@ -3137,10 +3201,18 @@ function renderJungBae(results, date) {
   }
   if(emptyEl) emptyEl.style.display='none';
 
-  // 기타 맨 아래로
+  // 커스텀 섹터 빈 것도 포함
+  (window._jungBaeCustomSectors || []).forEach(s => {
+    if(!sectorMap[s]) sectorMap[s] = [];
+  });
+
+  // 기타 맨 아래로, 커스텀 섹터 우선
+  const customSet = new Set(window._jungBaeCustomSectors || []);
   const sectors = Object.entries(sectorMap).sort((a,b) => {
     if(a[0]==='기타') return 1;
     if(b[0]==='기타') return -1;
+    if(customSet.has(a[0]) && !customSet.has(b[0])) return -1;
+    if(!customSet.has(a[0]) && customSet.has(b[0])) return 1;
     return b[1].length - a[1].length;
   });
 
@@ -3154,8 +3226,9 @@ function renderJungBae(results, date) {
           <div draggable="true"
             ondragstart="jbDragStart('${s.name}','${s.code}',${s.chg},${s.ma5?.toFixed(0)||0},${s.ma20?.toFixed(0)||0},${s.ma60?.toFixed(0)||0})"
             onclick="openStockNewsModal('${s.name}')"
-            style="background:var(--sf2);border:1px solid rgba(0,212,170,0.35);border-radius:20px;padding:4px 10px;cursor:grab;font-size:11px;font-weight:700;color:var(--tx);white-space:nowrap">
-            ${s.name}
+            style="background:var(--sf2);border:1px solid rgba(0,212,170,0.35);border-radius:20px;padding:4px 10px;cursor:grab;display:flex;align-items:center;gap:4px;white-space:nowrap">
+            <span style="font-size:11px;font-weight:700;color:var(--tx)">${s.name}</span>
+            <span style="font-size:10px;font-weight:800;color:${s.chg>=0?'var(--up)':'var(--dn)'}">${s.chg>=0?'+':''}${s.chg}%</span>
           </div>`).join('')}
       </div>
     </div>`).join('');
@@ -3253,6 +3326,7 @@ window.jungBaeFetch = async () => {
     const uid = window._curUser?.uid;
     if(uid) {
       await loadJungBaeSectorOverride();
+      await loadJungBaeCustomSectors();
       await saveJungBaeHistory(uid, results, today);
       await renderJungBaeDateTabs(today, uid);
     }
