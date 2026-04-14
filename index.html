@@ -1978,7 +1978,9 @@ function openCandleMo(targetDate){
 window.onCdDateChange = async () => {
   const val = document.getElementById('cdDate')?.value;
   const today = new Date().toISOString().slice(0,10);
-  if(!val || val === today) return; // 오늘은 S.candles 그대로
+  if(!val || val === today) return;
+  // 이미 같은 날짜 캐시 있으면 덮어쓰지 않음 (방금 추가한 종목 유지)
+  if(window._candleDateCache && window._candleDateCache.date === val) return;
   const user = window._curUser;
   if(!user) return;
   try {
