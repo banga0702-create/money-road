@@ -3105,50 +3105,84 @@ window.jungBaeFetch = async () => {
   btn.disabled = true;
   msg.style.display = 'block';
   msg.style.color = 'var(--ac)';
-  msg.textContent = '📊 섹터별 이평선 계산 중...';
+  msg.textContent = '📊 시장 데이터 수집 중...';
 
   const today = new Date().toISOString().slice(0,10);
-  const results = [];
 
   try {
-    // 섹터별 순차 조회
-    for(const sector of JUNGBAE_SECTORS) {
-      const jbStocks = [];
-      for(const stock of sector.stocks) {
-        try {
-          await new Promise(r => setTimeout(r, 600));
-          const r = await fetch('/api/kis?action=daily_price&code=' + stock.c);
-          const data = await r.json();
-          const output2 = data.output2 || data.output || [];
-          if(!output2.length) continue;
-          const prices = output2.map(d => parseFloat(d.stck_clpr || d.stck_prpr || 0)).filter(p=>p>0);
-          if(prices.length < 20) continue;
-          const ma5  = calcMA(prices, 5);
-          const ma20 = calcMA(prices, 20);
-          const ma60 = calcMA(prices, 60);
-          const chg  = parseFloat(output2[0]?.prdy_ctrt || 0).toFixed(2);
-          if(isJungBae(prices)) {
-            jbStocks.push({ name: stock.n, code: stock.c, chg: parseFloat(chg), ma5, ma20, ma60 });
-          }
-        } catch(e) { continue; }
-      }
-      results.push({ name: sector.name, stocks: jbStocks });
-      const done = results.reduce((a,s)=>a+s.stocks.length,0);
-      msg.textContent = `📊 ${sector.name} 완료... (정배열 ${done}개 발견)`;
+    // 1. 종목 풀 수집 (상승수급과 동일)
+    const [volRes, fiRes] = await Promise.all([
+      fetch('/api/kis?action=vol_rank'),
+      fetch('/api/kis?action=foreign_inst_combined'),
+    ]);
+    const volData = await volRes.json();
+    const fiData  = await fiRes.json();
+
+    let priceData = { output: [] };
+    try {
+      const pr = await fetch('/api/kis?action=price_rank');
+      priceData = await pr.json();
+    } catch(e) {}
+
+    // 2. 중복 제거 종목 풀 구성
+    const seen = new Set();
+    const pool = [];
+    const addStock = (name, code) => {
+      if(!name || !code || seen.has(code)) return;
+      seen.add(code);
+      pool.push({ name, code });
+    };
+    (fiData.output||[]).forEach(s => addStock(s.hts_kor_isnm, s.mksc_shrn_iscd));
+    (volData.output||[]).forEach(s => addStock(s.hts_kor_isnm, s.mksc_shrn_iscd));
+    (priceData.output||[]).forEach(s => addStock(s.hts_kor_isnm, s.mksc_shrn_iscd));
+
+    msg.textContent = `📊 ${pool.length}개 종목 이평선 분석 중...`;
+
+    // 3. 종목별 일봉 조회 → 정배열 필터
+    const jbStocks = [];
+    for(let i = 0; i < pool.length; i++) {
+      const { name, code } = pool[i];
+      try {
+        await new Promise(r => setTimeout(r, 500));
+        const r = await fetch('/api/kis?action=daily_price&code=' + code);
+        const data = await r.json();
+        const rows = data.output2 || data.output || [];
+        if(rows.length < 20) continue;
+        const prices = rows.map(d => parseFloat(d.stck_clpr || 0)).filter(p => p > 0);
+        if(prices.length < 20) continue;
+        const ma5  = calcMA(prices, 5);
+        const ma20 = calcMA(prices, 20);
+        const ma60 = calcMA(prices, 60);
+        if(!ma5 || !ma20 || !ma60) continue;
+        const chg = parseFloat(rows[0]?.prdy_ctrt || 0);
+        if(isJungBae(prices)) {
+          const sector = (window._stockThemeMap && window._stockThemeMap[name]) || '기타';
+          jbStocks.push({ name, code, chg, ma5, ma20, ma60, sector });
+        }
+        msg.textContent = `📊 (${i+1}/${pool.length}) 분석 중... 정배열 ${jbStocks.length}개 발견`;
+      } catch(e) { continue; }
     }
+
+    // 4. 섹터별 그룹핑
+    const sectorMap = {};
+    jbStocks.forEach(s => {
+      if(!sectorMap[s.sector]) sectorMap[s.sector] = [];
+      sectorMap[s.sector].push(s);
+    });
+    const results = Object.entries(sectorMap).map(([name, stocks]) => ({ name, stocks }))
+      .sort((a,b) => b.stocks.length - a.stocks.length);
 
     renderJungBae(results, today);
 
-    // Firestore 저장
+    // 5. Firestore 저장
     const uid = window._curUser?.uid;
     if(uid) {
       await saveJungBaeHistory(uid, results, today);
       await renderJungBaeDateTabs(today, uid);
     }
 
-    const total = results.reduce((a,s)=>a+s.stocks.length,0);
-    msg.textContent = `✓ 완료! 정배열 종목 ${total}개 발견`;
-    setTimeout(() => { msg.style.display='none'; }, 4000);
+    msg.textContent = `✓ 완료! ${pool.length}개 종목 중 정배열 ${jbStocks.length}개 발견`;
+    setTimeout(() => { msg.style.display='none'; }, 5000);
 
   } catch(e) {
     msg.style.color = 'var(--dn)';
