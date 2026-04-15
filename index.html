@@ -620,21 +620,21 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="fpanel" id="fp-정배열">
       <div class="sh">
         <span class="sh-title">📈 정배열 종목</span>
-        <button class="btn btn-ac btn-sm" onclick="jungBaeFetch()" id="jungBaeBtn">⚡ 불러오기</button>
+        <button class="btn btn-ac btn-sm" onclick="jungBaeFetch()" id="jungBaeBtn">⚡ 재실행</button>
       </div>
       <div id="jungBaeMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <div id="jungBaeDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
       <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">5일 &gt; 20일 &gt; 60일 순 정배열 종목 (섹터별)</div>
       <div id="jungBaeCustomSectors" style="margin:0 16px 4px;display:flex;flex-wrap:wrap;gap:6px"></div>
       <div id="jungBaeList" style="margin:0 16px 12px"></div>
-      <div id="jungBaeEmpty" class="empty" style="display:none"><div class="ico">📈</div><p>불러오기를 눌러 정배열 종목을 확인하세요</p></div>
+      <div id="jungBaeEmpty" class="empty" style="display:none"><div class="ico">📈</div><p>재실행을 눌러 정배열 종목을 확인하세요</p></div>
     </div>
 
     <!-- 상승수급 -->
     <div class="fpanel" id="fp-상승수급">
       <div class="sh">
         <span class="sh-title">상승수급</span>
-        <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 불러오기</button>
+        <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 재실행</button>
       </div>
       <div id="upSudMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <div id="upSudDateTabs" style="display:flex;gap:6px;padding:0 16px 6px;overflow-x:auto"></div>
@@ -646,7 +646,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="fpanel" id="fp-역발상">
       <div class="sh">
         <span class="sh-title">역발상 매집</span>
-        <button class="btn btn-ac btn-sm" onclick="reverseFetch()" id="reverseBtn">⚡ 불러오기</button>
+        <button class="btn btn-ac btn-sm" onclick="reverseFetch()" id="reverseBtn">⚡ 재실행</button>
       </div>
       <div id="reverseMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <div id="reverseDateTabs" style="display:flex;gap:6px;padding:0 16px 6px;overflow-x:auto"></div>
@@ -3508,7 +3508,7 @@ window.jungBaeFetch = async () => {
     msg.style.color = 'var(--dn)';
     msg.textContent = '⚠️ 조회 실패: ' + e.message;
   } finally {
-    btn.textContent = '⚡ 불러오기';
+    btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
 };
@@ -3596,7 +3596,7 @@ window.etfReverseFetch = async () => {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
   } finally {
-    btn.textContent = '⚡ 불러오기';
+    btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
 };
@@ -3743,7 +3743,7 @@ window.upSudFetch = async () => {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
   } finally {
-    btn.textContent = '⚡ 불러오기';
+    btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
 };
@@ -3879,7 +3879,7 @@ window.reverseFetch = async () => {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
   } finally {
-    btn.textContent = '⚡ 불러오기';
+    btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
 };
