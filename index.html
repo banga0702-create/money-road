@@ -2814,9 +2814,9 @@ window.kisTopFetch = async () => {
         const today = new Date().toISOString().slice(0,10);
         await setDoc(doc(db, 'users', user.uid, 'kisHistory', today), {
           date: today,
-          fi: fi.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
-          f:  f.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
-          inst: inst.map(s=>({name:s.name,fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
+          fi: fi.map(s=>({name:s.name,code:s.code||'',fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
+          f:  f.map(s=>({name:s.name,code:s.code||'',fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
+          inst: inst.map(s=>({name:s.name,code:s.code||'',fBuy:s.fBuy||0,iBuy:s.iBuy||0,chg:s.chg??null,trPbmn:s.trPbmn||0,ratio:s.ratio||0,sector:s.sector||''})),
           savedAt: Date.now()
         });
         await renderKisDateTabs(user.uid);
@@ -3446,6 +3446,19 @@ window.jungBaeFetch = async () => {
     (volData.output||[]).forEach(s => addStock(s.hts_kor_isnm, s.mksc_shrn_iscd));
     (priceData.output||[]).forEach(s => addStock(s.hts_kor_isnm, s.mksc_shrn_iscd));
 
+    // 순매수 TOP 히스토리 종목 추가 (code 있는 것만)
+    (window._kisHistory7||[]).forEach(d => {
+      [...(d.fi||[]), ...(d.f||[]), ...(d.inst||[])].forEach(s => { if(s.code) addStock(s.name, s.code); });
+    });
+    // 상승수급 히스토리 종목 추가
+    (window._upSudHistory7||[]).forEach(d => {
+      (d.list||[]).forEach(s => { if(s.code) addStock(s.name, s.code); });
+    });
+    // 역발상 히스토리 종목 추가
+    (window._reverseHistory7||[]).forEach(d => {
+      [...(d.fResult||[]), ...(d.fiResult||[])].forEach(s => { if(s.code) addStock(s.name, s.code); });
+    });
+
     msg.textContent = `📊 ${pool.length}개 종목 이평선 분석 중...`;
 
     // 3. 배치로 일봉 조회 → 정배열 필터 (30개씩 서버에서 처리)
@@ -3874,6 +3887,9 @@ window.reverseFetch = async () => {
           fiResult: fiResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0,code:codeMap[s.name]||''})),
           savedAt: Date.now()
         });
+        // _reverseHistory7 캐시 갱신
+        if(!window._reverseHistory7) window._reverseHistory7 = [];
+        window._reverseHistory7 = [{date:today, fResult:fResult.map(s=>({name:s.name,code:codeMap[s.name]||''})), fiResult:fiResult.map(s=>({name:s.name,code:codeMap[s.name]||''}))}, ...window._reverseHistory7.filter(d=>d.date!==today)].slice(0,7);
         await renderReverseDateTabs(user.uid);
         // 오늘 탭 활성화
         const revTodayBtn = document.getElementById('revDateBtn-' + today);
@@ -5030,6 +5046,11 @@ onAuthStateChanged(auth, async (user) => {
         const upSnap = await getDocs(collection(db, 'users', user.uid, 'upSudHistory'));
         window._upSudHistory7 = upSnap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>({date:d.id, ...d.data()}));
       } catch(e) { window._upSudHistory7 = []; }
+      // 역발상 7일 히스토리 미리 로드
+      try {
+        const revSnap = await getDocs(collection(db, 'users', user.uid, 'reverseHistory'));
+        window._reverseHistory7 = revSnap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>({date:d.id, ...d.data()}));
+      } catch(e) { window._reverseHistory7 = []; }
       await renderReverseDateTabs(user.uid);
       await renderCandleDateTabs(user.uid);
       await renderUpSudDateTabs(user.uid);
