@@ -585,7 +585,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="fpanel active" id="fp-순매수">
       <div class="sh">
         <span class="sh-title">순매수 TOP</span>
-        <button class="btn btn-ac btn-sm" onclick="kisTopFetch()" id="kisTopBtn">⚡ KIS 자동불러오기</button>
+        <button class="btn btn-ac btn-sm" onclick="kisTopFetch()" id="kisTopBtn">⚡ 재실행</button>
       </div>
       <div id="kisTopMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <!-- 날짜 탭 -->
@@ -2838,7 +2838,7 @@ window.kisTopFetch = async () => {
     msg.style.color = 'var(--up)';
     msg.textContent = '❌ 오류: ' + e.message;
   } finally {
-    btn.textContent = '⚡ KIS 자동불러오기';
+    btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
 };
