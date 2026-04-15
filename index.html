@@ -3693,7 +3693,7 @@ window.upSudFetch = async () => {
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
           + '<div style="position:relative;flex-shrink:0;padding-top:' + (streak>0?'6px':'0') + '">'
-          + (streak > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1">⭐</span>' : '')
+          + (streak > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1;white-space:nowrap">' + '⭐'.repeat(Math.min(streak,3)) + '</span>' : '')
           + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px">' + (i+1) + '</div>'
           + '</div>'
           + '<span style="font-size:12px;font-weight:700">' + name + '</span>'
@@ -3955,7 +3955,7 @@ window.loadUpSudHistory = async (date, uid) => {
       return '<div style="' + hCardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;gap:5px">'
         + '<div style="position:relative;flex-shrink:0;padding-top:' + (hStreak>0?'6px':'0') + '">'
-        + (hStreak > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1">⭐</span>' : '')
+        + (hStreak > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1;white-space:nowrap">' + '⭐'.repeat(Math.min(hStreak,3)) + '</span>' : '')
         + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px">' + (i+1) + '</div>'
         + '</div>'
         + '<span style="font-size:12px;font-weight:700">' + s.name + '</span>'
