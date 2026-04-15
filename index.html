@@ -3388,25 +3388,30 @@ function renderJungBae(results, date) {
   // 각 섹터 종목 등락률 높은 순 정렬
   sectors.forEach(([, stocks]) => stocks.sort((a,b) => (b.chg||0)-(a.chg||0)));
 
-  listEl.innerHTML = sectors.map(([sName, stocks]) => `
-    <div style="margin-bottom:14px" id="jbSec-${sName}"
-      ondragover="jbSecDragOver(event,'${sName}')" ondragleave="jbSecDragLeave(event)" ondrop="jbSecDrop(event,'${sName}')">
-      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px;display:flex;align-items:center;gap:6px;cursor:grab"
-        draggable="true" ondragstart="jbSecDragStart(event,'${sName}')">
-        <span style="color:var(--tx3);font-size:13px">⠿</span>
-        📌 ${sName} <span style="font-size:10px;color:var(--pr);font-weight:700">${stocks.length}개</span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">
-        ${stocks.map(s => `
-          <div draggable="true"
-            ondragstart="jbDragStart('${s.name}','${s.code}',${s.chg},${s.ma5?.toFixed(0)||0},${s.ma20?.toFixed(0)||0},${s.ma60?.toFixed(0)||0})"
-            onclick="openStockNewsModal('${s.name}')"
-            style="background:var(--sf2);border:1px solid rgba(0,212,170,0.35);border-radius:20px;padding:4px 10px;cursor:grab;display:flex;align-items:center;gap:4px;white-space:nowrap">
-            <span style="font-size:11px;font-weight:700;color:var(--tx)">${s.name}</span>
-            <span style="font-size:10px;font-weight:800;color:${s.chg>=0?'var(--up)':'var(--dn)'}">${s.chg>=0?'+':''}${s.chg}%</span>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
+  // 3열 그리드로 렌더링
+  const cols = [[], [], []];
+  sectors.forEach(([sName, stocks], idx) => { cols[idx % 3].push([sName, stocks]); });
+
+  listEl.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:start">` +
+    cols.map(col => `<div style="display:flex;flex-direction:column;gap:8px">` +
+      col.map(([sName, stocks]) => `
+        <div style="background:var(--sf);border:1.5px dashed rgba(255,71,87,0.4);border-radius:10px;padding:8px" id="jbSec-${sName}"
+          ondragover="jbSecDragOver(event,'${sName}')" ondragleave="jbSecDragLeave(event)" ondrop="jbSecDrop(event,'${sName}')">
+          <div style="font-size:10px;font-weight:800;color:var(--tx);margin-bottom:5px;text-align:center;cursor:grab"
+            draggable="true" ondragstart="jbSecDragStart(event,'${sName}')">
+            ${sName}
+          </div>
+          ${stocks.map(s => `
+            <div draggable="true"
+              ondragstart="jbDragStart('${s.name}','${s.code}',${s.chg},${s.ma5?.toFixed(0)||0},${s.ma20?.toFixed(0)||0},${s.ma60?.toFixed(0)||0})"
+              onclick="openStockNewsModal('${s.name}')"
+              style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;cursor:pointer;border-bottom:1px solid var(--bd)">
+              <span style="font-size:10px;font-weight:700;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${s.name}</span>
+              <span style="font-size:9px;font-weight:800;color:${s.chg>=0?'var(--up)':'var(--dn)'}";flex-shrink:0>${s.chg>=0?'+':''}${s.chg}%</span>
+            </div>`).join('')}
+        </div>`).join('')
+    + `</div>`).join('')
+  + `</div>`;
 }
 
 // 정배열 자동 조회
