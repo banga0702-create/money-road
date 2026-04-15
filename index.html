@@ -2639,6 +2639,15 @@ window.kisTopFetch = async () => {
   msg.style.color = 'var(--ac)';
   msg.textContent = '🔍 KIS에서 순매수 상위 종목 불러오는 중...';
 
+  // 정배열 데이터 미리 로드 (없을 경우 Firestore에서 가져옴)
+  try {
+    if(!window._jbLastResults && window._curUser) {
+      const today = new Date().toISOString().slice(0,10);
+      const snap = await getDoc(doc(db, 'users', window._curUser.uid, 'jungBaeHistory', today));
+      if(snap.exists()) window._jbLastResults = snap.data().results || [];
+    }
+  } catch(e) {}
+
   try {
     const r = await fetch('/api/kis?action=foreign_inst_combined');
     const data = await r.json();
@@ -2704,11 +2713,10 @@ window.kisTopFetch = async () => {
     const makeRowHL = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'k_' + (++_rowIdx);
-      // 연속 등장 streak 계산 (오늘은 아직 저장 전이므로 _kisHistory7 전체가 과거)
+      // 연속 등장 streak 계산 (_kisHistory7은 최신순, 실시간 시점엔 오늘 미포함)
       let contDays = 0;
-      if(window._kisHistory7) {
-        const sorted = window._kisHistory7.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
-        for(const d of sorted) {
+      if(window._kisHistory7 && window._kisHistory7.length) {
+        for(const d of window._kisHistory7) {
           if((d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)) contDays++;
           else break;
         }
@@ -2778,9 +2786,13 @@ window.kisTopFetch = async () => {
 
     document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i, dupSet.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i, dupSet.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // 기관순매수 핑크테두리: 어제 기관순매수 등장 or 정배열
+    const _todayStr = new Date().toISOString().slice(0,10);
+    const _ystInst = window._kisHistory7 ? window._kisHistory7.filter(d => (d.date||'') !== _todayStr)[0] : null;
+    const _ystInstNames = new Set((_ystInst ? (_ystInst.inst||[]) : []).map(x => x.name));
     document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> {
       let base = makeRowHL(s,i);
-      if(isJB(s.name)) {
+      if(isJB(s.name) || _ystInstNames.has(s.name)) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
       }
       if(dupSet.has(s.name)) {
@@ -2867,6 +2879,15 @@ window.loadKisHistory = async (date, uid) => {
   const activeBtn = document.getElementById('kisDateBtn-' + date);
   if(activeBtn) { activeBtn.style.background = 'var(--pr)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--pr)'; }
 
+  // 정배열 데이터 미리 로드 (없을 경우 Firestore에서 가져옴)
+  try {
+    if(!window._jbLastResults && uid) {
+      const today = new Date().toISOString().slice(0,10);
+      const jbSnap = await getDoc(doc(db, 'users', uid, 'jungBaeHistory', today));
+      if(jbSnap.exists()) window._jbLastResults = jbSnap.data().results || [];
+    }
+  } catch(e) {}
+
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'kisHistory', date));
     if(!snap.exists()) return false;
@@ -2882,12 +2903,11 @@ window.loadKisHistory = async (date, uid) => {
     const makeRow2 = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'h_' + (++_rowIdx2);
-      // 연속 등장 streak 계산 (현재 date보다 이전 날짜 기준)
+      // 연속 등장 streak 계산 (현재 date 제외한 과거 날짜 기준, _kisHistory7 최신순)
       let contDays2 = 0;
-      if(window._kisHistory7) {
-        const sorted2 = window._kisHistory7.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
-        const pastDocs = sorted2.filter(d => (d.date||'') < date);
-        for(const d of pastDocs) {
+      if(window._kisHistory7 && window._kisHistory7.length) {
+        const pastDocs2 = window._kisHistory7.filter(d => (d.date||'') < date);
+        for(const d of pastDocs2) {
           if((d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)) contDays2++;
           else break;
         }
@@ -2939,9 +2959,12 @@ window.loadKisHistory = async (date, uid) => {
 
     document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2Dup(s,i, dupSet2.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i) =>makeRow2Dup(s,i, dupSet2.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    // 기관순매수 핑크테두리: 해당 date 이전 날짜의 기관순매수 등장 or 정배열
+    const _prevInst = window._kisHistory7 ? window._kisHistory7.filter(d => (d.date||'') < date)[0] : null;
+    const _prevInstNames = new Set((_prevInst ? (_prevInst.inst||[]) : []).map(x => x.name));
     document.getElementById('topListI').innerHTML  = (data.inst||[]).length? data.inst.map((s,i)=> {
       let base = makeRow2(s,i);
-      if(isJB2(s.name)) {
+      if(isJB2(s.name) || _prevInstNames.has(s.name)) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
       }
       if(dupSet2.has(s.name)) {
