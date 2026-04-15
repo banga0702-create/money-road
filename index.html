@@ -5079,7 +5079,7 @@ function renderThemeEditorList(filter) {
     return '<div style="display:grid;grid-template-columns:1fr 1fr 32px;gap:4px;align-items:center">'
       + '<input value="' + e.name + '" style="font-size:11px;padding:6px 8px" oninput="_themeEntries[' + realIdx + '].name=this.value">'
       + '<input value="' + e.theme + '" style="font-size:11px;padding:6px 8px" oninput="_themeEntries[' + realIdx + '].theme=this.value">'
-      + '<button onclick="_themeEntries.splice(' + realIdx + ',1);renderThemeEditorList(document.getElementById('themeSearchInput').value||'')" style="background:rgba(255,71,87,.15);color:var(--up);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px">×</button>'
+      + '<button onclick="_themeEntries.splice(' + realIdx + ',1);renderThemeEditorList(document.getElementById(\'themeSearchInput\').value||\'\')" style="background:rgba(255,71,87,.15);color:var(--up);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px">×</button>'
       + '</div>';
   }).join('');
 }
