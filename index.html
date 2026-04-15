@@ -575,7 +575,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <div class="page" id="pg-feat">
     <div class="ftabs">
       <div class="ftab active" onclick="showFTab('순매수',this);if(!document.getElementById('topListFI').children.length)kisTopFetch()">순매수 TOP</div>
-      <div class="ftab" onclick="showFTab('상승수급',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('upSudList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);const loadDate=window._upSudLatestDate||today;if(uid){const r=await loadUpSudHistory(loadDate,uid);const b=document.getElementById('upSudDateBtn-'+loadDate);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadUpSudHistory(today,uid2).then(()=>{if(!listEl||!listEl.children.length||listEl.querySelector('.empty'))upSudFetch();}).catch(()=>upSudFetch());}else upSudFetch();},1500);}})()">상승수급</div>
+      <div class="ftab" onclick="showFTab('상승수급',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('upSudList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);if(uid){const r=await loadUpSudHistory(today,uid);const b=document.getElementById('upSudDateBtn-'+today);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(r===false)upSudFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadUpSudHistory(today,uid2).then(r=>{if(r===false)upSudFetch();}).catch(()=>upSudFetch());}else upSudFetch();},1500);}})()">상승수급</div>
       <div class="ftab" onclick="showFTab('정배열',this);(async()=>{const uid=window._kisUid;if(uid){await loadJungBaeCustomSectors();const today=new Date().toISOString().slice(0,10);const r=await loadJungBaeHistory(today,uid);if(!r)jungBaeFetch();}else{renderJungBaeCustomSectors();jungBaeFetch();}})()">정배열</div>
       <div class="ftab" onclick="showFTab('역발상',this);(async()=>{const uid=window._kisUid;const listEl=document.getElementById('reverseList');if(listEl&&listEl.children.length&&!listEl.querySelector('.empty'))return;const today=new Date().toISOString().slice(0,10);if(uid){const r=await loadReverseHistory(today,uid);const b=document.getElementById('revDateBtn-'+today);if(b){b.style.background='var(--pr)';b.style.color='#fff';b.style.borderColor='var(--pr)';}if(r===false||!listEl||!listEl.children.length||listEl.querySelector('.empty'))reverseFetch();}else{setTimeout(()=>{const uid2=window._kisUid;if(uid2){loadReverseHistory(today,uid2).then(r=>{if(r===false)reverseFetch();}).catch(()=>reverseFetch());}else reverseFetch();},1500);}})()">역발상</div>
       <div class="ftab" onclick="showFTab('기준봉',this);const _cu=window._curUser;if(_cu&&window._cdLatestDate)loadCandleHistory(window._cdLatestDate,_cu.uid)">종봉 PICK</div>
@@ -3919,7 +3919,7 @@ window.loadUpSudHistory = async (date, uid) => {
 
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'upSudHistory', date));
-    if(!snap.exists()) return;
+    if(!snap.exists()) return false;
     const data = snap.data();
     const list = data.list || [];
     const listEl = document.getElementById('upSudList');
