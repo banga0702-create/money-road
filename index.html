@@ -2709,15 +2709,15 @@ window.kisTopFetch = async () => {
     const iNames  = new Set(inst.map(s => s.name));
     const tripleNames = new Set([...fiNames].filter(n => fNames.has(n))); // 1열+2열 중복만
 
-    // 종목 카드 HTML 생성
-    const makeRowHL = (s, i) => {
+    // 종목 카드 HTML 생성 (col: 'fi'|'f'|'inst')
+    const makeRowHL = (s, i, col) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'k_' + (++_rowIdx);
-      // 연속 등장 streak 계산 (_kisHistory7은 최신순, 실시간 시점엔 오늘 미포함)
+      // 연속 등장 streak 계산 - 해당 컬럼 기준
       let contDays = 0;
       if(window._kisHistory7 && window._kisHistory7.length) {
         for(const d of window._kisHistory7) {
-          if((d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)) contDays++;
+          if((d[col]||[]).some(x => x.name === s.name)) contDays++;
           else break;
         }
       }
@@ -2772,8 +2772,8 @@ window.kisTopFetch = async () => {
 
     // 중복=배경색만, 정배열=민트 테두리
     const isJB = (name) => window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===name));
-    const makeRow = (s, i, isDup) => {
-      let base = makeRowHL(s, i);
+    const makeRow = (s, i, isDup, col) => {
+      let base = makeRowHL(s, i, col);
       if(isDup) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1px solid var(--bd)');
       }
@@ -2784,14 +2784,14 @@ window.kisTopFetch = async () => {
       return base;
     };
 
-    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i, dupSet.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i, dupSet.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListFI').innerHTML = fi.length ? fi.map((s,i) => makeRow(s,i, dupSet.has(s.name), 'fi')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i, dupSet.has(s.name), 'f')).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     // 기관순매수 핑크테두리: 어제 기관순매수 등장 or 정배열
     const _todayStr = new Date().toISOString().slice(0,10);
     const _ystInst = window._kisHistory7 ? window._kisHistory7.filter(d => (d.date||'') !== _todayStr)[0] : null;
     const _ystInstNames = new Set((_ystInst ? (_ystInst.inst||[]) : []).map(x => x.name));
     document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> {
-      let base = makeRowHL(s,i);
+      let base = makeRowHL(s,i,'inst');
       if(isJB(s.name) || _ystInstNames.has(s.name)) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
       }
@@ -2900,15 +2900,15 @@ window.loadKisHistory = async (date, uid) => {
     const iNames2  = new Set((data.inst||[]).map(s=>s.name));
     const triple2  = new Set([...fiNames2].filter(n => fNames2.has(n))); // 1열+2열 중복만
 
-    const makeRow2 = (s, i) => {
+    const makeRow2 = (s, i, col2) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'h_' + (++_rowIdx2);
-      // 연속 등장 streak 계산 (현재 date 제외한 과거 날짜 기준, _kisHistory7 최신순)
+      // 연속 등장 streak 계산 - 해당 컬럼 기준, 현재 date 이전
       let contDays2 = 0;
       if(window._kisHistory7 && window._kisHistory7.length) {
         const pastDocs2 = window._kisHistory7.filter(d => (d.date||'') < date);
         for(const d of pastDocs2) {
-          if((d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)) contDays2++;
+          if((d[col2]||[]).some(x => x.name === s.name)) contDays2++;
           else break;
         }
       }
@@ -2945,8 +2945,8 @@ window.loadKisHistory = async (date, uid) => {
     const dupSet2 = new Set([...fiSet2].filter(n => fSet2.has(n)));
 
     const isJB2 = (name) => window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===name));
-    const makeRow2Dup = (s, i, isDup) => {
-      let base = makeRow2(s, i);
+    const makeRow2Dup = (s, i, isDup, col2) => {
+      let base = makeRow2(s, i, col2);
       if(isDup) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:rgba(0,212,170,0.15);border:1px solid var(--bd)');
       }
@@ -2957,13 +2957,13 @@ window.loadKisHistory = async (date, uid) => {
       return base;
     };
 
-    document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2Dup(s,i, dupSet2.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
-    document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i) =>makeRow2Dup(s,i, dupSet2.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2Dup(s,i, dupSet2.has(s.name), 'fi')).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
+    document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i) =>makeRow2Dup(s,i, dupSet2.has(s.name), 'f')).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     // 기관순매수 핑크테두리: 해당 date 이전 날짜의 기관순매수 등장 or 정배열
     const _prevInst = window._kisHistory7 ? window._kisHistory7.filter(d => (d.date||'') < date)[0] : null;
     const _prevInstNames = new Set((_prevInst ? (_prevInst.inst||[]) : []).map(x => x.name));
     document.getElementById('topListI').innerHTML  = (data.inst||[]).length? data.inst.map((s,i)=> {
-      let base = makeRow2(s,i);
+      let base = makeRow2(s,i,'inst');
       if(isJB2(s.name) || _prevInstNames.has(s.name)) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
       }
