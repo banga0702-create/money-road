@@ -2747,11 +2747,13 @@ window.kisTopFetch = async () => {
       // 종목명 → 테마 직접 매핑
       const displaySector = window._stockThemeMap[s.name] || (s.sector ? (sectorMap[s.sector] || s.sector) : '');
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
+        + '<div style="position:relative;flex-shrink:0;padding-top:' + (contDays>0?'6px':'0') + '">'
+        + (contDays > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1;white-space:nowrap">' + '⭐'.repeat(Math.min(contDays,3)) + '</span>' : '')
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;' + rankOverride + '">' + (i+1) + '</div>'
+        + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
-        + stars
         + (chgStr ? '<span style="font-size:8px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:2px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
@@ -2921,11 +2923,13 @@ window.loadKisHistory = async (date, uid) => {
       // 4위 이상 숫자 잘 보이도록
       const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;flex-shrink:0;' + rankOverride + '">' + (i+1) + '</div>'
+        + '<div style="position:relative;flex-shrink:0;padding-top:' + (contDays2>0?'6px':'0') + '">'
+        + (contDays2 > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1;white-space:nowrap">' + '⭐'.repeat(Math.min(contDays2,3)) + '</span>' : '')
+        + '<div class="rank-badge ' + rankCls + '" style="width:16px;height:16px;font-size:9px;' + rankOverride + '">' + (i+1) + '</div>'
+        + '</div>'
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
-        + stars2
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
@@ -3688,11 +3692,13 @@ window.upSudFetch = async () => {
         const stars = streak > 0 ? '<span style="font-size:10px;margin-left:1px">' + '⭐'.repeat(Math.min(streak,5)) + '</span>' : '';
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
           + '<div style="display:flex;align-items:center;gap:5px">'
-          + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+          + '<div style="position:relative;flex-shrink:0;padding-top:' + (streak>0?'6px':'0') + '">'
+          + (streak > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1">⭐</span>' : '')
+          + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px">' + (i+1) + '</div>'
+          + '</div>'
           + '<span style="font-size:12px;font-weight:700">' + name + '</span>'
           + (sector ? '<span style="font-size:9px;color:var(--tx3)">' + sector + '</span>' : '')
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
-          + stars
           + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(s=>s.name===name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
           + '</div>'
@@ -3948,11 +3954,13 @@ window.loadUpSudHistory = async (date, uid) => {
       const hStars = hStreak > 0 ? '<span style="font-size:10px;margin-left:1px">' + '⭐'.repeat(Math.min(hStreak,5)) + '</span>' : '';
       return '<div style="' + hCardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;gap:5px">'
-        + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px;flex-shrink:0">' + (i+1) + '</div>'
+        + '<div style="position:relative;flex-shrink:0;padding-top:' + (hStreak>0?'6px':'0') + '">'
+        + (hStreak > 0 ? '<span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:8px;line-height:1">⭐</span>' : '')
+        + '<div class="rank-badge ' + rankCls + '" style="width:18px;height:18px;font-size:9px">' + (i+1) + '</div>'
+        + '</div>'
         + '<span style="font-size:12px;font-weight:700">' + s.name + '</span>'
         + (hSector ? '<span style="font-size:9px;color:var(--tx3)">' + hSector + '</span>' : '')
         + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + (s.trPbmn||0) + '억</span>'
-        + hStars
         + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===s.name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
         + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">' + chgStr + '</span>'
         + '</div>'
