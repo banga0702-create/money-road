@@ -2843,6 +2843,8 @@ window.kisTopFetch = async () => {
     btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
+  // 정배열 백그라운드 자동 실행
+  setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
 };
 
 // KIS 히스토리 날짜 탭 렌더링
@@ -3765,6 +3767,8 @@ window.upSudFetch = async () => {
     btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
+  // 정배열 백그라운드 자동 실행
+  setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
 };
 
 window.reverseFetch = async () => {
@@ -3914,6 +3918,8 @@ window.reverseFetch = async () => {
     btn.textContent = '⚡ 재실행';
     btn.disabled = false;
   }
+  // 정배열 백그라운드 자동 실행
+  setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
 };
 
 // 역발상 날짜탭 렌더링
@@ -5084,6 +5090,19 @@ onAuthStateChanged(auth, async (user) => {
           }
         }
       } catch(e) { console.warn('오늘 데이터 확인 실패:', e); }
+      // 정배열 오늘 데이터 로드 or 자동 실행
+      setTimeout(async () => {
+        try {
+          const jbSnap = await getDoc(doc(db, 'users', user.uid, 'jungBaeHistory', today));
+          if(jbSnap.exists()) {
+            window._jbLastResults = jbSnap.data().results || [];
+          } else {
+            // 오늘 데이터 없으면 백그라운드 자동 실행
+            await jungBaeFetch();
+          }
+        } catch(e) {}
+      }, 5000); // 다른 API 호출 후 딜레이
+
       // 마지막 탭 복원
       const lastTab = localStorage.getItem('lastTab');
       if(lastTab && PAGE_MAP[lastTab]) {
