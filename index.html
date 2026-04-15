@@ -2704,15 +2704,22 @@ window.kisTopFetch = async () => {
     const makeRowHL = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'k_' + (++_rowIdx);
-      const contDays = window._kisHistory7 ? window._kisHistory7.filter(d =>
-        (d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)
-      ).length : 0;
+      // 연속 등장 streak 계산 (오늘은 아직 저장 전이므로 _kisHistory7 전체가 과거)
+      let contDays = 0;
+      if(window._kisHistory7) {
+        const sorted = window._kisHistory7.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+        for(const d of sorted) {
+          if((d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)) contDays++;
+          else break;
+        }
+      }
       window._kisRows[key] = { ...s, contDays, code: s.code || '' };
       const bg = 'background:var(--sf);border:1px solid var(--bd)';
       const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
+      const stars = contDays > 0 ? '<span style="font-size:9px;margin-left:1px">' + '⭐'.repeat(Math.min(contDays,5)) + '</span>' : '';
       // 업종 → 테마 변환
       const sectorMap = {
         '전기·전자':'전기·전자', '반도체':'반도체', '전자부품':'전자부품',
@@ -2736,6 +2743,7 @@ window.kisTopFetch = async () => {
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + stars
         + (chgStr ? '<span style="font-size:8px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:2px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
@@ -2772,11 +2780,11 @@ window.kisTopFetch = async () => {
     document.getElementById('topListF').innerHTML  = f.length  ? f.map((s,i)  => makeRow(s,i, dupSet.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListI').innerHTML  = inst.length? inst.map((s,i)=> {
       let base = makeRowHL(s,i);
-      if(dupSet.has(s.name)) {
-        base = base.replace(/(<div class="rank-badge [^"]*" style="[^"]*)(")>/, (m,p1,p2)=>p1+';outline:2px solid rgba(0,212,170,0.8)'+p2+'>');
-      }
       if(isJB(s.name)) {
         base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
+      }
+      if(dupSet.has(s.name)) {
+        base = base.replace(/(<div class="rank-badge [^"]*" style="[^"]*)(")>/, (m,p1,p2)=>p1+';outline:2px solid rgba(0,212,170,0.8)'+p2+'>');
       }
       return base;
     }).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
@@ -2874,12 +2882,22 @@ window.loadKisHistory = async (date, uid) => {
     const makeRow2 = (s, i) => {
       const rankCls = i<3 ? ['r1','r2','r3'][i] : 'b-gr';
       const key = 'h_' + (++_rowIdx2);
-      window._kisRows[key] = s;
+      // 연속 등장 streak 계산 (현재 date보다 이전 날짜 기준)
+      let contDays2 = 0;
+      if(window._kisHistory7) {
+        const sorted2 = window._kisHistory7.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''));
+        const pastDocs = sorted2.filter(d => (d.date||'') < date);
+        for(const d of pastDocs) {
+          if((d.fi||[]).concat(d.f||[]).concat(d.inst||[]).some(x => x.name === s.name)) contDays2++;
+          else break;
+        }
+      }
+      window._kisRows[key] = { ...s, contDays: contDays2 };
       const bg = 'background:var(--sf);border:1px solid var(--bd)';
       const chgStr = s.chg != null ? (s.chg >= 0 ? '+' : '') + parseFloat(s.chg).toFixed(2) + '%' : '';
       const chgColor = s.chg >= 0 ? 'var(--up)' : 'var(--dn)';
       const ratioStr = s.ratio > 0 ? s.ratio + '%' : '';
-      const contStr = s.trPbmn > 0 ? s.trPbmn + '억' : '';
+      const stars2 = contDays2 > 0 ? '<span style="font-size:9px;margin-left:1px">' + '⭐'.repeat(Math.min(contDays2,5)) + '</span>' : '';
       // 4위 이상 숫자 잘 보이도록
       const rankOverride = i < 3 ? '' : 'background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)';
       return '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:8px;cursor:pointer;' + bg + '" onclick="kisRowClick(\'' + key + '\')">'
@@ -2887,6 +2905,7 @@ window.loadKisHistory = async (date, uid) => {
         + '<div style="flex:1;min-width:0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + s.name + '</span>'
+        + stars2
         + (chgStr ? '<span style="font-size:9px;font-weight:800;color:' + chgColor + ';flex-shrink:0;margin-left:3px">' + chgStr + '</span>' : '')
         + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:1px">'
@@ -2921,12 +2940,17 @@ window.loadKisHistory = async (date, uid) => {
     document.getElementById('topListFI').innerHTML = (data.fi||[]).length ? data.fi.map((s,i)=>makeRow2Dup(s,i, dupSet2.has(s.name))).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListF').innerHTML  = (data.f||[]).length  ? data.f.map((s,i) =>makeRow2Dup(s,i, dupSet2.has(s.name))).join('')  : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
     document.getElementById('topListI').innerHTML  = (data.inst||[]).length? data.inst.map((s,i)=> {
-      const base = makeRow2(s,i);
-      if(!dupSet2.has(s.name)) return base;
-      return base.replace(
-        /(<div class="rank-badge [^"]*" style="[^"]*)(")>/,
-        (m, p1, p2) => p1 + ';outline:2px solid rgba(0,212,170,0.8)' + p2 + '>'
-      );
+      let base = makeRow2(s,i);
+      if(isJB2(s.name)) {
+        base = base.replace('background:var(--sf);border:1px solid var(--bd)', 'background:var(--sf);border:1.5px solid rgba(255,105,180,0.8)');
+      }
+      if(dupSet2.has(s.name)) {
+        base = base.replace(
+          /(<div class="rank-badge [^"]*" style="[^"]*)(")>/,
+          (m, p1, p2) => p1 + ';outline:2px solid rgba(0,212,170,0.8)' + p2 + '>'
+        );
+      }
+      return base;
     }).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
   } catch(e) { console.warn('히스토리 로드 실패:', e); }
 };
