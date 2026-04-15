@@ -620,7 +620,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="fpanel" id="fp-정배열">
       <div class="sh">
         <span class="sh-title">📈 정배열 종목</span>
-        <button class="btn btn-ac btn-sm" onclick="jungBaeFetch()" id="jungBaeBtn">⚡ 재실행</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sc btn-sm" onclick="openThemeEditor()">✏️ 테마편집</button>
+          <button class="btn btn-ac btn-sm" onclick="jungBaeFetch()" id="jungBaeBtn">⚡ 재실행</button>
+        </div>
       </div>
       <div id="jungBaeMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
       <div id="jungBaeDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
@@ -901,6 +904,23 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 </div>
 
 <!-- ── 설정 모달 ── -->
+<div class="mo" id="moThemeEditor" onclick="if(event.target===this)closeMo('moThemeEditor')">
+  <div class="mo-box">
+    <div class="mo-handle"></div>
+    <div class="mo-title">✏️ 테마 편집</div>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:12px">종목명과 테마를 수정하세요. 같은 종목을 여러 줄 추가하면 여러 테마에 표시돼요.</div>
+    <div style="margin-bottom:10px">
+      <input id="themeSearchInput" placeholder="종목명 검색..." oninput="filterThemeList()">
+    </div>
+    <div id="themeEditorList" style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-sc" onclick="addThemeEntry()">+ 종목 추가</button>
+      <button class="btn btn-pr" onclick="saveThemeEditor()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="mo" id="moSettings" onclick="if(event.target===this)closeMo('moSettings')">
   <div class="mo-box">
     <div class="mo-handle"></div>
@@ -1050,10 +1070,33 @@ window._stockThemeMap = {
   // 에너지
   'SK이노베이션':'에너지', 'GS칼텍스':'정유', 'HD현대오일뱅크':'정유',
   // 기타
-  '퍼스텍':'방산', '빛과전자':'전자부품', '우리로':'통신장비',
+  '퍼스텍':'방산', '빛과전자':'광통신', '우리로':'통신장비',
   '다날':'IT서비스', '신성이엔지':'태양광', '쏠리드':'통신장비',
   '리가켐바이오':'바이오', '에스앤에스텍':'반도체소재',
   'HD현대마린솔루션':'조선', '달바글로벌':'뷰티',
+  // 기타 종목 테마 추가
+  '드림시큐리티':'보안/양자', '이노인스트루먼트':'보안/양자',
+  '세미파이브':'보안/양자', '대신정보통신':'보안/양자',
+  '광전자':'광통신', '루멘스':'광통신', '서울전자통신':'광통신',
+  '기가레인':'광통신', '파워넷':'광통신', '우리넷':'광통신',
+  '대한전선':'전력/전선', '대원전선':'전력/전선',
+  '저스템':'전력/전선',
+  'KBI메탈':'소재/금속', '하이스틸':'소재/금속', '알루코':'소재/금속',
+  '조일알미늄':'소재/금속', '남선알미늄':'소재/금속', '넥스틸':'소재/금속',
+  '풍산홀딩스':'소재/금속', '한국첨단소재':'소재/금속',
+  'OCI홀딩스':'태양광/에너지', '에스에너지':'태양광/에너지', '창해에탄올':'태양광/에너지',
+  '남해화학':'화학',
+  '태영건설':'건설',
+  '삼성생명':'금융/보험', '한화생명':'금융/보험',
+  '카티스':'자동차부품', '주성코퍼레이션':'자동차부품',
+  '퀄리타스반도체':'반도체',
+  '엔투텍':'기계', '대영포장':'기계',
+  // 2차전지 통합
+  '에코프로머티':'2차전지', '롯데에너지머티리얼즈':'2차전지', '이수스페셜티케미컬':'2차전지',
+  '엘앤에프':'2차전지',
+  // 우주 테마
+  '미래에셋증권':'우주', '아주IB투자':'우주', '미래에셋벤처투자':'우주',
+  'KAI':'우주', '한화에어로스페이스':'우주',
 };
 
 let S = JSON.parse(JSON.stringify(DEF));
@@ -3356,9 +3399,22 @@ function renderJungBae(results, date) {
   const sectorMap = {};
   results.forEach(sec => {
     sec.stocks.forEach(s => {
-      const finalSector = override[s.code] || sec.name;
-      if(!sectorMap[finalSector]) sectorMap[finalSector] = [];
-      sectorMap[finalSector].push(s);
+      const overrideSector = override[s.code];
+      // 다중 테마 지원
+      const multiThemes = !overrideSector && window._themeMultiMap && window._themeMultiMap[s.name];
+      if(overrideSector) {
+        if(!sectorMap[overrideSector]) sectorMap[overrideSector] = [];
+        sectorMap[overrideSector].push(s);
+      } else if(multiThemes && multiThemes.length > 1) {
+        multiThemes.forEach(theme => {
+          if(!sectorMap[theme]) sectorMap[theme] = [];
+          if(!sectorMap[theme].find(x => x.name === s.name)) sectorMap[theme].push(s);
+        });
+      } else {
+        const finalSector = window._stockThemeMap[s.name] || sec.name;
+        if(!sectorMap[finalSector]) sectorMap[finalSector] = [];
+        sectorMap[finalSector].push(s);
+      }
     });
   });
 
@@ -5001,6 +5057,82 @@ function renderMktCal() {
   }
   grid.innerHTML = html;
 }
+
+
+// ── 테마 편집
+let _themeEntries = []; // [{name, theme}]
+
+window.openThemeEditor = () => {
+  // _stockThemeMap을 배열로 변환 (중복 허용)
+  _themeEntries = Object.entries(window._stockThemeMap).map(([name, theme]) => ({name, theme}));
+  _themeEntries.sort((a,b) => a.theme.localeCompare(b.theme) || a.name.localeCompare(b.name));
+  renderThemeEditorList('');
+  openMo('moThemeEditor');
+};
+
+function renderThemeEditorList(filter) {
+  const el = document.getElementById('themeEditorList');
+  if(!el) return;
+  const filtered = filter ? _themeEntries.filter(e => e.name.includes(filter) || e.theme.includes(filter)) : _themeEntries;
+  el.innerHTML = filtered.map((e, idx) => {
+    const realIdx = _themeEntries.indexOf(e);
+    return '<div style="display:grid;grid-template-columns:1fr 1fr 32px;gap:4px;align-items:center">'
+      + '<input value="' + e.name + '" style="font-size:11px;padding:6px 8px" oninput="_themeEntries[' + realIdx + '].name=this.value">'
+      + '<input value="' + e.theme + '" style="font-size:11px;padding:6px 8px" oninput="_themeEntries[' + realIdx + '].theme=this.value">'
+      + '<button onclick="_themeEntries.splice(' + realIdx + ',1);renderThemeEditorList(document.getElementById('themeSearchInput').value||'')" style="background:rgba(255,71,87,.15);color:var(--up);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px">×</button>'
+      + '</div>';
+  }).join('');
+}
+
+window.filterThemeList = () => {
+  const val = document.getElementById('themeSearchInput')?.value || '';
+  renderThemeEditorList(val);
+};
+
+window.addThemeEntry = () => {
+  _themeEntries.push({name:'', theme:''});
+  renderThemeEditorList(document.getElementById('themeSearchInput')?.value || '');
+  // 맨 아래로 스크롤
+  const el = document.getElementById('themeEditorList');
+  if(el) el.scrollTop = el.scrollHeight;
+};
+
+window.saveThemeEditor = () => {
+  // 빈 항목 제거 후 _stockThemeMap 재구성
+  const valid = _themeEntries.filter(e => e.name.trim() && e.theme.trim());
+  // 같은 종목이 여러 테마에 있을 수 있으므로 마지막 것으로 덮어쓰기 (단일맵)
+  // 단, 정배열 렌더링은 섹터별로 분류하므로 다중 테마는 별도 처리
+  window._stockThemeMap = {};
+  window._themeMultiMap = {}; // 다중 테마용
+  valid.forEach(e => {
+    const name = e.name.trim();
+    const theme = e.theme.trim();
+    if(!window._themeMultiMap[name]) window._themeMultiMap[name] = [];
+    if(!window._themeMultiMap[name].includes(theme)) window._themeMultiMap[name].push(theme);
+    window._stockThemeMap[name] = theme; // 마지막 테마로 단일맵 유지
+  });
+  // localStorage에 저장
+  try { localStorage.setItem('mr_themeMap', JSON.stringify(valid)); } catch(e) {}
+  closeMo('moThemeEditor');
+  alert('저장됐어요! 정배열 재실행하면 반영돼요 😊');
+};
+
+// 로컬스토리지에서 테마맵 로드
+(function loadThemeMapFromStorage() {
+  try {
+    const saved = localStorage.getItem('mr_themeMap');
+    if(saved) {
+      const entries = JSON.parse(saved);
+      window._themeMultiMap = {};
+      entries.forEach(e => {
+        if(!e.name || !e.theme) return;
+        window._stockThemeMap[e.name] = e.theme;
+        if(!window._themeMultiMap[e.name]) window._themeMultiMap[e.name] = [];
+        if(!window._themeMultiMap[e.name].includes(e.theme)) window._themeMultiMap[e.name].push(e.theme);
+      });
+    }
+  } catch(e) {}
+})();
 
 // ── 로그아웃
 window.doSignOut = async () => {
