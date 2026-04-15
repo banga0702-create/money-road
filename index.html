@@ -3651,25 +3651,20 @@ window.upSudFetch = async () => {
       return trb - tra; // 거래대금 높은 순
     });
 
-    // 과거 upSudHistory에서 연속 등장 횟수 계산
+    // 과거 upSudHistory에서 연속 등장 횟수 계산 (_upSudHistory7 캐시 사용)
     let upSudStreakMap = {};
     try {
-      const user = window._curUser;
-      if(user) {
-        const histSnap = await getDocs(collection(db, 'users', user.uid, 'upSudHistory'));
-        const today = new Date().toISOString().slice(0,10);
-        const allDocs = histSnap.docs.filter(d => d.id !== today).sort((a,b) => b.id.localeCompare(a.id));
-        const todayNames = new Set(result.map(s => s.hts_kor_isnm));
-        todayNames.forEach(name => {
-          let streak = 0;
-          for(const d of allDocs) {
-            const list = d.data()?.list || [];
-            if(list.some(s => s.name === name)) streak++;
-            else break;
-          }
-          if(streak > 0) upSudStreakMap[name] = streak;
-        });
-      }
+      const today = new Date().toISOString().slice(0,10);
+      const pastDocs = (window._upSudHistory7 || []).filter(d => d.date !== today);
+      const todayNames = new Set(result.map(s => s.hts_kor_isnm));
+      todayNames.forEach(name => {
+        let streak = 0;
+        for(const d of pastDocs) {
+          if((d.list||[]).some(s => s.name === name)) streak++;
+          else break;
+        }
+        if(streak > 0) upSudStreakMap[name] = streak;
+      });
     } catch(e) { console.warn('연속등장 계산 실패:', e); }
 
     const listEl = document.getElementById('upSudList');
@@ -3734,6 +3729,9 @@ window.upSudFetch = async () => {
         await setDoc(doc(db, 'users', user.uid, 'upSudHistory', today), {
           date: today, list: saveData, savedAt: Date.now()
         });
+        // _upSudHistory7 캐시 갱신
+        if(!window._upSudHistory7) window._upSudHistory7 = [];
+        window._upSudHistory7 = [{date: today, list: saveData}, ...window._upSudHistory7.filter(d => d.date !== today)].slice(0,7);
         await renderUpSudDateTabs(user.uid);
         // 오늘 탭 활성화
         const upTodayBtn = document.getElementById('upSudDateBtn-' + today);
@@ -5010,6 +5008,11 @@ onAuthStateChanged(auth, async (user) => {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
         window._kisHistory7 = snap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>d.data());
       } catch(e) { window._kisHistory7 = []; }
+      // 상승수급 7일 히스토리 미리 로드
+      try {
+        const upSnap = await getDocs(collection(db, 'users', user.uid, 'upSudHistory'));
+        window._upSudHistory7 = upSnap.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(d=>({date:d.id, ...d.data()}));
+      } catch(e) { window._upSudHistory7 = []; }
       await renderReverseDateTabs(user.uid);
       await renderCandleDateTabs(user.uid);
       await renderUpSudDateTabs(user.uid);
