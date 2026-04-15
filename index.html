@@ -3452,13 +3452,27 @@ function renderJungBae(results, date) {
   const cols = [[], [], []];
   mainSectors.forEach(([sName, stocks], idx) => { cols[idx % 3].push([sName, stocks]); });
 
+  // 섹터별 색상 팔레트
+  const sectorColors = [
+    '#E53E3E','#D97706','#059669','#2563EB','#7C3AED',
+    '#DB2777','#0891B2','#65A30D','#EA580C','#0F766E',
+    '#9333EA','#B45309','#DC2626','#1D4ED8','#16A34A',
+  ];
+  const sectorColorMap = {};
+  let _colorIdx = 0;
+  const getSectorColor = (name) => {
+    if(!sectorColorMap[name]) sectorColorMap[name] = sectorColors[_colorIdx++ % sectorColors.length];
+    return sectorColorMap[name];
+  };
+
   const renderSectorBox = ([sName, stocks]) => `
-    <div style="background:var(--sf);border:1.5px dashed rgba(255,71,87,0.4);border-radius:10px;padding:8px" id="jbSec-${sName}"
+    <div style="background:var(--sf);border:1.5px solid ${getSectorColor(sName)}40;border-radius:10px;overflow:hidden" id="jbSec-${sName}"
       ondragover="jbSecDragOver(event,'${sName}')" ondragleave="jbSecDragLeave(event)" ondrop="jbSecDrop(event,'${sName}')">
-      <div style="font-size:10px;font-weight:800;color:var(--tx);margin-bottom:5px;text-align:center;cursor:grab"
+      <div style="background:${getSectorColor(sName)};font-size:10px;font-weight:800;color:#fff;padding:5px 8px;text-align:center;cursor:grab"
         draggable="true" ondragstart="jbSecDragStart(event,'${sName}')">
         ${sName}
       </div>
+      <div style="padding:6px 8px">
       ${stocks.map(s => `
         <div draggable="true"
           ondragstart="jbDragStart('${s.name}','${s.code}',${s.chg},${s.ma5?.toFixed(0)||0},${s.ma20?.toFixed(0)||0},${s.ma60?.toFixed(0)||0})"
@@ -3467,6 +3481,7 @@ function renderJungBae(results, date) {
           <span style="font-size:10px;font-weight:700;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">${s.name}</span>
           <span style="font-size:9px;font-weight:800;color:${s.chg>=0?'var(--up)':'var(--dn)'};flex-shrink:0">${s.chg>=0?'+':''}${s.chg}%</span>
         </div>`).join('')}
+      </div>
     </div>`;
 
   const gridHtml = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:start">` +
@@ -3475,12 +3490,13 @@ function renderJungBae(results, date) {
 
   // 기타 섹터 - 전체 너비로 가로 wrap
   const etcHtml = etcSectors.map(([sName, stocks]) => `
-    <div style="background:var(--sf);border:1.5px dashed rgba(255,71,87,0.4);border-radius:10px;padding:8px;margin-top:8px" id="jbSec-${sName}"
+    <div style="background:var(--sf);border:1.5px solid ${getSectorColor(sName)}40;border-radius:10px;overflow:hidden;margin-top:8px" id="jbSec-${sName}"
       ondragover="jbSecDragOver(event,'${sName}')" ondragleave="jbSecDragLeave(event)" ondrop="jbSecDrop(event,'${sName}')">
-      <div style="font-size:10px;font-weight:800;color:var(--tx);margin-bottom:6px;text-align:center;cursor:grab"
+      <div style="background:${getSectorColor(sName)};font-size:10px;font-weight:800;color:#fff;padding:5px 8px;text-align:center;cursor:grab"
         draggable="true" ondragstart="jbSecDragStart(event,'${sName}')">
-        ${sName} <span style="font-size:9px;color:var(--pr);font-weight:700">${stocks.length}개</span>
+        ${sName} <span style="font-size:9px;opacity:0.85">${stocks.length}개</span>
       </div>
+      <div style="padding:6px 8px">
       <div style="display:flex;flex-wrap:wrap;gap:4px">
         ${stocks.map(s => `
           <div draggable="true"
@@ -3490,6 +3506,7 @@ function renderJungBae(results, date) {
             <span style="font-size:10px;font-weight:700;color:var(--tx)">${s.name}</span>
             <span style="font-size:9px;font-weight:800;color:${s.chg>=0?'var(--up)':'var(--dn)'}">${s.chg>=0?'+':''}${s.chg}%</span>
           </div>`).join('')}
+      </div>
       </div>
     </div>`).join('');
 
