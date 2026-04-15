@@ -3776,6 +3776,15 @@ window.reverseFetch = async () => {
   msg.style.color = 'var(--ac)';
   msg.textContent = '🔍 외국인/기관 매수 종목 → 하락+거래대금 필터 중...';
 
+  // 정배열 데이터 미리 로드
+  try {
+    if(!window._jbLastResults && window._curUser) {
+      const today = new Date().toISOString().slice(0,10);
+      const snap = await getDoc(doc(db, 'users', window._curUser.uid, 'jungBaeHistory', today));
+      if(snap.exists()) window._jbLastResults = snap.data().results || [];
+    }
+  } catch(e) {}
+
   try {
     // 1단계: foreign_inst로 외국인/기관 순매수 종목 가져오기
     const fiRes = await fetch('/api/kis?action=foreign_inst_combined');
@@ -3849,6 +3858,7 @@ window.reverseFetch = async () => {
       return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + name + '</span>'
+        + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(chg).toFixed(2) + '%</span>'
         + '</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px">'
@@ -4036,6 +4046,7 @@ window.loadReverseHistory = async (date, uid) => {
       return '<div style="' + bg + ';border-radius:8px;padding:5px 7px;cursor:pointer" onclick="revRowClick(\'' + key + '\')">'
         + '<div style="display:flex;align-items:center;justify-content:space-between">'
         + '<span style="font-size:11px;font-weight:700">' + s.name + '</span>'
+        + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(st=>st.name===s.name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
         + '<span style="font-size:10px;color:var(--dn);font-weight:800">' + parseFloat(s.chg).toFixed(2) + '%</span>'
         + '</div>'
         + '<div style="display:flex;gap:6px;margin-top:2px">'
