@@ -1114,17 +1114,28 @@ function getLastTradingDate(dates, baseDate) {
   return sorted[0] || null;
 }
 
-// 어제 기준 마지막 장일 찾기
+// 마지막 장일 찾기 (토/일 제외, 공휴일은 데이터 없으면 자연스럽게 건너뜀)
 function getYesterdayOrLastTrading(dates) {
+  const today = new Date().toISOString().slice(0,10);
   const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
-  if(dates.includes(yesterday)) return { date: yesterday, label: '어제' };
-  // 어제 데이터 없으면 (휴장일) 마지막 저장일
-  const last = dates.filter(d => d < new Date().toISOString().slice(0,10)).sort().reverse()[0];
-  if(!last) return null;
-  const d = new Date(last);
-  const day = d.getDay();
   const dayNames = ['일','월','화','수','목','금','토'];
-  return { date: last, label: `마지막장(${last.slice(5).replace('-','/')} ${dayNames[day]})` };
+
+  // 오늘 이전 날짜 중 토/일 제외한 가장 최근 장일
+  const last = dates
+    .filter(d => d < today)
+    .sort().reverse()
+    .find(d => {
+      // new Date('YYYY-MM-DD')는 UTC 기준이라 한국 요일과 다를 수 있음 → 직접 파싱
+      const [y, m, day] = d.split('-').map(Number);
+      const dow = new Date(y, m-1, day).getDay(); // 로컬 기준
+      return dow !== 0 && dow !== 6;
+    });
+  if(!last) return null;
+
+  const [y, m, day] = last.split('-').map(Number);
+  const dow = new Date(y, m-1, day).getDay();
+  const label = last === yesterday ? '어제' : `마지막장(${last.slice(5).replace('-','/')} ${dayNames[dow]})`;
+  return { date: last, label };
 }
 
 let S = JSON.parse(JSON.stringify(DEF));
