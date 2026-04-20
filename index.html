@@ -1099,6 +1099,34 @@ window._stockThemeMap = {
   'KAI':'우주', '한화에어로스페이스':'우주',
 };
 
+
+// ── 휴장일/마지막 장일 유틸
+function isMarketClosed(dateStr) {
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0=일, 6=토
+  return day === 0 || day === 6;
+}
+
+// 주어진 날짜 기준으로 가장 최근 장일 찾기 (dates 배열에서)
+function getLastTradingDate(dates, baseDate) {
+  // baseDate 이전 날짜 중 가장 최근 것
+  const sorted = dates.filter(d => d < baseDate).sort().reverse();
+  return sorted[0] || null;
+}
+
+// 어제 기준 마지막 장일 찾기
+function getYesterdayOrLastTrading(dates) {
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if(dates.includes(yesterday)) return { date: yesterday, label: '어제' };
+  // 어제 데이터 없으면 (휴장일) 마지막 저장일
+  const last = dates.filter(d => d < new Date().toISOString().slice(0,10)).sort().reverse()[0];
+  if(!last) return null;
+  const d = new Date(last);
+  const day = d.getDay();
+  const dayNames = ['일','월','화','수','목','금','토'];
+  return { date: last, label: `마지막장(${last.slice(5).replace('-','/')} ${dayNames[day]})` };
+}
+
 let S = JSON.parse(JSON.stringify(DEF));
 let curStr=0, curRep='없음', curTab='home', histMode='week';
 
@@ -2901,12 +2929,11 @@ window.renderKisDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const ystInfo = getYesterdayOrLastTrading(dates);
 
-    // 오늘/어제 버튼 + 달력 버튼
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${today}','${uid}')">오늘</button>`;
-    if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${yesterday}','${uid}')">어제</button>`;
+    if(ystInfo) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${ystInfo.date}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${ystInfo.date}','${uid}')">${ystInfo.label}</button>`;
     window._kisAllDates = dates;
     tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(window._kisAllDates,'kis','${uid}')">📅</button>`;
     tabHtml += `<button class="btn btn-sm" style="font-size:10px;padding:4px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3)" onclick="loadKisWeekly('${uid}')">📊 7일통계</button>`;
@@ -3177,15 +3204,13 @@ window.renderJungBaeDateTabs = async (activeDate, uid) => {
     const tabsEl = document.getElementById('jungBaeDateTabs');
     if(!tabsEl) return;
     const today = new Date().toISOString().slice(0,10);
-    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
-    tabsEl.innerHTML = dates.map(d => {
-      const lbl = d===today?'오늘':d===yesterday?'어제':d.slice(5).replace('-','/');
-      const isActive = d===activeDate;
-      return `<button id="jungBaeDateBtn-${d}" onclick="loadJungBaeHistory('${d}',window._curUser?.uid)"
-        style="flex-shrink:0;padding:4px 12px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};
-        background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:11px;font-weight:700;cursor:pointer">${lbl}</button>`;
-    }).join('');
-    tabsEl.innerHTML += `<button onclick="openJungBaeDatePicker()" style="flex-shrink:0;padding:4px 10px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:13px;cursor:pointer">📅</button>`;
+    const ystInfo = getYesterdayOrLastTrading(dates);
+    const btnStyle = (isActive) => `flex-shrink:0;padding:4px 12px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:11px;font-weight:700;cursor:pointer`;
+    let tabHtml = '';
+    if(dates.includes(today)) tabHtml += `<button id="jungBaeDateBtn-${today}" onclick="loadJungBaeHistory('${today}',window._curUser?.uid)" style="${btnStyle(activeDate===today)}">오늘</button>`;
+    if(ystInfo) tabHtml += `<button id="jungBaeDateBtn-${ystInfo.date}" onclick="loadJungBaeHistory('${ystInfo.date}',window._curUser?.uid)" style="${btnStyle(activeDate===ystInfo.date)}">${ystInfo.label}</button>`;
+    tabHtml += `<button onclick="openJungBaeDatePicker()" style="flex-shrink:0;padding:4px 10px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:13px;cursor:pointer">📅</button>`;
+    tabsEl.innerHTML = tabHtml;
   } catch(e) {}
 };
 
@@ -4037,11 +4062,11 @@ window.renderUpSudDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const ystInfo = getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${today}','${uid}')">오늘</button>`;
-    if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${yesterday}','${uid}')">어제</button>`;
+    if(ystInfo) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${ystInfo.date}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${ystInfo.date}','${uid}')">${ystInfo.label}</button>`;
     window._upSudAllDates = dates;
     tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(window._upSudAllDates,'upsud','${uid}')">📅</button>`;
     tabEl.innerHTML = tabHtml;
@@ -4122,11 +4147,11 @@ window.renderReverseDateTabs = async (uid) => {
     const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
     if(!dates.length) { tabEl.innerHTML = ''; return; }
     const today = new Date().toISOString().slice(0,10);
-    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const ystInfo = getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${today}','${uid}')">오늘</button>`;
-    if(dates.includes(yesterday)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${yesterday}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${yesterday}','${uid}')">어제</button>`;
+    if(ystInfo) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${ystInfo.date}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${ystInfo.date}','${uid}')">${ystInfo.label}</button>`;
     window._revAllDates = dates;
     tabHtml += `<button class="btn btn-sm" style="font-size:13px;padding:4px 8px;border-radius:20px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="openDatePicker(window._revAllDates,'rev','${uid}')">📅</button>`;
     tabEl.innerHTML = tabHtml;
