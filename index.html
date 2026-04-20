@@ -4439,17 +4439,18 @@ window.revRowClick = async (key) => {
     const data = await r.json();
     const rows = (data.output || data.output2 || []).slice(0, 5);
     const streakEl = document.getElementById('kisDetailStreak');
-    const calcStreak = (f1, f2) => {
-      let streak = 0;
-      for(let i = 0; i < rows.length; i++) {
-        const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
-        if(i === 0) { streak = v >= 0 ? 1 : -1; }
-        else { const sign = streak > 0 ? 1 : -1; if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign; else break; }
-      }
-      return streak;
-    };
-    const fStreak = rows.length ? calcStreak('frgn_ntby_qty', 'frgn_ntby_tr_pbmn') : 0;
-    const iStreak = rows.length ? calcStreak('orgn_ntby_qty', 'orgn_ntby_tr_pbmn') : 0;
+      const calcStreak = (todayVal, f1, f2) => {
+        const todaySign = todayVal >= 0 ? 1 : -1;
+        let streak = todaySign;
+        for(let i = 1; i < rows.length; i++) {
+          const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
+          if((v >= 0 ? 1 : -1) === todaySign) streak += todaySign;
+          else break;
+        }
+        return streak;
+      };
+    const fStreak = rows.length ? calcStreak(fBuy, 'frgn_ntby_qty', 'frgn_ntby_tr_pbmn') : 0;
+    const iStreak = rows.length ? calcStreak(iBuy, 'orgn_ntby_qty', 'orgn_ntby_tr_pbmn') : 0;
     if(streakEl) streakEl.innerHTML = window._streakTag('외국인', Math.abs(fStreak), fStreak > 0) + ' &nbsp;&nbsp; ' + window._streakTag('기관', Math.abs(iStreak), iStreak > 0);
   } catch(e) {
     const streakEl = document.getElementById('kisDetailStreak');
@@ -4493,17 +4494,18 @@ window.upSudClick = async (key) => {
       if(streakEl) streakEl.textContent = '일별 데이터 없음';
       return;
     }
-    let fStreak = 0, iStreak = 0;
-    for(let i = 0; i < rows.length; i++) {
-      const fv = parseFloat(rows[i].frgn_ntby_qty || rows[i].frgn_ntby_tr_pbmn || 0);
-      if(i === 0) { fStreak = fv >= 0 ? 1 : -1; }
-      else { const sign = fStreak > 0 ? 1 : -1; if((fv >= 0 && sign > 0) || (fv < 0 && sign < 0)) fStreak += sign; else break; }
-    }
-    for(let i = 0; i < rows.length; i++) {
-      const iv = parseFloat(rows[i].orgn_ntby_qty || rows[i].orgn_ntby_tr_pbmn || 0);
-      if(i === 0) { iStreak = iv >= 0 ? 1 : -1; }
-      else { const sign = iStreak > 0 ? 1 : -1; if((iv >= 0 && sign > 0) || (iv < 0 && sign < 0)) iStreak += sign; else break; }
-    }
+    const calcStreakUp = (todayVal, f1, f2) => {
+      const todaySign = todayVal >= 0 ? 1 : -1;
+      let streak = todaySign;
+      for(let i = 1; i < rows.length; i++) {
+        const v = parseFloat(rows[i][f1] || rows[i][f2] || 0);
+        if((v >= 0 ? 1 : -1) === todaySign) streak += todaySign;
+        else break;
+      }
+      return streak;
+    };
+    const fStreak = rows.length ? calcStreakUp(fBuy, 'frgn_ntby_qty', 'frgn_ntby_tr_pbmn') : 0;
+    const iStreak = rows.length ? calcStreakUp(iBuy, 'orgn_ntby_qty', 'orgn_ntby_tr_pbmn') : 0;
     if(streakEl) streakEl.innerHTML = window._streakTag('외국인', Math.abs(fStreak), fStreak > 0) + ' &nbsp;&nbsp; ' + window._streakTag('기관', Math.abs(iStreak), iStreak > 0);
   } catch(e) {
     const streakEl = document.getElementById('kisDetailStreak');
@@ -4594,22 +4596,21 @@ window.kisRowClick = async (key) => {
       const streakEl = document.getElementById('kisDetailStreak');
       if(!rows.length || !streakEl) return;
 
-      const calcStreak = (field1, field2) => {
-        let streak = 0;
-        for(let i = 0; i < rows.length; i++) {
+      // 오늘은 _kisRows의 실제 수급 데이터 사용, 과거는 investor API 사용
+      const calcStreak = (todayVal, field1, field2) => {
+        const todaySign = todayVal >= 0 ? 1 : -1;
+        let streak = todaySign;
+        for(let i = 1; i < rows.length; i++) {
           const v = parseFloat(rows[i][field1] || rows[i][field2] || 0);
-          if(i === 0) { streak = v >= 0 ? 1 : -1; }
-          else {
-            const sign = streak > 0 ? 1 : -1;
-            if((v >= 0 && sign > 0) || (v < 0 && sign < 0)) streak += sign;
-            else break;
-          }
+          const sign = v >= 0 ? 1 : -1;
+          if(sign === todaySign) streak += todaySign;
+          else break;
         }
         return streak;
       };
 
-      const fStreak = calcStreak('frgn_ntby_qty', 'frgn_ntby_tr_pbmn');
-      const iStreak = calcStreak('orgn_ntby_qty', 'orgn_ntby_tr_pbmn');
+      const fStreak = calcStreak(fBuy, 'frgn_ntby_qty', 'frgn_ntby_tr_pbmn');
+      const iStreak = calcStreak(iBuy, 'orgn_ntby_qty', 'orgn_ntby_tr_pbmn');
 
       const fTag = fStreak > 0
         ? '<span style="color:var(--up);font-weight:800">외국인 +' + fStreak + '일 연속매수 📈</span>'
