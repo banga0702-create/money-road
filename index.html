@@ -1608,10 +1608,10 @@ const MARKET_COMMENTS = {
 function scoreToTemp(score) { return Math.round(score); }
 
 function getZone(temp) {
-  if(temp < 25) return MARKET_COMMENTS.panic;
-  if(temp < 45) return MARKET_COMMENTS.fear;
-  if(temp < 55) return MARKET_COMMENTS.neutral;
-  if(temp < 75) return MARKET_COMMENTS.optimism;
+  if(temp < 20) return MARKET_COMMENTS.panic;
+  if(temp < 40) return MARKET_COMMENTS.fear;
+  if(temp < 60) return MARKET_COMMENTS.neutral;
+  if(temp < 80) return MARKET_COMMENTS.optimism;
   return MARKET_COMMENTS.overHeat;
 }
 
@@ -1713,7 +1713,7 @@ function renderHome(){
       const arEl = document.getElementById('zba-'+z);
       if(!el) return;
       const [min, max] = zoneRanges[i];
-      const isActive = score >= min && score < max || (z === 'overHeat' && score >= 75);
+      const isActive = score >= min && score < max || (z === 'overHeat' && score >= 80);
       el.classList.toggle('active', isActive);
       if(arEl) arEl.textContent = isActive ? `▲ ${score}pt` : '';
     });
@@ -1765,7 +1765,7 @@ function renderHome(){
   if(dnNumEl) dnNumEl.textContent = (m.up && m.total) ? (m.total - m.up).toLocaleString() : '—';
 
   const st=score>=75?{txt:'강세',col:'var(--up)'}:
-    score>=55?{txt:'상승장',col:'#F97316'}:
+    score>=60?{txt:'상승장',col:'#F97316'}:
     score>=45?{txt:'중립',col:'var(--tx2)'}:
     score>=25?{txt:'약세',col:'var(--dn)'}:
     score>0?{txt:'급락장',col:'#93C5FD'}:
