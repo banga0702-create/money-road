@@ -1293,21 +1293,21 @@ window.openStarDatePicker = (uid) => {
 };
 
 // ── 휴장일/마지막 장일 유틸
-function isMarketClosed(dateStr) {
+window.isMarketClosed = function(dateStr) {
   const d = new Date(dateStr);
   const day = d.getDay(); // 0=일, 6=토
   return day === 0 || day === 6;
 }
 
 // 주어진 날짜 기준으로 가장 최근 장일 찾기 (dates 배열에서)
-function getLastTradingDate(dates, baseDate) {
+window.getLastTradingDate = function(dates, baseDate) {
   // baseDate 이전 날짜 중 가장 최근 것
   const sorted = dates.filter(d => d < baseDate).sort().reverse();
   return sorted[0] || null;
 }
 
 // 마지막 장일 찾기 (토/일 제외, 공휴일은 데이터 없으면 자연스럽게 건너뜀)
-function getYesterdayOrLastTrading(dates) {
+window.getYesterdayOrLastTrading = function(dates) {
   const today = new Date().toISOString().slice(0,10);
   const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
   const dayNames = ['일','월','화','수','목','금','토'];
@@ -1343,7 +1343,8 @@ function save(){
 /* ═══════════════════════════════════════════
    탭 네비
 ═══════════════════════════════════════════ */
-const PAGE_MAP={home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
+window.PAGE_MAP={home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
+const PAGE_MAP=window.PAGE_MAP;
 
 function switchTab(tab){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1418,7 +1419,7 @@ function openStockMo(){
 /* ═══════════════════════════════════════════
    시장온도 자동 계산 (등락률 기반)
 ═══════════════════════════════════════════ */
-function calcMktAuto() {
+window.calcMktAuto = function() {
   const kospiChg  = window._mktKospiChg  || 0;
   const kosdaqChg = window._mktKosdaqChg || 0;
   const fBuy = window._mktFBuy || 0;
@@ -2876,55 +2877,7 @@ function renderSim() {
   }
 }
 
-function _oldRenderTrack(){
-  if(!S.tracks.length){
-  el.innerHTML=S.tracks.map(t=>`
-    <div class="track-card">
-      <div class="track-hdr">
-        <div class="track-name">${t.name}${t.sector?` <span style="font-size:10px;color:var(--tx3)">(${t.sector})</span>`:''}</div>
-        <button class="btn btn-sc btn-sm" style="width:auto;padding:4px 8px" onclick="delTrack(${t.id})">✕</button>
-      </div>
-      <div class="track-hist">
-        <div style="font-size:9px;color:var(--tx3);margin-bottom:6px">최근 7일 수급 흐름</div>
-        <div class="hist7">
-          ${t.hist.map(h=>`<div class="h7d">
-            <div class="h7d-lbl">${h.day}</div>
-            <div class="h7d-dot" style="background:${h.fi?'var(--ac)':h.f?'var(--up)':h.i_?'var(--dn)':'var(--sf3)'}"></div>
-          </div>`).join('')}
-        </div>
-        <div style="display:flex;gap:8px;margin-top:6px;font-size:9px;color:var(--tx3)">
-          <span>■ <span style="color:var(--ac)">외+기</span></span>
-          <span>■ <span style="color:var(--up)">외국인</span></span>
-          <span>■ <span style="color:var(--dn)">기관</span></span>
-        </div>
-      </div>
-      <div class="track-body">
-        <div class="track-streak">
-          ${t.fDays>=5?`<span class="badge b-up">🔥 외국인 ${t.fDays}일 연속</span>`:t.fDays>0?`<span class="badge b-gr">외국인 ${t.fDays}일</span>`:''}
-          ${t.iDays>=2?`<span class="badge b-dn">📈 기관 ${t.iDays}일 연속</span>`:t.iDays>0?`<span class="badge b-gr">기관 ${t.iDays}일</span>`:''}
-          ${t.isFI?'<span class="badge b-ac">외+기 동시</span>':''}
-        </div>
-        ${t.memo?`<div style="font-size:10px;color:var(--tx3);background:var(--sf2);border-radius:7px;padding:6px 8px;margin-top:6px">${t.memo}</div>`:''}
-      </div>
-    </div>`).join('');
 
-  // 다음날 체크
-  document.getElementById('nextList').innerHTML=S.tracks.map(t=>`
-    <div class="card" style="margin-bottom:10px">
-      <div style="font-size:13px;font-weight:800;margin-bottom:10px">${t.name} 다음날 체크</div>
-      <div class="chk-row">
-        <span class="chk-lbl">외국인 매수 유지</span>
-        <div class="tog ${t.nextF?'on':''}" onclick="toggleNext(${t.id},'f')"></div>
-      </div>
-      <div class="chk-row">
-        <span class="chk-lbl">외국인 + 기관 동시 매수 유지</span>
-        <div class="tog ${t.nextFI?'on':''}" onclick="toggleNext(${t.id},'fi')"></div>
-      </div>
-      <div style="margin-top:8px">
-        <input type="text" placeholder="결과 메모" value="${t.nextMemo||''}" onchange="setNextMemo(${t.id},this.value)">
-      </div>
-    </div>`).join('');
-}
 
 /* ═══════════════════════════════════════════
    설정
