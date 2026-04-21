@@ -549,6 +549,17 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
     </div>
 
+    <!-- 오늘의 주인공 -->
+    <div id="todayStarCard" style="margin:10px 16px 0;display:none">
+      <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:800">🌟 오늘의 주인공</span>
+          <span style="font-size:9px;color:var(--tx3)" id="todayStarUpdated"></span>
+        </div>
+        <div id="todayStarList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ══ 탭2: 관심종목 ══ -->
@@ -1099,6 +1110,115 @@ window._stockThemeMap = {
   'KAI':'우주', '한화에어로스페이스':'우주',
 };
 
+
+
+// ── 오늘의 주인공 계산
+window.calcTodayStar = () => {
+  const scores = {};
+
+  const addScore = (name, pts, reason) => {
+    if(!name) return;
+    if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null };
+    scores[name].score += pts;
+    scores[name].reasons.push(reason);
+  };
+
+  // 1. 순매수 TOP 데이터 (_kisRows + _kisHistory7 현재 화면)
+  const kisData = window._kisHistory7 && window._kisHistory7[0];
+  const today = new Date().toISOString().slice(0,10);
+  // 현재 _kisRows에서 오늘 데이터 추출
+  if(window._kisRows) {
+    const seen = new Set();
+    Object.values(window._kisRows).forEach(s => {
+      if(!s.name || seen.has(s.name)) return;
+      seen.add(s.name);
+      // 순매수TOP 등장
+      addScore(s.name, 1, '순매수TOP');
+      if(s.sector) scores[s.name].sector = s.sector;
+      if(s.ratio) scores[s.name].ratio = s.ratio;
+      if(s.chg != null) scores[s.name].chg = s.chg;
+      // 수급비율 30% 이상
+      if(s.ratio >= 30) addScore(s.name, 1, '수급30%↑');
+      // 연속등장 ⭐
+      if(s.contDays > 0) addScore(s.name, Math.min(s.contDays, 3), `⭐${s.contDays}일연속`);
+    });
+  }
+
+  // 2. 상승수급 (_upSudHistory7 오늘 or 화면)
+  const upSudToday = (window._upSudHistory7||[]).find(d => d.date === today);
+  if(upSudToday) {
+    (upSudToday.list||[]).forEach(s => {
+      addScore(s.name, 1, '상승수급');
+      if(s.ratio >= 30) addScore(s.name, 1, '수급30%↑');
+    });
+  }
+
+  // 3. 역발상 (_reverseHistory7 오늘)
+  const revToday = (window._reverseHistory7||[]).find(d => d.date === today);
+  if(revToday) {
+    [...(revToday.fResult||[]), ...(revToday.fiResult||[])].forEach(s => {
+      addScore(s.name, 1, '역발상');
+    });
+  }
+
+  // 4. 정배열
+  if(window._jbLastResults) {
+    window._jbLastResults.forEach(sec => {
+      (sec.stocks||[]).forEach(s => {
+        addScore(s.name, 1, '정배열');
+      });
+    });
+  }
+
+  // 5. 외국인+기관 동시(1열 fi) - _kisHistory7 오늘 or kisRows
+  const fiToday = kisData ? (kisData.fi||[]) : [];
+  const fiNames = new Set(fiToday.map(s => s.name));
+  fiNames.forEach(name => addScore(name, 1, '외+기동시'));
+
+  // 점수순 정렬, 상위 5개
+  const ranked = Object.entries(scores)
+    .sort((a,b) => b[1].score - a[1].score)
+    .slice(0, 5);
+
+  return ranked;
+};
+
+window.renderTodayStar = () => {
+  const card = document.getElementById('todayStarCard');
+  const listEl = document.getElementById('todayStarList');
+  const updEl = document.getElementById('todayStarUpdated');
+  if(!card || !listEl) return;
+
+  const ranked = window.calcTodayStar();
+  if(!ranked.length) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+  const now = new Date();
+  if(updEl) updEl.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} 기준`;
+
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  listEl.innerHTML = ranked.map(([name, data], i) => {
+    const chgStr = data.chg != null ? (data.chg >= 0 ? '+' : '') + parseFloat(data.chg).toFixed(2) + '%' : '';
+    const chgColor = data.chg >= 0 ? 'var(--up)' : 'var(--dn)';
+    const sector = (window._stockThemeMap && window._stockThemeMap[name]) || data.sector || '';
+    const isJB = window._jbLastResults && window._jbLastResults.some(sec => sec.stocks.some(s => s.name === name));
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">'
+      + '<span style="font-size:16px;flex-shrink:0">' + medals[i] + '</span>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="display:flex;align-items:center;gap:4px">'
+      + '<span style="font-size:12px;font-weight:800">' + name + '</span>'
+      + (isJB ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
+      + (chgStr ? '<span style="font-size:10px;font-weight:800;color:' + chgColor + ';margin-left:auto">' + chgStr + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:9px;color:var(--tx3);margin-top:1px">'
+      + (sector ? sector + ' · ' : '')
+      + data.reasons.filter((v,i,a)=>a.indexOf(v)===i).join(' · ')
+      + '</div>'
+      + '</div>'
+      + '<div style="background:var(--pr);color:#fff;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:900;flex-shrink:0">' + data.score + 'pt</div>'
+      + '</div>';
+  }).join('');
+};
 
 // ── 휴장일/마지막 장일 유틸
 function isMarketClosed(dateStr) {
@@ -2927,6 +3047,8 @@ window.kisTopFetch = async () => {
   }
   // 정배열 백그라운드 자동 실행
   setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
+  // 오늘의 주인공 갱신
+  setTimeout(() => { if(window.renderTodayStar) renderTodayStar(); }, 3000);
 };
 
 // KIS 히스토리 날짜 탭 렌더링
@@ -3909,6 +4031,8 @@ window.upSudFetch = async () => {
   }
   // 정배열 백그라운드 자동 실행
   setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
+  // 오늘의 주인공 갱신
+  setTimeout(() => { if(window.renderTodayStar) renderTodayStar(); }, 3000);
 };
 
 window.reverseFetch = async () => {
@@ -4060,6 +4184,8 @@ window.reverseFetch = async () => {
   }
   // 정배열 백그라운드 자동 실행
   setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
+  // 오늘의 주인공 갱신
+  setTimeout(() => { if(window.renderTodayStar) renderTodayStar(); }, 3000);
 };
 
 // 역발상 날짜탭 렌더링
@@ -5307,6 +5433,9 @@ onAuthStateChanged(auth, async (user) => {
           }
         }
       } catch(e) { console.warn('오늘 데이터 확인 실패:', e); }
+      // 오늘의 주인공 - 히스토리 로드 완료 후 렌더링
+      setTimeout(() => { if(window.renderTodayStar) renderTodayStar(); }, 3000);
+
       // 정배열 오늘 데이터 로드 or 자동 실행
       setTimeout(async () => {
         try {
