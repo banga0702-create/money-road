@@ -743,10 +743,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
   <!-- 바텀 네비 -->
   <nav class="bnav">
     <div class="bnav-item active" onclick="switchTab('home')" data-tab="home"><span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span></div>
-    <div class="bnav-item" onclick="switchTab('supply')" data-tab="supply"><span class="bnav-icon">📝</span><span class="bnav-lbl">관심종목</span></div>
+    <div class="bnav-item" onclick="switchTab('track')" data-tab="track"><span class="bnav-icon">💰</span><span class="bnav-lbl">모의투자</span></div>
     <div class="bnav-item" onclick="switchTab('feat')" data-tab="feat"><span class="bnav-icon">⭐</span><span class="bnav-lbl">특징주</span></div>
     <div class="bnav-item" onclick="switchTab('news')" data-tab="news"><span class="bnav-icon">📰</span><span class="bnav-lbl">증시뉴스</span></div>
-    <div class="bnav-item" onclick="switchTab('track')" data-tab="track"><span class="bnav-icon">💰</span><span class="bnav-lbl">모의투자</span></div>
+    <div class="bnav-item" onclick="switchTab('supply')" data-tab="supply"><span class="bnav-icon">📝</span><span class="bnav-lbl">관심종목</span></div>
   </nav>
 </div>
 
@@ -1256,13 +1256,15 @@ window.renderStarDateTabs = async (uid) => {
   try {
     const snap = await getDocs(collection(db, 'users', uid, 'starHistory'));
     const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
-    if(!dates.length) { tabEl.innerHTML = ''; return; }
-    const ystInfo = getYesterdayOrLastTrading(dates);
     const today = new Date().toISOString().slice(0,10);
     const btnStyle = (isActive) => `flex-shrink:0;padding:3px 10px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:10px;font-weight:700;cursor:pointer`;
     let html = '';
-    if(dates.includes(today)) html += `<button id="starDateBtn-${today}" onclick="loadStarHistory('${today}','${uid}')" style="${btnStyle(true)}">오늘</button>`;
-    if(ystInfo) html += `<button id="starDateBtn-${ystInfo.date}" onclick="loadStarHistory('${ystInfo.date}','${uid}')" style="${btnStyle(false)}">${ystInfo.label}</button>`;
+    // 오늘 버튼은 항상 표시 (데이터 없어도)
+    html += `<button id="starDateBtn-${today}" onclick="loadStarHistory('${today}','${uid}')" style="${btnStyle(true)}">오늘</button>`;
+    if(dates.length) {
+      const ystInfo = window.getYesterdayOrLastTrading ? getYesterdayOrLastTrading(dates) : null;
+      if(ystInfo) html += `<button id="starDateBtn-${ystInfo.date}" onclick="loadStarHistory('${ystInfo.date}','${uid}')" style="${btnStyle(false)}">${ystInfo.label}</button>`;
+    }
     html += `<button onclick="openStarDatePicker('${uid}')" style="flex-shrink:0;padding:3px 8px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:12px;cursor:pointer">📅</button>`;
     tabEl.innerHTML = html;
   } catch(e) {}
