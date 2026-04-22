@@ -3368,7 +3368,7 @@ window.kisTopFetch = async () => {
   // 오늘의 주인공 갱신
   setTimeout(() => { if(window.renderTodayStar) renderTodayStar(); }, 3000);
   // 모의투자 자동 매수 (all60 기준)
-  setTimeout(() => { if(window.simAutoEntry) simAutoEntry(all); }, 1000);
+  if(window.simAutoEntry) simAutoEntry(all);
 };
 
 // KIS 히스토리 날짜 탭 렌더링
