@@ -3144,6 +3144,11 @@ window.getYesterdayOrLastTrading = getYesterdayOrLastTrading;
 
 const PAGE_MAP = window.PAGE_MAP || {home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
 
+// 첫번째 스크립트 함수 참조 (모듈 스코프용)
+const renderHome = () => window.renderHome && window.renderHome();
+const renderStockList = () => window.renderStockList && window.renderStockList();
+const calcMktAuto = (...a) => window.calcMktAuto && window.calcMktAuto(...a);
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
