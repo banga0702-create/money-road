@@ -3014,7 +3014,7 @@ function renderSim() {
   if(!holdings.length) {
     holdEl.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">💰</div><p>특징주 재실행 시 수급 30%↑ 종목이<br>자동으로 매수 기록됩니다</p></div>';
   } else {
-    holdEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 8px">' +
+    holdEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
       holdings.map(h => {
       const cur = h.currentPrice || h.buyPrice;
       const profit = (cur - h.buyPrice) * h.qty;
@@ -3022,22 +3022,21 @@ function renderSim() {
       const sig = signalMap[h.signal || 'hold'];
       const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
       const stars = h.reEntryCount > 0 ? '⭐'.repeat(Math.min(h.reEntryCount,3)) : '';
-      return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:10px 12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-          <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">${h.name}</span>
-            ${stars ? `<span style="font-size:10px">${stars}</span>` : ''}
-          </div>
-          <span style="font-size:10px">${sig.icon}</span>
+      return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:8px 8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+          <span style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${h.name}${stars}</span>
+          <span style="font-size:9px">${sig.icon}</span>
         </div>
-        <div style="font-size:9px;color:var(--tx3);margin-bottom:6px">${h.sector||''}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;font-size:9px;margin-bottom:6px;text-align:center">
-          <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
-          <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
+        <div style="font-size:8px;color:var(--tx3);margin-bottom:4px">${h.sector||''}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+          <div><div style="color:var(--tx3)">매수</div><div style="font-weight:700">${(h.buyPrice/1000).toFixed(0)}K</div></div>
+          <div><div style="color:var(--tx3)">현재</div><div style="font-weight:700;color:${profitColor}">${(cur/1000).toFixed(0)}K</div></div>
           <div><div style="color:var(--tx3)">수급</div><div style="font-weight:700;color:${(h.currentRatio||h.ratio)>=30?'var(--ac)':'var(--wa)'}">${(h.currentRatio||h.ratio).toFixed(0)}%</div></div>
         </div>
-        <div style="font-size:10px;font-weight:800;color:${profitColor};margin-bottom:6px">${profit>=0?'+':''}${profit.toLocaleString()}원 (${rate}%)</div>
-        <button onclick="simSell(${h.id})" style="width:100%;background:var(--up);color:#fff;border:none;border-radius:6px;padding:4px 0;font-size:10px;font-weight:700;cursor:pointer">매도</button>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
+          <button onclick="simSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+        </div>
       </div>`;
     }).join('') + '</div>';
   }
@@ -3051,24 +3050,26 @@ function renderSim() {
     if(!manuals.length) {
       manualEl.innerHTML = '<div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div>';
     } else {
-      manualEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 8px">' +
+      manualEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
         manuals.map(h => {
         const cur = h.currentPrice || h.buyPrice;
         const profit = (cur - h.buyPrice) * h.qty;
         const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
         const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
-        return `<div style="background:var(--sf);border:1.5px solid rgba(79,99,232,0.3);border-radius:12px;padding:10px 12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">${h.name}</span>
+        return `<div style="background:var(--sf);border:1.5px solid rgba(79,99,232,0.3);border-radius:10px;padding:8px 8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <span style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${h.name}</span>
             <span style="font-size:8px;background:rgba(79,99,232,0.12);color:var(--pr);border-radius:4px;padding:1px 4px;font-weight:700">수동</span>
           </div>
-          <div style="font-size:9px;color:var(--tx3);margin-bottom:6px">${h.sector||''}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:9px;margin-bottom:6px;text-align:center">
-            <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
-            <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
+          <div style="font-size:8px;color:var(--tx3);margin-bottom:4px">${h.sector||''}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+            <div><div style="color:var(--tx3)">매수</div><div style="font-weight:700">${(h.buyPrice/1000).toFixed(0)}K</div></div>
+            <div><div style="color:var(--tx3)">현재</div><div style="font-weight:700;color:${profitColor}">${(cur/1000).toFixed(0)}K</div></div>
           </div>
-          <div style="font-size:10px;font-weight:800;color:${profitColor};margin-bottom:6px">${profit>=0?'+':''}${profit.toLocaleString()}원 (${rate}%)</div>
-          <button onclick="simManualSell(${h.id})" style="width:100%;background:var(--up);color:#fff;border:none;border-radius:6px;padding:4px 0;font-size:10px;font-weight:700;cursor:pointer">매도</button>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
+            <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+          </div>
         </div>`;
       }).join('') + '</div>';
     }
