@@ -1558,6 +1558,7 @@ window.getYesterdayOrLastTrading = function(dates) {
 }
 
 let S = JSON.parse(JSON.stringify(DEF));
+window.S = S;
 let curStr=0, curRep='없음', curTab='home', histMode='week';
 
 function load(){
@@ -3032,6 +3033,7 @@ window.simSell = async (id) => {
 };
 
 function renderSim() {
+  if(typeof window._simHoldings === 'undefined') return;
   const holdEl = document.getElementById('simHoldList');
   const histEl = document.getElementById('simHistList');
   const buyCountEl = document.getElementById('simBuyCount');
