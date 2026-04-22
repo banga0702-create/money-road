@@ -3123,7 +3123,7 @@ window.addEventListener('load',()=>{
 </script>
 
 <script type="module">
-// ── 유틸 함수 (모듈 스크립트 내 직접 정의)
+// ── 유틸/참조 (모듈 스크립트 내 직접 정의)
 function getYesterdayOrLastTrading(dates) {
   const today = new Date().toISOString().slice(0,10);
   const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
@@ -3142,12 +3142,13 @@ function getYesterdayOrLastTrading(dates) {
 }
 window.getYesterdayOrLastTrading = getYesterdayOrLastTrading;
 
-const PAGE_MAP = window.PAGE_MAP || {home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
-
-// 첫번째 스크립트 함수 참조 (모듈 스코프용)
-const renderHome = () => window.renderHome && window.renderHome();
-const renderStockList = () => window.renderStockList && window.renderStockList();
-const calcMktAuto = (...a) => window.calcMktAuto && window.calcMktAuto(...a);
+const PAGE_MAP = {home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
+window.PAGE_MAP = PAGE_MAP;
+const switchTab = (tab) => window.switchTab ? window.switchTab(tab) : null;
+const renderHome = () => window.renderHome ? window.renderHome() : null;
+const renderStockList = () => window.renderStockList ? window.renderStockList() : null;
+const calcMktAuto = (...a) => window.calcMktAuto ? window.calcMktAuto(...a) : null;
+const S = window.S || {};
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
