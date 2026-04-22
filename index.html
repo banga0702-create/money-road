@@ -3123,6 +3123,27 @@ window.addEventListener('load',()=>{
 </script>
 
 <script type="module">
+// ── 유틸 함수 (모듈 스크립트 내 직접 정의)
+function getYesterdayOrLastTrading(dates) {
+  const today = new Date().toISOString().slice(0,10);
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const last = dates.filter(d => d < today).sort().reverse()
+    .find(d => {
+      const [y, m, day] = d.split('-').map(Number);
+      const dow = new Date(y, m-1, day).getDay();
+      return dow !== 0 && dow !== 6;
+    });
+  if(!last) return null;
+  const [y, m, day] = last.split('-').map(Number);
+  const dow = new Date(y, m-1, day).getDay();
+  const label = last === yesterday ? '어제' : `마지막장(${last.slice(5).replace('-','/')} ${dayNames[dow]})`;
+  return { date: last, label };
+}
+window.getYesterdayOrLastTrading = getYesterdayOrLastTrading;
+
+const PAGE_MAP = window.PAGE_MAP || {home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
@@ -5899,7 +5920,7 @@ onAuthStateChanged(auth, async (user) => {
       if(snap.exists()) {
         const data = snap.data();
         if(data.appState) {
-          Object.assign(window.S, data.appState); S = window.S;
+          if(window.S) { Object.assign(window.S, data.appState); }
           renderHome();
           renderStockList();
         }
