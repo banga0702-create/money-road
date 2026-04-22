@@ -3343,6 +3343,8 @@ window.kisTopFetch = async () => {
         await renderUpSudDateTabs(user.uid);
         window._kisUid = user.uid;
         window._kisLatestDate = today;
+        // 모의투자 자동 매수 (all이 살아있는 시점)
+        if(window.simAutoEntry) simAutoEntry(all);
         // 저장 완료 후 오늘 탭 형식으로 바로 렌더링 (통일)
         await loadKisHistory(today, user.uid);
         const todayBtn = document.getElementById('kisDateBtn-' + today);
@@ -3367,8 +3369,6 @@ window.kisTopFetch = async () => {
   setTimeout(() => { if(window.jungBaeFetch) jungBaeFetch(); }, 2000);
   // 오늘의 주인공 갱신
   setTimeout(() => { if(window.renderTodayStar) renderTodayStar(); }, 3000);
-  // 모의투자 자동 매수 (all60 기준)
-  if(window.simAutoEntry) simAutoEntry(all);
 };
 
 // KIS 히스토리 날짜 탭 렌더링
