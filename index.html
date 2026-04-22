@@ -3290,6 +3290,20 @@ window.addEventListener('load',()=>{
 </script>
 
 <script type="module">
+// 유틸 함수 직접 정의 (타이밍 문제 방지)
+if(!window.getYesterdayOrLastTrading) {
+  window.getYesterdayOrLastTrading = function(dates) {
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    const dayNames = ['일','월','화','수','목','금','토'];
+    const last = dates.filter(d => d < today).sort().reverse()
+      .find(d => { const [y,m,day] = d.split('-').map(Number); return new Date(y,m-1,day).getDay() % 6 !== 0; });
+    if(!last) return null;
+    const [y,m,day] = last.split('-').map(Number);
+    const dow = new Date(y,m-1,day).getDay();
+    return { date: last, label: last === yesterday ? '어제' : `마지막장(${last.slice(5).replace('-','/')} ${dayNames[dow]})` };
+  };
+}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
