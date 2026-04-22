@@ -1297,7 +1297,7 @@ window.renderStarDateTabs = async (uid) => {
     html += `<button id="starDateBtn-${today}" onclick="loadStarHistory('${today}','${uid}')" style="${btnStyle(true)}">오늘</button>`;
     // kisHistory 날짜 기준으로 어제 탭 생성 (starHistory 없어도)
     const refDates = (window._kisHistory7||[]).map(d => d.date||'').filter(Boolean);
-    const ystInfo = window.getYesterdayOrLastTrading && refDates.length ? getYesterdayOrLastTrading(refDates) : null;
+    const ystInfo = window.getYesterdayOrLastTrading && refDates.length ? window.getYesterdayOrLastTrading(refDates) : null;
     if(ystInfo) html += `<button id="starDateBtn-${ystInfo.date}" onclick="loadStarHistory('${ystInfo.date}','${uid}')" style="${btnStyle(false)}">${ystInfo.label}</button>`;
     html += `<button onclick="openStarDatePicker('${uid}')" style="flex-shrink:0;padding:3px 8px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:12px;cursor:pointer">📅</button>`;
     tabEl.innerHTML = html;
@@ -3644,7 +3644,7 @@ window.renderKisDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${today}','${uid}')">오늘</button>`;
@@ -3919,7 +3919,7 @@ window.renderJungBaeDateTabs = async (activeDate, uid) => {
     const tabsEl = document.getElementById('jungBaeDateTabs');
     if(!tabsEl) return;
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
     const btnStyle = (isActive) => `flex-shrink:0;padding:4px 12px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:11px;font-weight:700;cursor:pointer`;
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button id="jungBaeDateBtn-${today}" onclick="loadJungBaeHistory('${today}',window._curUser?.uid)" style="${btnStyle(activeDate===today)}">오늘</button>`;
@@ -4781,7 +4781,7 @@ window.renderUpSudDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${today}','${uid}')">오늘</button>`;
@@ -4866,7 +4866,7 @@ window.renderReverseDateTabs = async (uid) => {
     const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
     if(!dates.length) { tabEl.innerHTML = ''; return; }
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${today}','${uid}')">오늘</button>`;
@@ -5956,7 +5956,7 @@ onAuthStateChanged(auth, async (user) => {
       if(snap.exists()) {
         const data = snap.data();
         if(data.appState) {
-          Object.assign(S, data.appState);
+          Object.assign(window.S, data.appState); S = window.S;
           renderHome();
           renderStockList();
         }
@@ -6038,7 +6038,7 @@ onAuthStateChanged(auth, async (user) => {
 
       // 마지막 탭 복원
       const lastTab = localStorage.getItem('lastTab');
-      if(lastTab && PAGE_MAP[lastTab]) {
+      if(lastTab && window.PAGE_MAP[lastTab]) {
         switchTab(lastTab);
       }
     }, 1000);
