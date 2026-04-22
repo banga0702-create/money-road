@@ -1129,45 +1129,71 @@ window._stockThemeMap = {
 // ── 오늘의 주인공 계산
 window.calcTodayStar = () => {
   const scores = {};
+  const today = new Date().toISOString().slice(0,10);
 
   const addScore = (name, pts, reason) => {
     if(!name) return;
     if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null };
     scores[name].score += pts;
-    scores[name].reasons.push(reason);
+    if(reason && !scores[name].reasons.includes(reason)) scores[name].reasons.push(reason);
   };
 
-  // 1. 순매수 TOP 데이터 (_kisRows + _kisHistory7 현재 화면)
-  const kisData = window._kisHistory7 && window._kisHistory7[0];
-  const today = new Date().toISOString().slice(0,10);
-  // 현재 _kisRows에서 오늘 데이터 추출
+  const setMeta = (name, s) => {
+    if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null };
+    if(s.sector && !scores[name].sector) scores[name].sector = s.sector;
+    if(s.ratio > scores[name].ratio) scores[name].ratio = s.ratio;
+    if(s.chg != null && scores[name].chg == null) scores[name].chg = s.chg;
+  };
+
+  // kisHistory 오늘 데이터
+  const kisData = (window._kisHistory7||[]).find(d => d.date === today);
+  const fiNames = new Set((kisData ? (kisData.fi||[]) : []).map(s => s.name));
+  const fNames  = new Set((kisData ? (kisData.f||[])  : []).map(s => s.name));
+  const instNames = new Set((kisData ? (kisData.inst||[]) : []).map(s => s.name));
+
+  // _kisRows에서 메타(sector, ratio, chg) 수집
   if(window._kisRows) {
-    const seen = new Set();
     Object.values(window._kisRows).forEach(s => {
-      if(!s.name || seen.has(s.name)) return;
-      seen.add(s.name);
-      // 순매수TOP 등장
-      addScore(s.name, 1, '순매수TOP');
-      if(s.sector) scores[s.name].sector = s.sector;
-      if(s.ratio) scores[s.name].ratio = s.ratio;
-      if(s.chg != null) scores[s.name].chg = s.chg;
-      // 수급비율 30% 이상
-      if(s.ratio >= 30) addScore(s.name, 1, '수급30%↑');
-      // 연속등장 ⭐
-      if(s.contDays > 0) addScore(s.name, Math.min(s.contDays, 3), `⭐${s.contDays}일연속`);
+      if(!s.name) return;
+      setMeta(s.name, s);
     });
   }
 
-  // 2. 상승수급 (_upSudHistory7 오늘 or 화면)
+  // 1. 외국인(+기관) 1열 +2, ⭐ +1씩 (최대 3)
+  fiNames.forEach(name => {
+    addScore(name, 2, '외국인(+기관)');
+    const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
+    const contDays = row?.contDays || 0;
+    if(contDays > 0) addScore(name, Math.min(contDays, 3), `⭐${contDays}일`);
+  });
+
+  // 2. 외국인순매수 2열 +1, ⭐ +1씩 (최대 3)
+  fNames.forEach(name => {
+    if(!fiNames.has(name)) { // 1열 중복 제외
+      addScore(name, 1, '외국인순매수');
+      const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
+      const contDays = row?.contDays || 0;
+      if(contDays > 0) addScore(name, Math.min(contDays, 3), `⭐${contDays}일`);
+    }
+  });
+
+  // 3. 기관순매수 3열 +1 (⭐ 제외)
+  instNames.forEach(name => {
+    if(!fiNames.has(name) && !fNames.has(name)) {
+      addScore(name, 1, '기관순매수');
+    }
+  });
+
+  // 4. 상승수급 +1, ⭐ +1씩 (최대 3)
   const upSudToday = (window._upSudHistory7||[]).find(d => d.date === today);
   if(upSudToday) {
     (upSudToday.list||[]).forEach(s => {
       addScore(s.name, 1, '상승수급');
-      if(s.ratio >= 30) addScore(s.name, 1, '수급30%↑');
+      if(s.streak > 0) addScore(s.name, Math.min(s.streak, 3), `⭐${s.streak}일`);
     });
   }
 
-  // 3. 역발상 (_reverseHistory7 오늘)
+  // 5. 역발상 +1
   const revToday = (window._reverseHistory7||[]).find(d => d.date === today);
   if(revToday) {
     [...(revToday.fResult||[]), ...(revToday.fiResult||[])].forEach(s => {
@@ -1175,19 +1201,17 @@ window.calcTodayStar = () => {
     });
   }
 
-  // 4. 정배열
+  // 6. 정배열 +1
   if(window._jbLastResults) {
     window._jbLastResults.forEach(sec => {
-      (sec.stocks||[]).forEach(s => {
-        addScore(s.name, 1, '정배열');
-      });
+      (sec.stocks||[]).forEach(s => addScore(s.name, 1, '정배열'));
     });
   }
 
-  // 5. 외국인+기관 동시(1열 fi) - _kisHistory7 오늘 or kisRows
-  const fiToday = kisData ? (kisData.fi||[]) : [];
-  const fiNames = new Set(fiToday.map(s => s.name));
-  fiNames.forEach(name => addScore(name, 1, '외+기동시'));
+  // 7. 수급비율 30%↑ +1
+  Object.entries(scores).forEach(([name, data]) => {
+    if(data.ratio >= 30) addScore(name, 1, '수급30%↑');
+  });
 
   // 점수순 정렬, 상위 5개
   const ranked = Object.entries(scores)
