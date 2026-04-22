@@ -3686,7 +3686,7 @@ window.renderKisDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="kisDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadKisHistory('${today}','${uid}')">오늘</button>`;
@@ -3961,7 +3961,7 @@ window.renderJungBaeDateTabs = async (activeDate, uid) => {
     const tabsEl = document.getElementById('jungBaeDateTabs');
     if(!tabsEl) return;
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
     const btnStyle = (isActive) => `flex-shrink:0;padding:4px 12px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:11px;font-weight:700;cursor:pointer`;
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button id="jungBaeDateBtn-${today}" onclick="loadJungBaeHistory('${today}',window._curUser?.uid)" style="${btnStyle(activeDate===today)}">오늘</button>`;
@@ -4823,7 +4823,7 @@ window.renderUpSudDateTabs = async (uid) => {
     if(!dates.length) { tabEl.innerHTML = ''; return; }
 
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="upSudDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadUpSudHistory('${today}','${uid}')">오늘</button>`;
@@ -4908,7 +4908,7 @@ window.renderReverseDateTabs = async (uid) => {
     const dates = snap.docs.map(d => d.id).sort().reverse().slice(0, 8);
     if(!dates.length) { tabEl.innerHTML = ''; return; }
     const today = new Date().toISOString().slice(0,10);
-    const ystInfo = getYesterdayOrLastTrading(dates);
+    const ystInfo = window.getYesterdayOrLastTrading(dates);
 
     let tabHtml = '';
     if(dates.includes(today)) tabHtml += `<button class="btn btn-sm" id="revDateBtn-${today}" style="font-size:10px;padding:4px 10px;border-radius:20px;white-space:nowrap;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd)" onclick="loadReverseHistory('${today}','${uid}')">오늘</button>`;
@@ -5403,7 +5403,7 @@ window.kisAddTop = (name, fBuy, iBuy) => {
   S.stocks.sort((a,b) => b.score - a.score);
   S.stocks.forEach((s,i) => s.num = i+1);
   save();
-  renderStockList();
+  window.renderStockList && window.renderStockList();
   alert('✓ ' + name + ' 관심종목에 추가됐어요!');
 };
 
@@ -5556,7 +5556,7 @@ window.fetchMarketIndex = async () => {
     window._mktFBuy = Math.round(((parseFloat(kp?.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.frgn_ntby_tr_pbmn)||0)) / 100);
     window._mktIBuy = Math.round(((parseFloat(kp?.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.orgn_ntby_tr_pbmn)||0)) / 100);
     // 자동으로 시장온도 계산
-    calcMktAuto();
+    window.calcMktAuto && window.calcMktAuto();
 
     setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv));
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
@@ -5580,7 +5580,7 @@ window.fetchMarketIndex = async () => {
         if(mTotalEl) mTotalEl.value = totCnt;
         window._mktUpCnt  = upCnt;
         window._mktTotCnt = totCnt;
-        calcMktAuto();
+        window.calcMktAuto && window.calcMktAuto();
       }
 
       // 연중 고점 대비 % 표시
@@ -5998,9 +5998,9 @@ onAuthStateChanged(auth, async (user) => {
       if(snap.exists()) {
         const data = snap.data();
         if(data.appState) {
-          Object.assign(S, data.appState);
-          renderHome();
-          renderStockList();
+          if(window.S) Object.assign(window.S, data.appState);
+          window.renderHome && window.renderHome();
+          window.renderStockList && window.renderStockList();
         }
       }
     });
@@ -6080,8 +6080,8 @@ onAuthStateChanged(auth, async (user) => {
 
       // 마지막 탭 복원
       const lastTab = localStorage.getItem('lastTab');
-      if(lastTab && PAGE_MAP[lastTab]) {
-        switchTab(lastTab);
+      if(lastTab && window.PAGE_MAP && window.PAGE_MAP[lastTab]) {
+        window.switchTab && window.switchTab(lastTab);
       }
     }, 1000);
 
