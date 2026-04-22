@@ -3065,15 +3065,16 @@ function renderSim() {
         const profit = (cur - h.buyPrice) * h.qty;
         const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
         const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
-        return `<div style="background:var(--sf);border:1.5px solid rgba(79,99,232,0.3);border-radius:10px;padding:8px 8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-            <span style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${h.name}</span>
-            <span style="font-size:8px;background:rgba(79,99,232,0.12);color:var(--pr);border-radius:4px;padding:1px 4px;font-weight:700">수동</span>
+        return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
+              <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
+              <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
+            </div>
           </div>
-          <div style="font-size:8px;color:var(--tx3);margin-bottom:4px">${h.sector||''}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
-            <div><div style="color:var(--tx3)">매수</div><div style="font-weight:700">${(h.buyPrice/1000).toFixed(0)}K</div></div>
-            <div><div style="color:var(--tx3)">현재</div><div style="font-weight:700;color:${profitColor}">${(cur/1000).toFixed(0)}K</div></div>
+            <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
+            <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
