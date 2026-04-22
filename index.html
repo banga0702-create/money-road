@@ -4997,7 +4997,7 @@ window.loadCandleHistory = async (date, uid) => {
     window._candleDateCache = { date, candles };
     const today = new Date().toISOString().slice(0,10);
     if(date === today) S.candles = candles;
-    renderCandleFeat();
+    window.renderCandleFeat && window.renderCandleFeat();
   } catch(e) { console.warn('종봉 히스토리 로드 실패:', e); }
 };
 
@@ -5320,7 +5320,7 @@ window.kisAddTop = (name, fBuy, iBuy) => {
   S.stocks.sort((a,b) => b.score - a.score);
   S.stocks.forEach((s,i) => s.num = i+1);
   save();
-  renderStockList();
+  window.renderStockList && window.renderStockList();
   alert('✓ ' + name + ' 관심종목에 추가됐어요!');
 };
 
@@ -5473,7 +5473,7 @@ window.fetchMarketIndex = async () => {
     window._mktFBuy = Math.round(((parseFloat(kp?.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.frgn_ntby_tr_pbmn)||0)) / 100);
     window._mktIBuy = Math.round(((parseFloat(kp?.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.orgn_ntby_tr_pbmn)||0)) / 100);
     // 자동으로 시장온도 계산
-    calcMktAuto();
+    window.calcMktAuto && window.calcMktAuto();
 
     setEl('mktIndvKp',  fmt(kpIndv)); setEl('mktIndvKq',  fmt(kqIndv));
     setEl('mktFrgnKp',  fmt(kpFrgn)); setEl('mktFrgnKq',  fmt(kqFrgn));
@@ -5497,7 +5497,7 @@ window.fetchMarketIndex = async () => {
         if(mTotalEl) mTotalEl.value = totCnt;
         window._mktUpCnt  = upCnt;
         window._mktTotCnt = totCnt;
-        calcMktAuto();
+        window.calcMktAuto && window.calcMktAuto();
       }
 
       // 연중 고점 대비 % 표시
@@ -5916,8 +5916,8 @@ onAuthStateChanged(auth, async (user) => {
         const data = snap.data();
         if(data.appState) {
           Object.assign(S, data.appState);
-          renderHome();
-          renderStockList();
+          window.renderHome && window.renderHome();
+          window.renderStockList && window.renderStockList();
         }
       }
     });
@@ -5998,7 +5998,7 @@ onAuthStateChanged(auth, async (user) => {
       // 마지막 탭 복원
       const lastTab = localStorage.getItem('lastTab');
       if(lastTab && PAGE_MAP[lastTab]) {
-        switchTab(lastTab);
+        window.switchTab && window.switchTab(lastTab);
       }
     }, 1000);
 
