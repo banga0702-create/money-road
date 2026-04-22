@@ -729,18 +729,23 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div id="simSummary" style="display:flex;gap:10px;font-size:11px;padding:0 0 4px"></div>
     </div>
 
+    <!-- 자동투자 섹션 -->
     <div class="sh">
-      <span class="sh-title">📊 보유 현황</span>
-      <span style="font-size:10px;color:var(--tx3)" id="simBuyCount"></span>
+      <span class="sh-title">🤖 자동투자</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="simAutoSummary" style="font-size:10px;color:var(--tx3)"></span>
+        <span style="font-size:10px;color:var(--tx3)" id="simBuyCount"></span>
+      </div>
     </div>
     <div id="simHoldList"><div class="empty" style="padding:24px"><div class="ico">💰</div><p>특징주 재실행 시 수급 30%↑ 종목이<br>자동으로 매수 기록됩니다</p></div></div>
 
-    <!-- 수동 보유 현황 -->
-    <div class="sh" style="margin-top:8px">
-      <span class="sh-title">✍️ 수동 보유</span>
-      <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
+    <!-- 수동투자 계좌 목록 -->
+    <div id="simManualSections"></div>
+
+    <!-- 계좌 추가 버튼 -->
+    <div style="padding:8px 16px">
+      <button onclick="simAddAccount()" style="width:100%;background:rgba(79,99,232,0.1);color:var(--pr);border:1.5px dashed rgba(79,99,232,0.4);border-radius:10px;padding:10px;font-size:12px;font-weight:700;cursor:pointer">+ 수동투자 계좌 추가</button>
     </div>
-    <div id="simManualList"><div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div></div>
 
     <div class="sh" style="margin-top:8px">
       <span class="sh-title">📋 매매 기록</span>
@@ -1315,16 +1320,97 @@ window.openStarDatePicker = (uid) => {
   if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) loadStarHistory(d, uid);
 };
 
-// ── 수동 모의투자
-window._simManual = []; // 수동 보유 종목
+// ── 수동 모의투자 (계좌 기반)
+// _simAccounts: [{id, name, holdings:[]}]
+window._simAccounts = [];
 
-window.simManualAdd = async (name, code, curPrice) => {
-  if(!name) return;
-  if(window._simManual.find(h => h.name === name && !h.soldAt)) {
-    alert(name + '은 이미 수동 보유 중이에요');
-    return;
+window.saveSimManual = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'simData', 'manual'), {
+      accounts: window._simAccounts, updatedAt: Date.now()
+    });
+  } catch(e) {}
+};
+
+window.initSimManual = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'manual'));
+    if(snap.exists()) {
+      const data = snap.data();
+      // 구버전 호환 (holdings 배열이면 기본 계좌로 마이그레이션)
+      if(data.accounts) {
+        window._simAccounts = data.accounts;
+      } else if(data.holdings && data.holdings.length) {
+        window._simAccounts = [{ id: 'default', name: '수동투자', holdings: data.holdings }];
+      }
+    }
+  } catch(e) {}
+  if(!window._simAccounts.length) {
+    window._simAccounts = [{ id: 'acc_' + Date.now(), name: '수동투자', holdings: [] }];
   }
-  // 현재가 조회 (curPrice 없으면 API)
+};
+
+// 계좌 추가
+window.simAddAccount = () => {
+  const name = prompt('계좌 이름 입력', '수동투자2');
+  if(!name) return;
+  window._simAccounts.push({ id: 'acc_' + Date.now(), name, holdings: [] });
+  saveSimManual();
+  renderSim();
+};
+
+// 계좌 이름 변경
+window.simRenameAccount = (accId) => {
+  const acc = window._simAccounts.find(a => a.id === accId);
+  if(!acc) return;
+  const name = prompt('계좌 이름 변경', acc.name);
+  if(!name) return;
+  acc.name = name;
+  saveSimManual();
+  renderSim();
+};
+
+// 계좌 삭제
+window.simDeleteAccount = (accId) => {
+  const acc = window._simAccounts.find(a => a.id === accId);
+  if(!acc) return;
+  if(!confirm(`"${acc.name}" 계좌를 삭제할까요?
+보유 종목도 모두 삭제됩니다.`)) return;
+  window._simAccounts = window._simAccounts.filter(a => a.id !== accId);
+  saveSimManual();
+  renderSim();
+};
+
+// 종봉픽에서 특정 계좌에 종목 추가
+window.simManualAdd = async (name, code, curPrice) => {
+  if(!window._simAccounts.length) {
+    window._simAccounts = [{ id: 'acc_' + Date.now(), name: '수동투자', holdings: [] }];
+  }
+  // 계좌 선택 (1개면 바로, 여러개면 선택)
+  let accId = window._simAccounts[0].id;
+  if(window._simAccounts.length > 1) {
+    const names = window._simAccounts.map((a,i) => `${i+1}. ${a.name}`).join('
+');
+    const sel = prompt('계좌 선택 (번호 입력):
+' + names, '1');
+    if(!sel) return;
+    const idx = parseInt(sel) - 1;
+    if(idx < 0 || idx >= window._simAccounts.length) { alert('올바른 번호를 입력하세요'); return; }
+    accId = window._simAccounts[idx].id;
+  }
+  await simManualAddToAccount(accId, name, code, curPrice);
+};
+
+window.simManualAddToAccount = async (accId, name, code, curPrice) => {
+  const acc = window._simAccounts.find(a => a.id === accId);
+  if(!acc) return;
+  if(acc.holdings.find(h => h.name === name && !h.soldAt)) {
+    alert(name + '은 이미 이 계좌에 보유 중이에요'); return;
+  }
   let price = curPrice || 0;
   if(!price && code) {
     try {
@@ -1342,7 +1428,7 @@ window.simManualAdd = async (name, code, curPrice) => {
   const qty = Math.floor(1000000 / price);
   if(!qty) { alert('가격이 너무 높아 100만원으로 매수가 불가해요'); return; }
   const today = new Date().toISOString().slice(0,10);
-  window._simManual.push({
+  acc.holdings.push({
     id: Date.now() + Math.random(),
     name, code: code||'',
     sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
@@ -1354,32 +1440,22 @@ window.simManualAdd = async (name, code, curPrice) => {
   });
   await saveSimManual();
   renderSim();
-  alert(name + ' 수동 모의투자 추가됐어요! 💰');
+  alert(name + ' 추가됐어요! 💰');
 };
 
-window.saveSimManual = async () => {
-  const uid = window._curUser?.uid;
-  if(!uid) return;
-  try {
-    await setDoc(doc(db, 'users', uid, 'simData', 'manual'), {
-      holdings: window._simManual, updatedAt: Date.now()
-    });
-  } catch(e) {}
+// 계좌에 직접 종목 추가
+window.simManualAddDirect = async (accId) => {
+  const name = prompt('종목명 입력');
+  if(!name) return;
+  await simManualAddToAccount(accId, name, '', 0);
 };
 
-window.initSimManual = async () => {
-  const uid = window._curUser?.uid;
-  if(!uid) return;
-  try {
-    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'manual'));
-    if(snap.exists()) window._simManual = snap.data().holdings || [];
-  } catch(e) {}
-};
-
-window.simManualSell = async (id) => {
-  const idx = window._simManual.findIndex(h => h.id === id);
+window.simManualSell = async (accId, holdingId) => {
+  const acc = window._simAccounts.find(a => a.id === accId);
+  if(!acc) return;
+  const idx = acc.holdings.findIndex(h => h.id === holdingId);
   if(idx < 0) return;
-  const h = window._simManual[idx];
+  const h = acc.holdings[idx];
   const inputPrice = prompt(`${h.name} 매도가 입력 (현재가: ${h.currentPrice?.toLocaleString()}원)`, h.currentPrice);
   if(!inputPrice) return;
   const sellPrice = parseInt(inputPrice.replace(/,/g,''));
@@ -1390,8 +1466,8 @@ window.simManualSell = async (id) => {
   h.sellPrice = sellPrice;
   h.profit = profit;
   h.profitRate = parseFloat(profitRate);
-  window._simHistory.unshift({ ...h, type: 'manual' });
-  window._simManual.splice(idx, 1);
+  window._simHistory.unshift({ ...h, type: 'manual', accountName: acc.name });
+  acc.holdings.splice(idx, 1);
   await saveSimManual();
   await saveSim();
   renderSim();
@@ -2989,17 +3065,35 @@ function renderSim() {
   const holdings = window._simHoldings.filter(h => !h.soldAt);
   const history = window._simHistory;
 
-  // 요약
-  let totalBuy = 0, totalCur = 0;
-  holdings.forEach(h => {
-    totalBuy += h.buyAmount || 0;
-    totalCur += (h.currentPrice || h.buyPrice) * h.qty;
+  // 자동투자 요약
+  let autoBuy = 0, autoCur = 0;
+  holdings.forEach(h => { autoBuy += h.buyAmount||0; autoCur += (h.currentPrice||h.buyPrice)*h.qty; });
+  const autoProfit = autoCur - autoBuy;
+  const autoRate = autoBuy > 0 ? (autoProfit/autoBuy*100).toFixed(2) : '0.00';
+
+  // 수동투자 전체 요약
+  let manTotalBuy = 0, manTotalCur = 0;
+  (window._simAccounts||[]).forEach(acc => {
+    (acc.holdings||[]).filter(h=>!h.soldAt).forEach(h => {
+      manTotalBuy += h.buyAmount||0;
+      manTotalCur += (h.currentPrice||h.buyPrice)*h.qty;
+    });
   });
-  const totalProfit = totalCur - totalBuy;
-  const totalRate = totalBuy > 0 ? (totalProfit / totalBuy * 100).toFixed(2) : '0.00';
-  if(summaryEl) summaryEl.innerHTML = holdings.length ? 
-    `<span style="color:var(--tx2)">투자원금 <b>${(totalBuy/10000).toFixed(0)}만원</b></span>`
-    + `<span style="color:${totalProfit>=0?'var(--up)':'var(--dn)'}">평가손익 <b>${totalProfit>=0?'+':''}${(totalProfit/10000).toFixed(1)}만</b> (${totalRate}%)</span>` : '';
+  const manProfit = manTotalCur - manTotalBuy;
+
+  // 전체 합산
+  const totalBuy = autoBuy + manTotalBuy;
+  const totalProfit = autoProfit + manProfit;
+  const totalRate = totalBuy > 0 ? (totalProfit/totalBuy*100).toFixed(2) : '0.00';
+
+  if(summaryEl) summaryEl.innerHTML = totalBuy > 0 ?
+    `<span style="color:var(--tx2)">합산 원금 <b>${(totalBuy/10000).toFixed(0)}만</b></span>`
+    + `<span style="color:${totalProfit>=0?'var(--up)':'var(--dn)'}"><b>${totalProfit>=0?'+':''}${(totalProfit/10000).toFixed(1)}만</b>(${totalRate}%)</span>` : '';
+
+  // 자동투자 헤더 요약
+  const autoSumEl = document.getElementById('simAutoSummary');
+  if(autoSumEl) autoSumEl.innerHTML = autoBuy > 0 ?
+    `원금 <b>${(autoBuy/10000).toFixed(0)}만</b> <span style="color:${autoProfit>=0?'var(--up)':'var(--dn)'}">${autoProfit>=0?'+':''}${(autoProfit/10000).toFixed(1)}만(${autoRate}%)</span>` : '';
 
   if(buyCountEl) buyCountEl.textContent = holdings.length + '종목';
   if(histCountEl) histCountEl.textContent = history.length + '건';
@@ -3043,37 +3137,62 @@ function renderSim() {
     }).join('') + '</div>';
   }
 
-  // 수동 보유 렌더링
-  const manualEl = document.getElementById('simManualList');
-  const manualCountEl = document.getElementById('simManualCount');
-  const manuals = (window._simManual||[]).filter(h => !h.soldAt);
-  if(manualCountEl) manualCountEl.textContent = manuals.length + '종목';
-  if(manualEl) {
-    if(!manuals.length) {
-      manualEl.innerHTML = '<div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div>';
+  // 수동투자 계좌별 렌더링
+  const sectionsEl = document.getElementById('simManualSections');
+  if(sectionsEl) {
+    const accounts = window._simAccounts || [];
+    if(!accounts.length) {
+      sectionsEl.innerHTML = '';
     } else {
-      manualEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
-        manuals.map(h => {
-        const cur = h.currentPrice || h.buyPrice;
-        const profit = (cur - h.buyPrice) * h.qty;
-        const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
-        const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
-        return `<div style="background:var(--sf);border:1.5px solid rgba(79,99,232,0.3);border-radius:10px;padding:8px 8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-            <span style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${h.name}</span>
-            <span style="font-size:8px;background:rgba(79,99,232,0.12);color:var(--pr);border-radius:4px;padding:1px 4px;font-weight:700">수동</span>
+      sectionsEl.innerHTML = accounts.map(acc => {
+        const actives = (acc.holdings||[]).filter(h => !h.soldAt);
+        let accBuy = 0, accCur = 0;
+        actives.forEach(h => { accBuy += h.buyAmount||0; accCur += (h.currentPrice||h.buyPrice)*h.qty; });
+        const accProfit = accCur - accBuy;
+        const accRate = accBuy > 0 ? (accProfit/accBuy*100).toFixed(2) : '0.00';
+        const profitColor = accProfit >= 0 ? 'var(--up)' : 'var(--dn)';
+
+        const cardsHtml = !actives.length
+          ? `<div style="padding:12px 16px;font-size:11px;color:var(--tx3)">종봉픽 💰 버튼 또는 + 추가로 종목을 넣어보세요</div>`
+          : `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">` +
+            actives.map(h => {
+              const cur = h.currentPrice || h.buyPrice;
+              const profit = (cur - h.buyPrice) * h.qty;
+              const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+              const pc = profit >= 0 ? 'var(--up)' : 'var(--dn)';
+              return `<div style="background:var(--sf);border:1.5px solid rgba(79,99,232,0.3);border-radius:10px;padding:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
+                    <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
+                    <span style="font-size:8px;color:var(--tx3)">${h.sector||''}</span>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+                  <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
+                  <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${pc}">${cur.toLocaleString()}</div></div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span style="font-size:9px;font-weight:800;color:${pc}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
+                  <button onclick="simManualSell('${acc.id}',${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+                </div>
+              </div>`;
+            }).join('') + '</div>';
+
+        return `<div style="margin-top:8px">
+          <div class="sh" style="padding-top:12px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="sh-title" onclick="simRenameAccount('${acc.id}')" style="cursor:pointer">${acc.name} ✏️</span>
+              ${accBuy > 0 ? `<span style="font-size:10px;color:var(--tx3)">원금 <b>${(accBuy/10000).toFixed(0)}만</b> <span style="color:${profitColor}">${accProfit>=0?'+':''}${(accProfit/10000).toFixed(1)}만(${accRate}%)</span></span>` : ''}
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:10px;color:var(--tx3)">${actives.length}종목</span>
+              <button onclick="simManualAddDirect('${acc.id}')" style="background:var(--pr);color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer">+ 추가</button>
+              <button onclick="simDeleteAccount('${acc.id}')" style="background:var(--sf2);color:var(--tx3);border:1px solid var(--bd);border-radius:6px;padding:2px 6px;font-size:10px;cursor:pointer">🗑️</button>
+            </div>
           </div>
-          <div style="font-size:8px;color:var(--tx3);margin-bottom:4px">${h.sector||''}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
-            <div><div style="color:var(--tx3)">매수</div><div style="font-weight:700">${(h.buyPrice/1000).toFixed(0)}K</div></div>
-            <div><div style="color:var(--tx3)">현재</div><div style="font-weight:700;color:${profitColor}">${(cur/1000).toFixed(0)}K</div></div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
-            <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
-          </div>
+          ${cardsHtml}
         </div>`;
-      }).join('') + '</div>';
+      }).join('');
     }
   }
 
