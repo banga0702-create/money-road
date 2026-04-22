@@ -735,6 +735,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
     <div id="simHoldList"><div class="empty" style="padding:24px"><div class="ico">💰</div><p>특징주 재실행 시 수급 30%↑ 종목이<br>자동으로 매수 기록됩니다</p></div></div>
 
+    <!-- 수동 보유 현황 -->
+    <div class="sh" style="margin-top:8px">
+      <span class="sh-title">✍️ 수동 보유</span>
+      <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
+    </div>
+    <div id="simManualList"><div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div></div>
+
     <div class="sh" style="margin-top:8px">
       <span class="sh-title">📋 매매 기록</span>
       <span style="font-size:10px;color:var(--tx3)" id="simHistCount"></span>
@@ -1306,6 +1313,90 @@ window.loadStarHistory = async (date, uid) => {
 window.openStarDatePicker = (uid) => {
   const d = prompt('날짜 입력 (YYYY-MM-DD)', new Date().toISOString().slice(0,10));
   if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) loadStarHistory(d, uid);
+};
+
+// ── 수동 모의투자
+window._simManual = []; // 수동 보유 종목
+
+window.simManualAdd = async (name, code, curPrice) => {
+  if(!name) return;
+  if(window._simManual.find(h => h.name === name && !h.soldAt)) {
+    alert(name + '은 이미 수동 보유 중이에요');
+    return;
+  }
+  // 현재가 조회 (curPrice 없으면 API)
+  let price = curPrice || 0;
+  if(!price && code) {
+    try {
+      const r = await fetch('/api/kis?action=stock_price&codes=' + code);
+      const d = await r.json();
+      price = parseInt((d.output||[])[0]?.stck_prpr || 0);
+    } catch(e) {}
+  }
+  if(!price) {
+    const input = prompt(name + ' 매수가 입력');
+    if(!input) return;
+    price = parseInt(input.replace(/,/g,''));
+    if(!price) { alert('올바른 가격을 입력하세요'); return; }
+  }
+  const qty = Math.floor(1000000 / price);
+  if(!qty) { alert('가격이 너무 높아 100만원으로 매수가 불가해요'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  window._simManual.push({
+    id: Date.now() + Math.random(),
+    name, code: code||'',
+    sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
+    buyPrice: price, qty,
+    buyAmount: price * qty,
+    buyDate: today,
+    currentPrice: price,
+    signal: 'hold'
+  });
+  await saveSimManual();
+  renderSim();
+  alert(name + ' 수동 모의투자 추가됐어요! 💰');
+};
+
+window.saveSimManual = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'simData', 'manual'), {
+      holdings: window._simManual, updatedAt: Date.now()
+    });
+  } catch(e) {}
+};
+
+window.initSimManual = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'manual'));
+    if(snap.exists()) window._simManual = snap.data().holdings || [];
+  } catch(e) {}
+};
+
+window.simManualSell = async (id) => {
+  const idx = window._simManual.findIndex(h => h.id === id);
+  if(idx < 0) return;
+  const h = window._simManual[idx];
+  const inputPrice = prompt(`${h.name} 매도가 입력 (현재가: ${h.currentPrice?.toLocaleString()}원)`, h.currentPrice);
+  if(!inputPrice) return;
+  const sellPrice = parseInt(inputPrice.replace(/,/g,''));
+  if(!sellPrice || isNaN(sellPrice)) { alert('올바른 가격을 입력하세요'); return; }
+  const profit = (sellPrice - h.buyPrice) * h.qty;
+  const profitRate = ((sellPrice - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+  h.soldAt = new Date().toISOString().slice(0,10);
+  h.sellPrice = sellPrice;
+  h.profit = profit;
+  h.profitRate = parseFloat(profitRate);
+  window._simHistory.unshift({ ...h, type: 'manual' });
+  window._simManual.splice(idx, 1);
+  await saveSimManual();
+  await saveSim();
+  renderSim();
+  alert(`${h.name} 매도 완료!
+수익: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}원 (${profitRate}%)`);
 };
 
 // ── 오늘의 주인공 재실행 (KIS API 새로 호출)
@@ -2568,6 +2659,7 @@ function renderCandleFeat(){
           ${(window._stockThemeMap?.[c.name]||c.sector)?`<span class="badge b-gr">${window._stockThemeMap?.[c.name]||c.sector}</span>`:''}
           ${c.chg?`<span class="badge" style="background:${c.chg>=0?'var(--up2)':'var(--dn2)'};color:${chgColor};border:1px solid ${chgColor}">${c.chg>=0?'▲':'▼'}${Math.abs(c.chg)}%</span>`:''}
         </div>
+        <button class="btn btn-sm" style="width:auto;padding:4px 8px;background:rgba(79,99,232,0.12);color:var(--pr);border:1px solid rgba(79,99,232,0.3);border-radius:8px;font-size:11px" onclick="simManualAdd('${c.name}','${c.code||''}',${c.curPrice||0})">💰</button>
         <button class="btn btn-sm" style="width:auto;padding:4px 8px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;font-size:11px" onclick="editCandle(${i})">✏️</button>
       <button class="btn btn-sc btn-sm" style="width:auto;padding:4px 8px" onclick="delCandle(${i})">✕</button>
       </div>
@@ -2952,6 +3044,45 @@ function renderSim() {
         <div style="font-size:9px;color:var(--tx3);margin-top:4px">${h.buyDate} 매수 · ${h.qty}주 · ${(h.buyAmount/10000).toFixed(1)}만원</div>
       </div>`;
     }).join('');
+  }
+
+  // 수동 보유 렌더링
+  const manualEl = document.getElementById('simManualList');
+  const manualCountEl = document.getElementById('simManualCount');
+  const manuals = (window._simManual||[]).filter(h => !h.soldAt);
+  if(manualCountEl) manualCountEl.textContent = manuals.length + '종목';
+  if(manualEl) {
+    if(!manuals.length) {
+      manualEl.innerHTML = '<div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div>';
+    } else {
+      manualEl.innerHTML = manuals.map(h => {
+        const cur = h.currentPrice || h.buyPrice;
+        const profit = (cur - h.buyPrice) * h.qty;
+        const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+        const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
+        return `<div style="margin:0 16px 8px;background:var(--sf);border:1.5px solid rgba(79,99,232,0.3);border-radius:12px;padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:13px;font-weight:800">${h.name}</span>
+              <span style="font-size:9px;color:var(--tx3)">${h.sector}</span>
+              <span style="font-size:9px;background:rgba(79,99,232,0.12);color:var(--pr);border-radius:4px;padding:1px 5px;font-weight:700">수동</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;margin-bottom:8px">
+            <div style="text-align:center"><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
+            <div style="text-align:center"><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:11px">
+              <span style="color:var(--tx3)">손익 </span>
+              <span style="font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원 (${rate}%)</span>
+            </div>
+            <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer">매도</button>
+          </div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:4px">${h.buyDate} 매수 · ${h.qty}주 · ${(h.buyAmount/10000).toFixed(1)}만원</div>
+        </div>`;
+      }).join('');
+    }
   }
 
   if(!history.length) {
@@ -5827,7 +5958,7 @@ onAuthStateChanged(auth, async (user) => {
         if(window.renderTodayStar) renderTodayStar();
       }, 3000);
       // 모의투자 데이터 로드
-      setTimeout(() => { if(window.initSim) initSim(); }, 2000);
+      setTimeout(async () => { if(window.initSim) await initSim(); if(window.initSimManual) initSimManual(); }, 2000);
 
       // 정배열 오늘 데이터 로드 or 자동 실행
       setTimeout(async () => {
