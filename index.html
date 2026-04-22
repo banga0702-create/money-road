@@ -765,11 +765,11 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
   <!-- 바텀 네비 -->
   <nav class="bnav">
-    <div class="bnav-item active" onclick="window.switchTab('home')" data-tab="home"><span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span></div>
-    <div class="bnav-item" onclick="window.switchTab('track')" data-tab="track"><span class="bnav-icon">💰</span><span class="bnav-lbl">모의투자</span></div>
-    <div class="bnav-item" onclick="window.switchTab('feat')" data-tab="feat"><span class="bnav-icon">⭐</span><span class="bnav-lbl">특징주</span></div>
-    <div class="bnav-item" onclick="window.switchTab('news')" data-tab="news"><span class="bnav-icon">📰</span><span class="bnav-lbl">증시뉴스</span></div>
-    <div class="bnav-item" onclick="window.switchTab('supply')" data-tab="supply"><span class="bnav-icon">📝</span><span class="bnav-lbl">관심종목</span></div>
+    <div class="bnav-item active" onclick="switchTab('home')" data-tab="home"><span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span></div>
+    <div class="bnav-item" onclick="switchTab('track')" data-tab="track"><span class="bnav-icon">💰</span><span class="bnav-lbl">모의투자</span></div>
+    <div class="bnav-item" onclick="switchTab('feat')" data-tab="feat"><span class="bnav-icon">⭐</span><span class="bnav-lbl">특징주</span></div>
+    <div class="bnav-item" onclick="switchTab('news')" data-tab="news"><span class="bnav-icon">📰</span><span class="bnav-lbl">증시뉴스</span></div>
+    <div class="bnav-item" onclick="switchTab('supply')" data-tab="supply"><span class="bnav-icon">📝</span><span class="bnav-lbl">관심종목</span></div>
   </nav>
 </div>
 
@@ -1433,7 +1433,6 @@ window.getYesterdayOrLastTrading = function(dates) {
 }
 
 let S = JSON.parse(JSON.stringify(DEF));
-window.S = S;
 let curStr=0, curRep='없음', curTab='home', histMode='week';
 
 function load(){
@@ -1446,10 +1445,9 @@ function save(){
 /* ═══════════════════════════════════════════
    탭 네비
 ═══════════════════════════════════════════ */
-window.PAGE_MAP={home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
-const PAGE_MAP=window.PAGE_MAP;
+const PAGE_MAP={home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
 
-window.switchTab = function switchTab(tab){
+function switchTab(tab){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById(PAGE_MAP[tab]).classList.add('active');
@@ -1522,7 +1520,7 @@ function openStockMo(){
 /* ═══════════════════════════════════════════
    시장온도 자동 계산 (등락률 기반)
 ═══════════════════════════════════════════ */
-window.calcMktAuto = function() {
+function calcMktAuto() {
   const kospiChg  = window._mktKospiChg  || 0;
   const kosdaqChg = window._mktKosdaqChg || 0;
   const fBuy = window._mktFBuy || 0;
@@ -1978,7 +1976,7 @@ function renderMarketComment(score, prevScore) {
   }
 }
 
-window.renderHome = function renderHome(){
+function renderHome(){
   const m=S.market;
   const score=m.score||0;
 
@@ -2223,7 +2221,7 @@ function animPct(id,target){
 /* ═══════════════════════════════════════════
    렌더: 종목 목록
 ═══════════════════════════════════════════ */
-window.renderStockList = function renderStockList(){
+function renderStockList(){
   const el=document.getElementById('stockList');
   const empty=document.getElementById('stockEmpty');
   document.getElementById('stockCnt').textContent=`${S.stocks.length}/9 종목`;
@@ -2908,7 +2906,6 @@ window.simSell = async (id) => {
 };
 
 function renderSim() {
-  if(typeof window._simHoldings === 'undefined') return;
   const holdEl = document.getElementById('simHoldList');
   const histEl = document.getElementById('simHistList');
   const buyCountEl = document.getElementById('simBuyCount');
@@ -3123,7 +3120,7 @@ window.addEventListener('load',()=>{
 </script>
 
 <script type="module">
-// ── 유틸/참조 (모듈 스크립트 내 직접 정의)
+// ── 유틸 함수 (모듈 스크립트 내 직접 정의)
 function getYesterdayOrLastTrading(dates) {
   const today = new Date().toISOString().slice(0,10);
   const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
@@ -3141,14 +3138,6 @@ function getYesterdayOrLastTrading(dates) {
   return { date: last, label };
 }
 window.getYesterdayOrLastTrading = getYesterdayOrLastTrading;
-
-const PAGE_MAP = {home:'pg-home',supply:'pg-supply',feat:'pg-feat',news:'pg-news',track:'pg-track'};
-window.PAGE_MAP = PAGE_MAP;
-const switchTab = (tab) => window.switchTab ? window.switchTab(tab) : null;
-const renderHome = () => window.renderHome ? window.renderHome() : null;
-const renderStockList = () => window.renderStockList ? window.renderStockList() : null;
-const calcMktAuto = (...a) => window.calcMktAuto ? window.calcMktAuto(...a) : null;
-const S = window.S || {};
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
@@ -5926,7 +5915,7 @@ onAuthStateChanged(auth, async (user) => {
       if(snap.exists()) {
         const data = snap.data();
         if(data.appState) {
-          if(window.S) { Object.assign(window.S, data.appState); }
+          Object.assign(S, data.appState);
           renderHome();
           renderStockList();
         }
@@ -6008,7 +5997,7 @@ onAuthStateChanged(auth, async (user) => {
 
       // 마지막 탭 복원
       const lastTab = localStorage.getItem('lastTab');
-      if(lastTab && window.PAGE_MAP && window.PAGE_MAP[lastTab]) {
+      if(lastTab && PAGE_MAP[lastTab]) {
         switchTab(lastTab);
       }
     }, 1000);
