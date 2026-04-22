@@ -2758,9 +2758,18 @@ window.simAutoEntry = async (stocks) => {
   const targets = stocks.filter(s => (s.ratio||0) >= 30);
   if(!targets.length) return;
 
-  // 이미 보유중이 아닌 종목만
+  // 보유중 종목 재등장 시 ⭐ 누적 (하루 1개)
+  targets.forEach(s => {
+    const holding = window._simHoldings.find(h => h.name === s.name && !h.soldAt);
+    if(holding && holding.reEntryDate !== today) {
+      holding.reEntryCount = (holding.reEntryCount || 0) + 1;
+      holding.reEntryDate = today;
+    }
+  });
+
+  // 이미 보유중이 아닌 종목만 신규 매수
   const newTargets = targets.filter(s => !window._simHoldings.find(h => h.name === s.name && !h.soldAt));
-  if(!newTargets.length) return;
+  if(!newTargets.length) { renderSim(); return; }
 
   // 배치로 현재가 조회
   const codes = [...new Set(newTargets.map(s => s.code).filter(Boolean))];
@@ -2909,6 +2918,7 @@ function renderSim() {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:13px;font-weight:800">${h.name}</span>
+            ${h.reEntryCount > 0 ? '<span style="font-size:11px">' + '⭐'.repeat(Math.min(h.reEntryCount, 5)) + '</span>' : ''}
             <span style="font-size:9px;color:var(--tx3)">${h.sector}</span>
           </div>
           <span style="font-size:12px">${sig.icon} <span style="font-size:10px;font-weight:700;color:var(--tx2)">${sig.label}</span></span>
