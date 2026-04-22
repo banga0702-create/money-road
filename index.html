@@ -1328,131 +1328,6 @@ window.openStarDatePicker = (uid) => {
   if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) loadStarHistory(d, uid);
 };
 
-// ── 수동 모의투자
-window._simManual = []; // 수동 보유 종목
-
-window.simManualAdd = async (name, code, curPrice) => {
-  if(!name) return;
-  if(window._simManual.find(h => h.name === name && !h.soldAt)) {
-    alert(name + '은 이미 수동 보유 중이에요');
-    return;
-  }
-  // 현재가 조회 (curPrice 없으면 API)
-  let price = curPrice || 0;
-  if(!price && code) {
-    try {
-      const r = await fetch('/api/kis?action=stock_price&codes=' + code);
-      const d = await r.json();
-      price = parseInt((d.output||[])[0]?.stck_prpr || 0);
-    } catch(e) {}
-  }
-  if(!price) {
-    const input = prompt(name + ' 매수가 입력');
-    if(!input) return;
-    price = parseInt(input.replace(/,/g,''));
-    if(!price) { alert('올바른 가격을 입력하세요'); return; }
-  }
-  const qty = Math.floor(1000000 / price);
-  if(!qty) { alert('가격이 너무 높아 100만원으로 매수가 불가해요'); return; }
-  const today = new Date().toISOString().slice(0,10);
-  window._simManual.push({
-    id: Date.now() + Math.random(),
-    name, code: code||'',
-    sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
-    buyPrice: price, qty,
-    buyAmount: price * qty,
-    buyDate: today,
-    currentPrice: price,
-    signal: 'hold'
-  });
-  await saveSimManual();
-  renderSim();
-  alert(name + ' 수동 모의투자 추가됐어요! 💰');
-};
-
-// 수동투자 이름 변경
-window._simManualTitle = localStorage.getItem('simManualTitle') || '✍️ 수동투자';
-window.renameSimManual = () => {
-  const cur = (window._simManualTitle||'✍️ 수동투자').replace(' ✏️','');
-  const newName = prompt('섹션 이름 변경', cur.replace('✍️ ',''));
-  if(!newName) return;
-  window._simManualTitle = '✍️ ' + newName;
-  localStorage.setItem('simManualTitle', window._simManualTitle);
-  renderSim();
-};
-
-// 직접 추가
-window.simManualAddDirect = async () => {
-  const name = prompt('종목명 입력');
-  if(!name) return;
-  const priceInput = prompt(name + ' 매수가 입력');
-  if(!priceInput) return;
-  const price = parseInt(priceInput.replace(/,/g,''));
-  if(!price || isNaN(price)) { alert('올바른 가격을 입력하세요'); return; }
-  // 종목코드 조회 시도
-  let code = '';
-  const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
-  if(row) code = row.code || '';
-  const qty = Math.floor(1000000 / price);
-  if(!qty) { alert('가격이 너무 높아 100만원으로 매수가 불가해요'); return; }
-  const today = new Date().toISOString().slice(0,10);
-  window._simManual = window._simManual || [];
-  window._simManual.push({
-    id: Date.now() + Math.random(),
-    name, code,
-    sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
-    buyPrice: price, qty,
-    buyAmount: price * qty,
-    buyDate: today,
-    currentPrice: price,
-    signal: 'hold'
-  });
-  await saveSimManual();
-  renderSim();
-};
-
-window.saveSimManual = async () => {
-  const uid = window._curUser?.uid;
-  if(!uid) return;
-  try {
-    await setDoc(doc(db, 'users', uid, 'simData', 'manual'), {
-      holdings: window._simManual, updatedAt: Date.now()
-    });
-  } catch(e) {}
-};
-
-window.initSimManual = async () => {
-  const uid = window._curUser?.uid;
-  if(!uid) return;
-  try {
-    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'manual'));
-    if(snap.exists()) window._simManual = snap.data().holdings || [];
-  } catch(e) {}
-};
-
-window.simManualSell = async (id) => {
-  const idx = window._simManual.findIndex(h => h.id === id);
-  if(idx < 0) return;
-  const h = window._simManual[idx];
-  const inputPrice = prompt(`${h.name} 매도가 입력 (현재가: ${h.currentPrice?.toLocaleString()}원)`, h.currentPrice);
-  if(!inputPrice) return;
-  const sellPrice = parseInt(inputPrice.replace(/,/g,''));
-  if(!sellPrice || isNaN(sellPrice)) { alert('올바른 가격을 입력하세요'); return; }
-  const profit = (sellPrice - h.buyPrice) * h.qty;
-  const profitRate = ((sellPrice - h.buyPrice) / h.buyPrice * 100).toFixed(2);
-  h.soldAt = new Date().toISOString().slice(0,10);
-  h.sellPrice = sellPrice;
-  h.profit = profit;
-  h.profitRate = parseFloat(profitRate);
-  window._simHistory.unshift({ ...h, type: 'manual' });
-  window._simManual.splice(idx, 1);
-  await saveSimManual();
-  await saveSim();
-  renderSim();
-  alert(`${h.name} 매도 완료!
-수익: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}원 (${profitRate}%)`);
-};
-
 // ── 오늘의 주인공 재실행 (KIS API 새로 호출)
 window.refreshTodayStar = async () => {
   const btn = document.getElementById('todayStarRefreshBtn');
@@ -3268,6 +3143,74 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
+
+// ── 수동 모의투자 (Firebase 사용 - 모듈 스크립트에서 정의)
+window._simManualTitle = localStorage.getItem('simManualTitle') || '✍️ 수동투자';
+window.renameSimManual = () => {
+  const cur = (window._simManualTitle||'✍️ 수동투자').replace(' ✏️','');
+  const newName = prompt('섹션 이름 변경', cur.replace('✍️ ',''));
+  if(!newName) return;
+  window._simManualTitle = '✍️ ' + newName;
+  localStorage.setItem('simManualTitle', window._simManualTitle);
+  renderSim();
+};
+window.simManualAddDirect = async () => {
+  const name = prompt('종목명 입력');
+  if(!name) return;
+  const priceInput = prompt(name + ' 매수가 입력');
+  if(!priceInput) return;
+  const price = parseInt(priceInput.replace(/,/g,''));
+  if(!price || isNaN(price)) { alert('올바른 가격을 입력하세요'); return; }
+  let code = '';
+  const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
+  if(row) code = row.code || '';
+  const qty = Math.floor(1000000 / price);
+  if(!qty) { alert('가격이 너무 높아 100만원으로 매수가 불가해요'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  window._simManual = window._simManual || [];
+  window._simManual.push({
+    id: Date.now() + Math.random(), name, code,
+    sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
+    buyPrice: price, qty, buyAmount: price * qty,
+    buyDate: today, currentPrice: price, signal: 'hold'
+  });
+  await window.saveSimManual();
+  renderSim();
+};
+window.saveSimManual = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try { await setDoc(doc(db, 'users', uid, 'simData', 'manual'), { holdings: window._simManual, updatedAt: Date.now() }); } catch(e) {}
+};
+window.initSimManual = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'manual'));
+    if(snap.exists()) window._simManual = snap.data().holdings || [];
+  } catch(e) {}
+};
+window.simManualSell = async (id) => {
+  const idx = window._simManual.findIndex(h => h.id === id);
+  if(idx < 0) return;
+  const h = window._simManual[idx];
+  const inputPrice = prompt(h.name + ' 매도가 입력 (현재가: ' + (h.currentPrice?.toLocaleString()) + '원)', h.currentPrice);
+  if(!inputPrice) return;
+  const sellPrice = parseInt(inputPrice.replace(/,/g,''));
+  if(!sellPrice || isNaN(sellPrice)) { alert('올바른 가격을 입력하세요'); return; }
+  const profit = (sellPrice - h.buyPrice) * h.qty;
+  const profitRate = ((sellPrice - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+  h.soldAt = new Date().toISOString().slice(0,10);
+  h.sellPrice = sellPrice; h.profit = profit; h.profitRate = parseFloat(profitRate);
+  window._simHistory.unshift({ ...h, type: 'manual' });
+  window._simManual.splice(idx, 1);
+  await window.saveSimManual();
+  await window.saveSim();
+  renderSim();
+  alert(h.name + ' 매도 완료!\n수익: ' + (profit >= 0 ? '+' : '') + profit.toLocaleString() + '원 (' + profitRate + '%)');
+};
+
+
 const gProvider = new GoogleAuthProvider();
 
 getRedirectResult(auth).catch(e => {
