@@ -1133,13 +1133,13 @@ window.calcTodayStar = () => {
 
   const addScore = (name, pts, reason) => {
     if(!name) return;
-    if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null };
+    if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
     scores[name].score += pts;
     if(reason && !scores[name].reasons.includes(reason)) scores[name].reasons.push(reason);
   };
 
   const setMeta = (name, s) => {
-    if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null };
+    if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
     if(s.sector && !scores[name].sector) scores[name].sector = s.sector;
     if(s.ratio > scores[name].ratio) scores[name].ratio = s.ratio;
     if(s.chg != null && scores[name].chg == null) scores[name].chg = s.chg;
@@ -1151,45 +1151,33 @@ window.calcTodayStar = () => {
   const fNames  = new Set((kisData ? (kisData.f||[])  : []).map(s => s.name));
   const instNames = new Set((kisData ? (kisData.inst||[]) : []).map(s => s.name));
 
-  // _kisRows에서 메타(sector, ratio, chg) 수집
+  // _kisRows에서 메타(sector, ratio, chg, stars) 수집
   if(window._kisRows) {
     Object.values(window._kisRows).forEach(s => {
       if(!s.name) return;
       setMeta(s.name, s);
+      // ⭐ 연속등장 보조지표 저장
+      if(s.contDays > 0) {
+        if(!scores[s.name]) scores[s.name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
+        scores[s.name].stars = Math.max(scores[s.name].stars, Math.min(s.contDays, 5));
+      }
     });
   }
 
-  // 1. 외국인(+기관) 1열 +2, ⭐ +1씩 (최대 3)
-  fiNames.forEach(name => {
-    addScore(name, 2, '외국인(+기관)');
-    const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
-    const contDays = row?.contDays || 0;
-    if(contDays > 0) addScore(name, Math.min(contDays, 3), `⭐${contDays}일`);
-  });
+  // 1. 외국인(+기관) 1열 +2
+  fiNames.forEach(name => addScore(name, 2, '외국인(+기관)'));
 
-  // 2. 외국인순매수 2열 +1, ⭐ +1씩 (최대 3)
-  fNames.forEach(name => {
-    if(!fiNames.has(name)) { // 1열 중복 제외
-      addScore(name, 1, '외국인순매수');
-      const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
-      const contDays = row?.contDays || 0;
-      if(contDays > 0) addScore(name, Math.min(contDays, 3), `⭐${contDays}일`);
-    }
-  });
+  // 2. 외국인순매수 2열 겹치면 +1
+  fNames.forEach(name => addScore(name, 1, '외국인순매수'));
 
-  // 3. 기관순매수 3열 +1 (⭐ 제외)
-  instNames.forEach(name => {
-    if(!fiNames.has(name) && !fNames.has(name)) {
-      addScore(name, 1, '기관순매수');
-    }
-  });
+  // 3. 기관순매수 3열 겹치면 +1
+  instNames.forEach(name => addScore(name, 1, '기관순매수'));
 
-  // 4. 상승수급 +1, ⭐ +1씩 (최대 3)
+  // 4. 상승수급 +1, ⭐ 보조지표 저장
   const upSudToday = (window._upSudHistory7||[]).find(d => d.date === today);
   if(upSudToday) {
     (upSudToday.list||[]).forEach(s => {
       addScore(s.name, 1, '상승수급');
-      if(s.streak > 0) addScore(s.name, Math.min(s.streak, 3), `⭐${s.streak}일`);
     });
   }
 
@@ -1231,11 +1219,13 @@ function renderStarList(ranked, isHistory) {
     const chgColor = (data.chg || 0) >= 0 ? 'var(--up)' : 'var(--dn)';
     const sector = (window._stockThemeMap && window._stockThemeMap[name]) || data.sector || '';
     const isJB = !isHistory && window._jbLastResults && window._jbLastResults.some(sec => sec.stocks.some(s => s.name === name));
+    const stars = data.stars > 0 ? '⭐'.repeat(data.stars) : '';
     return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">'
       + '<span style="font-size:16px;flex-shrink:0">' + medals[i] + '</span>'
       + '<div style="flex:1;min-width:0">'
       + '<div style="display:flex;align-items:center;gap:4px">'
       + '<span style="font-size:12px;font-weight:800">' + name + '</span>'
+      + (stars ? '<span style="font-size:10px">' + stars + '</span>' : '')
       + (isJB ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
       + (chgStr ? '<span style="font-size:10px;font-weight:800;color:' + chgColor + ';margin-left:auto">' + chgStr + '</span>' : '')
       + '</div>'
