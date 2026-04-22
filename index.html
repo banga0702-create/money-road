@@ -1978,7 +1978,7 @@ function renderMarketComment(score, prevScore) {
   }
 }
 
-function renderHome(){
+window.renderHome = function renderHome(){
   const m=S.market;
   const score=m.score||0;
 
@@ -2223,7 +2223,7 @@ function animPct(id,target){
 /* ═══════════════════════════════════════════
    렌더: 종목 목록
 ═══════════════════════════════════════════ */
-function renderStockList(){
+window.renderStockList = function renderStockList(){
   const el=document.getElementById('stockList');
   const empty=document.getElementById('stockEmpty');
   document.getElementById('stockCnt').textContent=`${S.stocks.length}/9 종목`;
@@ -6002,7 +6002,7 @@ onAuthStateChanged(auth, async (user) => {
 
       // 마지막 탭 복원
       const lastTab = localStorage.getItem('lastTab');
-      if(lastTab && window.PAGE_MAP[lastTab]) {
+      if(lastTab && window.PAGE_MAP && window.PAGE_MAP[lastTab]) {
         switchTab(lastTab);
       }
     }, 1000);
