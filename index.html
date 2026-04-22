@@ -554,7 +554,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <span style="font-size:12px;font-weight:800">🌟 오늘의 주인공</span>
-          <span style="font-size:9px;color:var(--tx3)" id="todayStarUpdated"></span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:9px;color:var(--tx3)" id="todayStarUpdated"></span>
+            <button id="todayStarRefreshBtn" onclick="refreshTodayStar()" style="background:rgba(79,99,232,0.12);color:var(--pr);border:1px solid rgba(79,99,232,0.3);border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer">⚡ 재실행</button>
+          </div>
         </div>
         <div id="todayStarDateTabs" style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto"></div>
         <div id="todayStarList" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -1289,6 +1292,72 @@ window.loadStarHistory = async (date, uid) => {
 window.openStarDatePicker = (uid) => {
   const d = prompt('날짜 입력 (YYYY-MM-DD)', new Date().toISOString().slice(0,10));
   if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) loadStarHistory(d, uid);
+};
+
+// ── 오늘의 주인공 재실행 (KIS API 새로 호출)
+window.refreshTodayStar = async () => {
+  const btn = document.getElementById('todayStarRefreshBtn');
+  if(btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  try {
+    // KIS API 새로 호출
+    const r = await fetch('/api/kis?action=foreign_inst_combined');
+    const data = await r.json();
+    if(data.error) throw new Error(data.error);
+    if(!data.output || !data.output.length) throw new Error('데이터 없음');
+
+    const all = data.output.map(s => ({
+      name: s.hts_kor_isnm,
+      code: s.mksc_shrn_iscd,
+      fBuy: Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100),
+      iBuy: Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100),
+    }));
+
+    // 거래대금/등락률/수급비중 조회
+    const allCodes = all.map(s => s.code).filter(Boolean);
+    let priceMap = {};
+    for(let i = 0; i < allCodes.length; i += 10) {
+      const batch = allCodes.slice(i, i+10).join(',');
+      try {
+        const pr = await fetch('/api/kis?action=stock_price&codes=' + batch);
+        const pd = await pr.json();
+        (pd.output||[]).forEach(s => { priceMap[s.code] = s; });
+      } catch(e) {}
+    }
+    all.forEach(s => {
+      const p = priceMap[s.code];
+      if(p) {
+        s.trPbmn = Math.round(parseFloat(p.acml_tr_pbmn) / 100000000);
+        s.chg = parseFloat(p.prdy_ctrt);
+        s.ratio = s.trPbmn > 0 ? +((s.fBuy + s.iBuy) / s.trPbmn * 100).toFixed(1) : 0;
+        s.sector = p.bstp_kor_isnm || '';
+      }
+    });
+
+    // _kisRows 업데이트
+    window._kisRows = window._kisRows || {};
+    all.forEach(s => {
+      const key = 'star_' + s.name;
+      window._kisRows[key] = { ...s, contDays: (window._kisRows[key]?.contDays || 0) };
+    });
+
+    // 상승수급도 업데이트 (vol_rank)
+    try {
+      await new Promise(r => setTimeout(r, 1000));
+      const vr = await fetch('/api/kis?action=vol_rank');
+      const vd = await vr.json();
+      (vd.output||[]).forEach(s => {
+        const name = s.hts_kor_isnm;
+        const key = 'star_' + name;
+        if(!window._kisRows[key]) window._kisRows[key] = { name, code: s.mksc_shrn_iscd };
+      });
+    } catch(e) {}
+
+    await renderTodayStar();
+  } catch(e) {
+    alert('재실행 실패: ' + e.message);
+  } finally {
+    if(btn) { btn.textContent = '⚡ 재실행'; btn.disabled = false; }
+  }
 };
 
 // ── 휴장일/마지막 장일 유틸
@@ -2684,25 +2753,30 @@ window.saveSim = async () => {
 
 // 특징주 재실행 후 30%↑ 종목 자동 매수
 window.simAutoEntry = async (stocks) => {
-  // stocks: [{name, code, ratio, chg, sector}]
+  if(!stocks || !stocks.length) return;
   const today = new Date().toISOString().slice(0,10);
   const targets = stocks.filter(s => (s.ratio||0) >= 30);
   if(!targets.length) return;
 
+  // 이미 보유중이 아닌 종목만
+  const newTargets = targets.filter(s => !window._simHoldings.find(h => h.name === s.name && !h.soldAt));
+  if(!newTargets.length) return;
+
+  // 배치로 현재가 조회
+  const codes = [...new Set(newTargets.map(s => s.code).filter(Boolean))];
+  const priceMap = {};
+  for(let i = 0; i < codes.length; i += 10) {
+    const batch = codes.slice(i, i+10).join(',');
+    try {
+      const r = await fetch('/api/kis?action=stock_price&codes=' + batch);
+      const d = await r.json();
+      (d.output||[]).forEach(p => { if(p.code) priceMap[p.code] = parseInt(p.stck_prpr || p.prdy_clpr || 0); });
+    } catch(e) {}
+  }
+
   let added = 0;
-  for(const s of targets) {
-    // 이미 보유중이면 스킵
-    if(window._simHoldings.find(h => h.name === s.name && !h.soldAt)) continue;
-    // 현재가 조회
-    let price = 0;
-    if(s.code) {
-      try {
-        const r = await fetch('/api/kis?action=stock_price&codes=' + s.code);
-        const d = await r.json();
-        const p = (d.output||[])[0];
-        price = p ? parseInt(p.stck_prpr || p.prdy_clpr || 0) : 0;
-      } catch(e) {}
-    }
+  for(const s of newTargets) {
+    const price = priceMap[s.code] || 0;
     if(!price) continue;
     const qty = Math.floor(1000000 / price);
     if(!qty) continue;
