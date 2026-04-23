@@ -726,12 +726,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <span class="form-hdr-title">💰 모의투자</span>
         <button class="btn btn-ac btn-sm" onclick="refreshSimPrices()">🔄 시세갱신</button>
       </div>
-      <div id="simSummary" style="display:flex;gap:10px;font-size:11px;padding:0 0 4px"></div>
+
     </div>
 
     <div class="sh">
       <span class="sh-title">🤖 자동투자</span>
-      <span style="font-size:10px;color:var(--tx3)" id="simBuyCount"></span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="simAutoSummary" style="font-size:10px;color:var(--tx3)"></span>
+        <span style="font-size:10px;color:var(--tx3)" id="simBuyCount"></span>
+      </div>
     </div>
     <div id="simHoldList"><div class="empty" style="padding:24px"><div class="ico">💰</div><p>특징주 재실행 시 수급 30%↑ 종목이<br>자동으로 매수 기록됩니다</p></div></div>
 
@@ -3027,9 +3030,9 @@ function renderSim() {
   });
   const totalProfit = totalCur - totalBuy;
   const totalRate = totalBuy > 0 ? (totalProfit / totalBuy * 100).toFixed(2) : '0.00';
-  if(summaryEl) summaryEl.innerHTML = holdings.length ? 
-    `<span style="color:var(--tx2)">투자원금 <b>${(totalBuy/10000).toFixed(0)}만원</b></span>`
-    + `<span style="color:${totalProfit>=0?'var(--up)':'var(--dn)'}">평가손익 <b>${totalProfit>=0?'+':''}${totalProfit.toLocaleString()}원</b> (${totalRate}%)</span>` : '';
+  const autoSumEl = document.getElementById('simAutoSummary');
+  if(autoSumEl) autoSumEl.innerHTML = totalBuy > 0
+    ? `원금 <b>${(totalBuy/10000).toFixed(0)}만</b> <span style="color:${totalProfit>=0?'var(--up)':'var(--dn)'}">${totalProfit>=0?'+':''}${totalProfit.toLocaleString()}원(${totalRate}%)</span>` : '';
 
   if(buyCountEl) buyCountEl.textContent = holdings.length + '종목';
   if(histCountEl) histCountEl.textContent = history.length + '건';
