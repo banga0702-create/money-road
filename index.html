@@ -751,7 +751,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 주인공투자 -->
     <div class="sh" style="margin-top:8px">
       <span class="sh-title">🌟 주인공투자</span>
-      <span style="font-size:10px;color:var(--tx3)" id="simStarCount"></span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="simStarSummary" style="font-size:10px;color:var(--tx3)"></span>
+        <span style="font-size:10px;color:var(--tx3)" id="simStarCount"></span>
+      </div>
     </div>
     <div id="simStarList"><div class="empty" style="padding:16px"><p>오늘의 주인공 종목을 추가하세요</p></div></div>
 
@@ -3167,6 +3170,13 @@ function renderSim() {
   const starEl = document.getElementById('simStarList');
   const starCountEl = document.getElementById('simStarCount');
   const starItems = (window._simStar||[]).filter(h => !h.soldAt);
+  let starBuy = 0, starCur = 0;
+  starItems.forEach(h => { starBuy += h.buyAmount||0; starCur += (h.currentPrice||h.buyPrice)*h.qty; });
+  const starProfit = starCur - starBuy;
+  const starRate = starBuy > 0 ? (starProfit/starBuy*100).toFixed(2) : '0.00';
+  const starSumEl = document.getElementById('simStarSummary');
+  if(starSumEl) starSumEl.innerHTML = starBuy > 0
+    ? `원금 <b>${(starBuy/10000).toFixed(0)}만</b> <span style="color:${starProfit>=0?'var(--up)':'var(--dn)'}">${starProfit>=0?'+':''}${starProfit.toLocaleString()}원(${starRate}%)</span>` : '';
   if(starCountEl) starCountEl.textContent = starItems.length + '종목';
   if(starEl) {
     if(!starItems.length) {
