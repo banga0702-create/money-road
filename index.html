@@ -2961,7 +2961,20 @@ window.refreshSimPrices = async () => {
         else h.signal = 'hold';
       }
     });
+    // 종봉투자 시세 갱신
+    const manuals = (window._simManual||[]).filter(h => !h.soldAt);
+    const manCodes = [...new Set(manuals.map(h => h.code).filter(Boolean))];
+    for(let i = 0; i < manCodes.length; i += 10) {
+      const batch = manCodes.slice(i, i+10).join(',');
+      const r2 = await fetch('/api/kis?action=stock_price&codes=' + batch);
+      const d2 = await r2.json();
+      (d2.output||[]).forEach(p => {
+        const h = manuals.find(h => h.code === p.code);
+        if(h) h.currentPrice = parseInt(p.stck_prpr || p.prdy_clpr || h.currentPrice);
+      });
+    }
     await saveSim();
+    await saveSimManual();
     renderSim();
   } catch(e) { alert('시세 갱신 실패: ' + e.message); }
 };
