@@ -738,7 +738,10 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 종봉투자 -->
     <div class="sh" style="margin-top:8px">
       <span class="sh-title">🕯️ 종봉투자</span>
-      <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="simManualSummary" style="font-size:10px;color:var(--tx3)"></span>
+        <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
+      </div>
     </div>
     <div id="simManualList"><div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div></div>
 
@@ -2878,10 +2881,10 @@ window.simAutoEntry = async (stocks) => {
   const targets = stocks.filter(s => (s.ratio||0) >= 30);
   if(!targets.length) return;
 
-  // 보유중 종목 재등장 시 ⭐ 누적 (하루 1개)
+  // 보유중 종목 재등장 시 ⭐ 누적 (하루 1개, 매수일과 같은 날은 제외)
   targets.forEach(s => {
     const holding = window._simHoldings.find(h => h.name === s.name && !h.soldAt);
-    if(holding && holding.reEntryDate !== today) {
+    if(holding && holding.reEntryDate !== today && holding.buyDate !== today) {
       holding.reEntryCount = (holding.reEntryCount || 0) + 1;
       holding.reEntryDate = today;
     }
@@ -3075,6 +3078,14 @@ function renderSim() {
   const manualEl = document.getElementById('simManualList');
   const manualCountEl = document.getElementById('simManualCount');
   const manuals = (window._simManual||[]).filter(h => !h.soldAt);
+  // 종봉투자 손익 계산
+  let manBuy = 0, manCur = 0;
+  manuals.forEach(h => { manBuy += h.buyAmount||0; manCur += (h.currentPrice||h.buyPrice)*h.qty; });
+  const manProfit = manCur - manBuy;
+  const manRate = manBuy > 0 ? (manProfit/manBuy*100).toFixed(2) : '0.00';
+  const manSumEl = document.getElementById('simManualSummary');
+  if(manSumEl) manSumEl.innerHTML = manBuy > 0
+    ? `원금 <b>${(manBuy/10000).toFixed(0)}만</b> <span style="color:${manProfit>=0?'var(--up)':'var(--dn)'}">${manProfit>=0?'+':''}${manProfit.toLocaleString()}원(${manRate}%)</span>` : '';
   if(manualCountEl) manualCountEl.textContent = manuals.length + '종목';
   if(manualEl) {
     if(!manuals.length) {
@@ -3091,6 +3102,7 @@ function renderSim() {
             <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
               <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
+              <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
@@ -3099,7 +3111,7 @@ function renderSim() {
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
-            <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:1px 6px;font-size:8px;font-weight:700;cursor:pointer">매도</button>
+            <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
           </div>
         </div>`;
       }).join('') + '</div>';
