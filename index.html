@@ -2839,6 +2839,13 @@ function renderTrack(){ renderSim(); }
 window._simHoldings = []; // 보유 종목
 window._simHistory = [];  // 매매 기록
 
+window.resetStars = async () => {
+  if(!window._simHoldings) return;
+  window._simHoldings.forEach(h => { h.reEntryCount = 0; h.reEntryDate = null; });
+  await saveSim();
+  renderSim();
+};
+
 window.initSim = async () => {
   const uid = window._curUser?.uid;
   if(!uid) return;
@@ -3043,7 +3050,10 @@ function renderSim() {
           <div><div style="color:var(--tx3)">수급</div><div style="font-weight:700;color:${(h.currentRatio||h.ratio)>=30?'var(--ac)':'var(--wa)'}">${(h.currentRatio||h.ratio).toFixed(0)}%</div></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
+          <div>
+            <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${(profit/10000).toFixed(1)}만(${rate}%)</span>
+            <span style="font-size:8px;color:var(--tx3);margin-left:4px">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
+          </div>
           <button onclick="simSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
         </div>
       </div>`;
@@ -5966,7 +5976,7 @@ onAuthStateChanged(auth, async (user) => {
         if(window.renderTodayStar) renderTodayStar();
       }, 3000);
       // 모의투자 데이터 로드
-      setTimeout(async () => { if(window.initSim) await initSim(); if(window.initSimManual) initSimManual(); }, 2000);
+      setTimeout(async () => { if(window.initSim) await initSim(); if(window.resetStars) await resetStars(); if(window.initSimManual) initSimManual(); }, 2000);
 
       // 정배열 오늘 데이터 로드 or 자동 실행
       setTimeout(async () => {
