@@ -3041,6 +3041,7 @@ function renderSim() {
           <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
             <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}${stars}</span>
             <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
+            <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
           </div>
           <span style="font-size:9px;flex-shrink:0">${sig.icon}</span>
         </div>
@@ -3050,11 +3051,8 @@ function renderSim() {
           <div><div style="color:var(--tx3)">수급</div><div style="font-weight:700;color:${(h.currentRatio||h.ratio)>=30?'var(--ac)':'var(--wa)'}">${(h.currentRatio||h.ratio).toFixed(0)}%</div></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
-            <span style="font-size:8px;color:var(--tx3);margin-left:4px">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
-          </div>
-          <button onclick="simSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:1px 6px;font-size:8px;font-weight:700;cursor:pointer">매도</button>
+          <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
+          <button onclick="simSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
         </div>
       </div>`;
     }).join('') + '</div>';
