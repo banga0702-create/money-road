@@ -1254,7 +1254,10 @@ function renderStarList(ranked, isHistory) {
       + (data.reasons||[]).filter((v,i,a)=>a.indexOf(v)===i).join(' · ')
       + '</div>'
       + '</div>'
-      + '<div style="background:var(--pr);color:#fff;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:900;flex-shrink:0">' + data.score + 'pt</div>'
+      + '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">'
+      + '<div style="background:var(--pr);color:#fff;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:900">' + data.score + 'pt</div>'
+      + (!isHistory ? '<button onclick="simStarAdd('' + name.replace(/'/g,"\'") + '')" style="background:rgba(245,197,66,0.15);color:var(--gd);border:1px solid rgba(245,197,66,0.4);border-radius:8px;padding:2px 6px;font-size:11px;cursor:pointer">💰</button>' : '')
+      + '</div>'
       + '</div>';
   }).join('');
 }
@@ -1410,6 +1413,76 @@ window.simManualSell = async (id) => {
   renderSim();
   alert(`${h.name} 매도 완료!
 수익: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}원 (${profitRate}%)`);
+};
+
+// ── 주인공투자
+window._simStar = [];
+
+window.simStarAdd = async (name) => {
+  if((window._simStar||[]).find(h => h.name === name && !h.soldAt)) {
+    alert(name + '은 이미 주인공투자에 있어요'); return;
+  }
+  const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
+  const code = row?.code || '';
+  let price = 0;
+  if(code) {
+    try {
+      const r = await fetch('/api/kis?action=stock_price&codes=' + code);
+      const d = await r.json();
+      price = parseInt((d.output||[])[0]?.stck_prpr || 0);
+    } catch(e) {}
+  }
+  if(!price) {
+    const input = prompt(name + ' 매수가 입력');
+    if(!input) return;
+    price = parseInt(input.replace(/,/g,''));
+    if(!price) { alert('올바른 가격을 입력하세요'); return; }
+  }
+  const qty = Math.floor(1000000 / price);
+  if(!qty) { alert('가격이 너무 높아요'); return; }
+  window._simStar.push({
+    id: Date.now() + Math.random(), name, code,
+    sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
+    buyPrice: price, qty, buyAmount: price * qty,
+    buyDate: new Date().toISOString().slice(0,10),
+    currentPrice: price, signal: 'hold'
+  });
+  await saveSimStar(); renderSim();
+  alert(name + ' 주인공투자에 추가됐어요! 🌟');
+};
+
+window.saveSimStar = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try { await setDoc(doc(db, 'users', uid, 'simData', 'star'), {holdings: window._simStar, updatedAt: Date.now()}); } catch(e) {}
+};
+
+window.initSimStar = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'star'));
+    if(snap.exists()) window._simStar = snap.data().holdings || [];
+  } catch(e) {}
+};
+
+window.simStarSell = async (id) => {
+  const idx = window._simStar.findIndex(h => h.id === id);
+  if(idx < 0) return;
+  const h = window._simStar[idx];
+  const inputPrice = prompt(h.name + ' 매도가 입력', h.currentPrice);
+  if(!inputPrice) return;
+  const sellPrice = parseInt(inputPrice.replace(/,/g,''));
+  if(!sellPrice || isNaN(sellPrice)) { alert('올바른 가격을 입력하세요'); return; }
+  const profit = (sellPrice - h.buyPrice) * h.qty;
+  const profitRate = ((sellPrice - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+  h.soldAt = new Date().toISOString().slice(0,10);
+  h.sellPrice = sellPrice; h.profit = profit; h.profitRate = parseFloat(profitRate);
+  window._simHistory.unshift({...h, type:'star'});
+  window._simStar.splice(idx, 1);
+  await saveSimStar(); await saveSim(); renderSim();
+  alert(h.name + ' 매도!
+수익: ' + (profit>=0?'+':'') + profit.toLocaleString() + '원 (' + profitRate + '%)');
 };
 
 // ── 오늘의 주인공 재실행 (KIS API 새로 호출)
@@ -3118,6 +3191,40 @@ function renderSim() {
           </div>
         </div>`;
       }).join('') + '</div>';
+    }
+  }
+
+  // 주인공투자 렌더링
+  const starEl = document.getElementById('simStarList');
+  const starCountEl = document.getElementById('simStarCount');
+  const starItems = (window._simStar||[]).filter(h => !h.soldAt);
+  if(starCountEl) starCountEl.textContent = starItems.length + '종목';
+  if(starEl) {
+    if(!starItems.length) {
+      starEl.innerHTML = '<div class="empty" style="padding:16px"><p>오늘의 주인공 카드에서 💰 버튼으로 추가하세요</p></div>';
+    } else {
+      starEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
+        starItems.map(h => {
+          const cur = h.currentPrice || h.buyPrice;
+          const profit = (cur - h.buyPrice) * h.qty;
+          const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+          const pc = profit >= 0 ? 'var(--up)' : 'var(--dn)';
+          return `<div style="background:var(--sf);border:1.5px solid rgba(245,197,66,0.4);border-radius:10px;padding:8px">
+            <div style="display:flex;align-items:center;gap:3px;margin-bottom:4px;overflow:hidden">
+              <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
+              <span style="font-size:8px;color:var(--tx3)">${h.sector||''}</span>
+              <span style="font-size:8px;color:var(--tx3)">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+              <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
+              <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${pc}">${cur.toLocaleString()}</div></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:9px;font-weight:800;color:${pc}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
+              <button onclick="simStarSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+            </div>
+          </div>`;
+        }).join('') + '</div>';
     }
   }
 
@@ -6002,7 +6109,7 @@ onAuthStateChanged(auth, async (user) => {
         if(window.renderTodayStar) renderTodayStar();
       }, 3000);
       // 모의투자 데이터 로드
-      setTimeout(async () => { if(window.initSim) await initSim(); if(window.resetStars) await resetStars(); if(window.initSimManual) initSimManual(); }, 2000);
+      setTimeout(async () => { if(window.initSim) await initSim(); if(window.resetStars) await resetStars(); if(window.initSimManual) initSimManual(); if(window.initSimStar) initSimStar(); }, 2000);
 
       // 정배열 오늘 데이터 로드 or 자동 실행
       setTimeout(async () => {
