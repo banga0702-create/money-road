@@ -1392,6 +1392,44 @@ window.initSimManual = async () => {
   } catch(e) {}
 };
 
+window.saveSimStar = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'simData', 'star'), {
+      holdings: window._simStar, updatedAt: Date.now()
+    });
+  } catch(e) {}
+};
+
+window.initSimStar = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'simData', 'star'));
+    if(snap.exists()) window._simStar = snap.data().holdings || [];
+  } catch(e) {}
+};
+
+window.simStarSell = async (id) => {
+  const idx = window._simStar.findIndex(h => h.id === id);
+  if(idx < 0) return;
+  const h = window._simStar[idx];
+  const inputPrice = prompt(`${h.name} 매도가 입력 (현재가: ${h.currentPrice?.toLocaleString()}원)`, h.currentPrice);
+  if(!inputPrice) return;
+  const sellPrice = parseInt(inputPrice.replace(/,/g,''));
+  if(!sellPrice || isNaN(sellPrice)) { alert('올바른 가격을 입력하세요'); return; }
+  const profit = (sellPrice - h.buyPrice) * h.qty;
+  const profitRate = ((sellPrice - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+  h.soldAt = new Date().toISOString().slice(0,10);
+  h.sellPrice = sellPrice; h.profit = profit; h.profitRate = parseFloat(profitRate);
+  window._simHistory.unshift({ ...h, type: 'star' });
+  window._simStar.splice(idx, 1);
+  await saveSimStar(); await saveSim(); renderSim();
+  alert(`${h.name} 매도 완료!
+수익: ${profit >= 0 ? '+' : ''}${profit.toLocaleString()}원 (${profitRate}%)`);
+};
+
 window.simManualSell = async (id) => {
   const idx = window._simManual.findIndex(h => h.id === id);
   if(idx < 0) return;
@@ -2685,9 +2723,10 @@ function renderCandleFeat(){
         ${c.fBuy!=null&&c.fBuy!==0?`<span class="sli-chip" style="color:${c.fBuy>0?'var(--up)':'var(--dn)'}">외 ${c.fBuy>0?'+':''}${c.fBuy}억</span>`:''}
         ${c.iBuy!=null&&c.iBuy!==0?`<span class="sli-chip" style="color:${c.iBuy>0?'var(--up)':'var(--dn)'}">기 ${c.iBuy>0?'+':''}${c.iBuy}억</span>`:''}
         ${hasHL?`<span class="sli-chip" style="color:var(--gd)">기준선 ${c.midLine.toLocaleString()}원</span>`:''}
+        ${st?`<span class="badge ${st.cls}" style="font-size:9px;font-weight:700">${st.txt}</span>`:''}
         ${c.memo?`<span class="sli-chip" style="color:var(--tx2)">${c.memo}</span>`:''}
       </div>
-      ${st?`<div style="margin:4px 12px 8px;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;text-align:center" class="${st.cls}">${st.txt}</div>`:''}
+
     </div>`;
   }).join('');
 }
@@ -3118,6 +3157,42 @@ function renderSim() {
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
             <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    }
+  }
+
+  // 주인공투자 렌더링
+  const starEl = document.getElementById('simStarList');
+  const starCountEl = document.getElementById('simStarCount');
+  const starItems = (window._simStar||[]).filter(h => !h.soldAt);
+  if(starCountEl) starCountEl.textContent = starItems.length + '종목';
+  if(starEl) {
+    if(!starItems.length) {
+      starEl.innerHTML = '<div class="empty" style="padding:16px"><p>오늘의 주인공 카드에서 💰 버튼으로 추가하세요</p></div>';
+    } else {
+      starEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
+        starItems.map(h => {
+        const cur = h.currentPrice || h.buyPrice;
+        const profit = (cur - h.buyPrice) * h.qty;
+        const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+        const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
+        return `<div style="background:var(--sf);border:1.5px solid rgba(245,197,66,0.4);border-radius:10px;padding:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
+              <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
+              <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
+              <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+            <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
+            <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
+            <button onclick="simStarSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
           </div>
         </div>`;
       }).join('') + '</div>';
@@ -6039,7 +6114,7 @@ onAuthStateChanged(auth, async (user) => {
         if(window.renderTodayStar) renderTodayStar();
       }, 3000);
       // 모의투자 데이터 로드
-      setTimeout(async () => { if(window.initSim) await initSim(); if(window.resetStars) await resetStars(); if(window.initSimManual) initSimManual(); }, 2000);
+      setTimeout(async () => { if(window.initSim) await initSim(); if(window.resetStars) await resetStars(); if(window.initSimManual) initSimManual(); if(window.initSimStar) initSimStar(); }, 2000);
 
       // 정배열 오늘 데이터 로드 or 자동 실행
       setTimeout(async () => {
