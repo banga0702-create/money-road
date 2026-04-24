@@ -3041,22 +3041,26 @@ window.refreshSimPrices = async () => {
     });
     // 2단계: 없는 종목만 investor API로 개별 조회
     for(const h of notFound) {
+      // 장 마감 후(15:30 이후)에만 investor API 개별 조회
+      const now = new Date();
+      const isAfterClose = now.getHours() > 15 || (now.getHours() === 15 && now.getMinutes() >= 30);
+      if(!isAfterClose) continue;
       try {
         const r3 = await fetch(`/api/kis?action=investor&code=${h.code}`);
         const d3 = await r3.json();
         const it = (d3.output||[])[0];
         if(it) {
-          console.log('[investor]', h.name, JSON.stringify(it).slice(0,300));
-          // 외국인+기관 순매수금액 / 거래대금 비율 (foreign_inst_combined과 동일 기준)
           const fAmt = parseFloat(it.frgn_ntby_tr_pbmn||0);
           const iAmt = parseFloat(it.orgn_ntby_tr_pbmn||0);
           const trAmt = parseFloat(it.acml_tr_pbmn||1);
-          const ratio = trAmt > 0 ? Math.round((fAmt + iAmt) / trAmt * 100) : 0;
-          h.currentRatio = ratio;
-          if(ratio < 10) h.signal = 'sell_strong';
-          else if(ratio < 20) h.signal = 'sell';
-          else if(ratio < 30) h.signal = 'weak';
-          else h.signal = 'hold';
+          if(fAmt !== 0 || iAmt !== 0) {
+            const ratio = trAmt > 0 ? Math.round((fAmt + iAmt) / trAmt * 100) : 0;
+            h.currentRatio = ratio;
+            if(ratio < 10) h.signal = 'sell_strong';
+            else if(ratio < 20) h.signal = 'sell';
+            else if(ratio < 30) h.signal = 'weak';
+            else h.signal = 'hold';
+          }
         }
       } catch(e) {}
     }
