@@ -2944,11 +2944,12 @@ window.simAutoEntry = async (stocks) => {
   console.log('[simAutoEntry] 신규 매수 대상:', newTargets.map(s=>s.name));
   if(!newTargets.length) { renderSim(); return; }
 
-  // 배치로 현재가 조회
-  const codes = [...new Set(newTargets.map(s => s.code).filter(Boolean))];
+  // 배치로 현재가 조회 (이미 currentPrice가 있으면 재조회 생략)
+  const needPrice = newTargets.filter(s => !s.currentPrice);
+  const pCodes = [...new Set(needPrice.map(s => s.code).filter(Boolean))];
   const priceMap = {};
-  for(let i = 0; i < codes.length; i += 10) {
-    const batch = codes.slice(i, i+10).join(',');
+  for(let i = 0; i < pCodes.length; i += 10) {
+    const batch = pCodes.slice(i, i+10).join(',');
     try {
       const r = await fetch('/api/kis?action=stock_price&codes=' + batch);
       const d = await r.json();
@@ -2958,7 +2959,7 @@ window.simAutoEntry = async (stocks) => {
 
   let added = 0;
   for(const s of newTargets) {
-    const price = priceMap[s.code] || 0;
+    const price = s.currentPrice || priceMap[s.code] || 0;
     if(!price) continue;
     const qty = Math.floor(1000000 / price);
     if(!qty) continue;
@@ -3633,6 +3634,7 @@ window.kisTopFetch = async () => {
         s.chg = parseFloat(p.prdy_ctrt); // 등락률
         s.ratio = s.trPbmn > 0 ? +((s.fBuy + s.iBuy) / s.trPbmn * 100).toFixed(1) : 0; // 수급비중%
         s.sector = p.bstp_kor_isnm || ''; // 업종(섹터)
+        s.currentPrice = parseInt(p.stck_prpr || p.prdy_clpr || 0); // 현재가
       }
     });
 
