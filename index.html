@@ -2925,6 +2925,11 @@ window.saveSim = async () => {
 // 특징주 재실행 후 30%↑ 종목 자동 매수
 window.simAutoEntry = async (stocks) => {
   if(!stocks || !stocks.length) return;
+  // 장마감(15:30) 이후에만 자동매수
+  const now = new Date();
+  const hour = now.getHours();
+  const min = now.getMinutes();
+  if(hour < 15 || (hour === 15 && min < 30)) return;
   const today = new Date().toISOString().slice(0,10);
   const targets = stocks.filter(s => (s.ratio||0) >= 30);
   if(!targets.length) return;
@@ -2960,6 +2965,7 @@ window.simAutoEntry = async (stocks) => {
   let added = 0;
   for(const s of newTargets) {
     const price = s.currentPrice || priceMap[s.code] || 0;
+    console.log('[simAutoEntry] 가격확인:', s.name, 'currentPrice:', s.currentPrice, 'priceMap:', priceMap[s.code], '최종price:', price);
     if(!price) continue;
     const qty = Math.floor(1000000 / price);
     if(!qty) continue;
