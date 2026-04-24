@@ -3064,8 +3064,57 @@ window.refreshSimPrices = async () => {
         }
       } catch(e) {}
     }
+    // 주인공투자 시세 갱신
+    const stars = (window._simStar||[]).filter(h => !h.soldAt);
+    const starCodes = [...new Set(stars.map(h => h.code).filter(Boolean))];
+    for(let i = 0; i < starCodes.length; i += 10) {
+      const batch = starCodes.slice(i, i+10).join(',');
+      const r4 = await fetch('/api/kis?action=stock_price&codes=' + batch);
+      const d4 = await r4.json();
+      (d4.output||[]).forEach(p => {
+        const h = stars.find(h => h.code === p.code);
+        if(h) h.currentPrice = parseInt(p.stck_prpr || p.prdy_clpr || h.currentPrice);
+      });
+    }
+    // 주인공투자 수급비율 갱신
+    const starNotFound = [];
+    stars.forEach(h => {
+      const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === h.name);
+      if(row && row.ratio != null) {
+        h.currentRatio = row.ratio;
+        if(row.ratio < 10) h.signal = 'sell_strong';
+        else if(row.ratio < 20) h.signal = 'sell';
+        else if(row.ratio < 30) h.signal = 'weak';
+        else h.signal = 'hold';
+      } else if(h.code) { starNotFound.push(h); }
+    });
+    const now2 = new Date();
+    const isAfterClose2 = now2.getHours() > 15 || (now2.getHours() === 15 && now2.getMinutes() >= 30);
+    if(isAfterClose2) {
+      for(const h of starNotFound) {
+        try {
+          const r5 = await fetch(`/api/kis?action=investor&code=${h.code}`);
+          const d5 = await r5.json();
+          const it = (d5.output||[])[0];
+          if(it) {
+            const fAmt = parseFloat(it.frgn_ntby_tr_pbmn||0);
+            const iAmt = parseFloat(it.orgn_ntby_tr_pbmn||0);
+            const trAmt = parseFloat(it.acml_tr_pbmn||1);
+            if(fAmt !== 0 || iAmt !== 0) {
+              const ratio = trAmt > 0 ? Math.round((fAmt + iAmt) / trAmt * 100) : 0;
+              h.currentRatio = ratio;
+              if(ratio < 10) h.signal = 'sell_strong';
+              else if(ratio < 20) h.signal = 'sell';
+              else if(ratio < 30) h.signal = 'weak';
+              else h.signal = 'hold';
+            }
+          }
+        } catch(e) {}
+      }
+    }
     await saveSim();
     await saveSimManual();
+    if(window.saveSimStar) await saveSimStar();
     renderSim();
   } catch(e) { alert('시세 갱신 실패: ' + e.message); }
 };
@@ -3231,6 +3280,7 @@ function renderSim() {
         const profit = (cur - h.buyPrice) * h.qty;
         const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
         const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
+        const sig = signalMap[h.signal || 'hold'];
         return `<div style="background:var(--sf);border:1.5px solid rgba(245,197,66,0.4);border-radius:10px;padding:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
@@ -3238,10 +3288,12 @@ function renderSim() {
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
             </div>
+            <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
+            <div><div style="color:var(--tx3)">수급</div><div style="font-weight:700;color:${(h.currentRatio||0)>=30?'var(--ac)':'var(--wa)'}">${(h.currentRatio!=null && h.currentRatio>0)?(h.currentRatio.toFixed(0)+'%'):'-'}</div></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
