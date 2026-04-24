@@ -2940,6 +2940,8 @@ window.simAutoEntry = async (stocks) => {
 
   // 이미 보유중이 아닌 종목만 신규 매수
   const newTargets = targets.filter(s => !window._simHoldings.find(h => h.name === s.name && !h.soldAt));
+  console.log('[simAutoEntry] 30%↑ 종목:', targets.map(s=>s.name+' '+s.ratio+'%'));
+  console.log('[simAutoEntry] 신규 매수 대상:', newTargets.map(s=>s.name));
   if(!newTargets.length) { renderSim(); return; }
 
   // 배치로 현재가 조회
