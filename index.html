@@ -758,11 +758,12 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
     <div id="simStarList"><div class="empty" style="padding:16px"><p>오늘의 주인공 종목을 추가하세요</p></div></div>
 
-    <div class="sh" style="margin-top:8px">
+    <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimHist()">
       <span class="sh-title">📋 매매 기록</span>
       <span style="font-size:10px;color:var(--tx3)" id="simHistCount"></span>
+      <span id="simHistToggleIcon" style="margin-left:auto;font-size:12px;color:var(--tx3)">▶</span>
     </div>
-    <div id="simHistList"><div class="empty" style="padding:16px"><p>완료된 매매가 없어요</p></div></div>
+    <div id="simHistList" style="display:none"><div class="empty" style="padding:16px"><p>완료된 매매가 없어요</p></div></div>
 
   </div>
 
@@ -2886,6 +2887,21 @@ function setNextMemo(id,val){
 
 function renderTrack(){ renderSim(); }
 
+function toggleSimHist() {
+  const el = document.getElementById('simHistList');
+  const icon = document.getElementById('simHistToggleIcon');
+  if(!el) return;
+  const isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? 'block' : 'none';
+  if(icon) icon.textContent = isHidden ? '▼' : '▶';
+}
+
+async function saveHistMemo(idx, memo) {
+  if(!window._simHistory[idx]) return;
+  window._simHistory[idx].memo = memo;
+  await saveSim();
+}
+
 // ── 모의투자
 window._simHoldings = []; // 보유 종목
 window._simHistory = [];  // 매매 기록
@@ -3318,15 +3334,23 @@ function renderSim() {
   } else {
     histEl.innerHTML = history.slice(0,20).map(h => {
       const profitColor = (h.profit||0) >= 0 ? 'var(--up)' : 'var(--dn)';
-      return `<div style="margin:0 16px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px">
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:700">${h.name}</div>
-          <div style="font-size:9px;color:var(--tx3)">${h.buyDate} 매수 → ${h.soldAt} 매도</div>
-          <div style="font-size:9px;color:var(--tx3)">${h.buyPrice?.toLocaleString()} → ${h.sellPrice?.toLocaleString()}원 · ${h.qty}주</div>
+      const hIdx = window._simHistory.indexOf(h);
+      return `<div style="margin:0 16px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700">${h.name}</div>
+            <div style="font-size:9px;color:var(--tx3)">${h.buyDate} 매수 → ${h.soldAt} 매도</div>
+            <div style="font-size:9px;color:var(--tx3)">${h.buyPrice?.toLocaleString()} → ${h.sellPrice?.toLocaleString()}원 · ${h.qty}주</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;font-weight:900;color:${profitColor}">${(h.profit||0)>=0?'+':''}${(h.profit||0).toLocaleString()}원</div>
+            <div style="font-size:10px;font-weight:700;color:${profitColor}">${(h.profitRate||0)>=0?'+':''}${h.profitRate||0}%</div>
+          </div>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:13px;font-weight:900;color:${profitColor}">${(h.profit||0)>=0?'+':''}${(h.profit||0).toLocaleString()}원</div>
-          <div style="font-size:10px;font-weight:700;color:${profitColor}">${(h.profitRate||0)>=0?'+':''}${h.profitRate||0}%</div>
+        <div style="margin-top:6px">
+          <input type="text" placeholder="매도 메모..." value="${h.memo||''}"
+            onchange="saveHistMemo(${hIdx}, this.value)"
+            style="width:100%;box-sizing:border-box;font-size:10px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);outline:none"/>
         </div>
       </div>`;
     }).join('');
