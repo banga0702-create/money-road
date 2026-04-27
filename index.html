@@ -1193,7 +1193,7 @@ window.calcTodayStar = () => {
       if(inEligible) streak++;
       else break;
     }
-    if(streak > 0) {
+    if(streak >= 2) {
       if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
       scores[name].stars = streak;
     }
@@ -1208,7 +1208,7 @@ window.calcTodayStar = () => {
         if((d.list||[]).some(x => x.name === s.name)) streak++;
         else break;
       }
-      if(streak > 0) {
+      if(streak >= 2) {
         if(!scores[s.name]) scores[s.name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
         scores[s.name].stars = Math.max(scores[s.name].stars, streak);
       }
