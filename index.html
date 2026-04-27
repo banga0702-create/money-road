@@ -1215,36 +1215,32 @@ window.calcTodayStar = () => {
     });
   }
 
-  // 1. 외국인(+기관) 1열 +2
-  fiNames.forEach(name => addScore(name, 2, '외국인(+기관)'));
-
-  // 2. 외국인순매수 2열 겹치면 +1
-  fNames.forEach(name => addScore(name, 1, '외국인순매수'));
-
-  // 3. 상승수급 +1
+  // 1. 상승수급 +1 (메인)
   const upSudToday = (window._upSudHistory7||[]).find(d => d.date === today);
-  if(upSudToday) {
-    (upSudToday.list||[]).forEach(s => {
-      addScore(s.name, 1, '상승수급');
-    });
-  }
+  const upSudNames = new Set((upSudToday ? (upSudToday.list||[]) : []).map(s => s.name));
+  upSudNames.forEach(name => addScore(name, 1, '상승수급'));
 
-  // 4. 정배열 +1
+  // 2. 순매수TOP(fi/f/inst 어느 열이든) 겹치면 +1
+  const allTopNames = new Set([...fiNames, ...fNames, ...instNames]);
+  allTopNames.forEach(name => {
+    if(upSudNames.has(name)) addScore(name, 1, '순매수TOP');
+  });
+
+  // 3. 정배열 +1
   if(window._jbLastResults) {
     window._jbLastResults.forEach(sec => {
       (sec.stocks||[]).forEach(s => addScore(s.name, 1, '정배열'));
     });
   }
 
-  // 5. 수급비율 30%↑ +1
+  // 4. 수급비율 30%↑ +1
   Object.entries(scores).forEach(([name, data]) => {
     if(data.ratio >= 30) addScore(name, 1, '수급30%↑');
   });
 
-  // 6. 연속매수 ⭐ +1 (외국인+기관, 외국인순매수, 상승수급에 있는 종목만)
-  const starEligible = new Set([...fiNames, ...fNames, ...(upSudToday ? (upSudToday.list||[]).map(s=>s.name) : [])]);
+  // 5. ⭐ 연속등장(2일↑) +1
   Object.entries(scores).forEach(([name, data]) => {
-    if(data.stars > 0 && starEligible.has(name)) addScore(name, 1, '⭐연속등장');
+    if(data.stars >= 2) addScore(name, 1, '⭐연속등장');
   });
 
   // 점수순 정렬, 상위 5개
