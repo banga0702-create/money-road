@@ -1348,22 +1348,17 @@ window.loadStarHistory = async (date, uid) => {
   } catch(e) {}
 };
 
-window.openStarDatePicker = (uid) => {
-  const input = document.createElement('input');
-  input.type = 'date';
-  input.value = new Date().toISOString().slice(0,10);
-  input.max = new Date().toISOString().slice(0,10);
-  input.style.cssText = 'position:fixed;opacity:0;top:50%;left:50%;transform:translate(-50%,-50%)';
-  document.body.appendChild(input);
-  input.addEventListener('change', () => {
-    if(input.value) loadStarHistory(input.value, uid);
-    document.body.removeChild(input);
-  });
-  input.addEventListener('blur', () => {
-    setTimeout(() => { if(document.body.contains(input)) document.body.removeChild(input); }, 300);
-  });
-  input.click();
-  input.focus();
+window.openStarDatePicker = async (uid) => {
+  // 저장된 날짜 목록 조회
+  try {
+    const col = collection(db, 'users', uid, 'starHistory');
+    const snap = await getDocs(col);
+    const dates = snap.docs.map(d => d.id).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
+    openDatePicker(dates, 'star', uid);
+    document.getElementById('moDatePicker').style.display = 'flex';
+  } catch(e) {
+    console.warn('starHistory 날짜 조회 실패', e);
+  }
 };
 
 // ── 수동 모의투자
@@ -5251,6 +5246,7 @@ window.openDatePicker = (dates, type, uid) => {
   const loadFn = type === 'kis' ? 'loadKisHistory'
     : type === 'upsud' ? 'loadUpSudHistory'
     : type === 'candle' ? 'loadCandleHistory'
+    : type === 'star' ? 'loadStarHistory'
     : 'loadReverseHistory';
 
   const dateSet = new Set(dates);
