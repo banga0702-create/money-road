@@ -3873,51 +3873,9 @@ window.kisTopFetch = async () => {
         await renderUpSudDateTabs(user.uid);
         window._kisUid = user.uid;
         window._kisLatestDate = today;
-        // 모의투자 자동 매수 (all + vol_rank + price_rank 합산)
+        // 모의투자 자동 매수 (순매수TOP만)
         if(window.simAutoEntry) {
-          try {
-            const seen = new Set(all.map(s => s.code));
-            const simPool = [...all];
-            const vr = await fetch('/api/kis?action=vol_rank');
-            const vd = await vr.json();
-            await new Promise(r => setTimeout(r, 500));
-            const pr = await fetch('/api/kis?action=price_rank');
-            const pd = await pr.json();
-            [...(vd.output||[]), ...(pd.output||[])].forEach(s => {
-              const code = s.mksc_shrn_iscd;
-              if(!code || seen.has(code)) return;
-              seen.add(code);
-              simPool.push({
-                name: s.hts_kor_isnm,
-                code,
-                fBuy: 0, iBuy: 0,
-                trPbmn: Math.round(parseFloat(s.acml_tr_pbmn||0)/100000000),
-                chg: parseFloat(s.prdy_ctrt||0),
-                ratio: 0,
-                sector: s.bstp_kor_isnm||''
-              });
-            });
-            // 수급비율 없는 종목 보완 (stock_price 배치)
-            const newCodes = simPool.filter(s => !all.find(a=>a.code===s.code) && s.code).map(s=>s.code);
-            if(newCodes.length) {
-              for(let i=0;i<newCodes.length;i+=10){
-                const batch=newCodes.slice(i,i+10).join(',');
-                try {
-                  const pr2=await fetch('/api/kis?action=stock_price&codes='+batch);
-                  const pd2=await pr2.json();
-                  (pd2.output||[]).forEach(p=>{
-                    const s=simPool.find(x=>x.code===p.code);
-                    if(s){
-                      s.trPbmn=Math.round(parseFloat(p.acml_tr_pbmn||0)/100000000);
-                      s.chg=parseFloat(p.prdy_ctrt||0);
-                      s.ratio=s.trPbmn>0?+((s.fBuy+s.iBuy)/s.trPbmn*100).toFixed(1):0;
-                    }
-                  });
-                } catch(e){}
-              }
-            }
-            simAutoEntry(simPool);
-          } catch(e) { simAutoEntry(all); }
+          simAutoEntry(all);
         }
         // 저장 완료 후 오늘 탭 형식으로 바로 렌더링 (통일)
         await loadKisHistory(today, user.uid);
@@ -4855,10 +4813,12 @@ window.upSudFetch = async () => {
         const code = s.mksc_shrn_iscd || '';
         const fBuy = fBuyMap[name] || 0;
         const iBuy = iBuyMap[name] || 0;
+        const ratio = tr > 0 ? +((fBuy + iBuy) / (tr * 100) * 100).toFixed(1) : 0;
+        const ratioColor = ratio >= 30 ? 'var(--ac)' : ratio >= 15 ? 'var(--wa)' : 'var(--tx3)';
         window._kisRows = window._kisRows || {};
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
-        window._kisRows[key] = { name, code, fBuy, iBuy, sector };
-        const cardBg = 'background:var(--sf);border:1px solid var(--bd)';
+        window._kisRows[key] = { name, code, fBuy, iBuy, sector, ratio };
+        const cardBg = ratio >= 30 ? 'background:var(--sf);border:1px solid var(--ac)' : 'background:var(--sf);border:1px solid var(--bd)';
         const streak = upSudStreakMap[name] || 0;
         const stars = streak > 0 ? '<span style="font-size:10px;margin-left:1px">' + '⭐'.repeat(Math.min(streak,5)) + '</span>' : '';
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
@@ -4872,6 +4832,7 @@ window.upSudFetch = async () => {
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
           + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(s=>s.name===name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
+          + (ratio > 0 ? '<span style="font-size:10px;font-weight:800;color:' + ratioColor + '"> 수급' + ratio + '%</span>' : '')
           + '</div>'
           + '<div style="font-size:9px;margin-top:3px">'
           + '<span id="inv_' + key + '"></span>'
