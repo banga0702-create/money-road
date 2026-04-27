@@ -1213,9 +1213,10 @@ window.calcTodayStar = () => {
     if(data.ratio >= 30) addScore(name, 1, '수급30%↑');
   });
 
-  // 6. 연속매수 ⭐ +1 (상승수급 또는 외국인+기관에서 별 있는 종목)
+  // 6. 연속매수 ⭐ +1 (외국인+기관, 외국인순매수, 상승수급에 있는 종목만)
+  const starEligible = new Set([...fiNames, ...fNames, ...(upSudToday ? (upSudToday.list||[]).map(s=>s.name) : [])]);
   Object.entries(scores).forEach(([name, data]) => {
-    if(data.stars > 0) addScore(name, 1, '⭐연속등장');
+    if(data.stars > 0 && starEligible.has(name)) addScore(name, 1, '⭐연속등장');
   });
 
   // 점수순 정렬, 상위 5개
