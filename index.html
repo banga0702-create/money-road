@@ -1349,8 +1349,21 @@ window.loadStarHistory = async (date, uid) => {
 };
 
 window.openStarDatePicker = (uid) => {
-  const d = prompt('날짜 입력 (YYYY-MM-DD)', new Date().toISOString().slice(0,10));
-  if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) loadStarHistory(d, uid);
+  const input = document.createElement('input');
+  input.type = 'date';
+  input.value = new Date().toISOString().slice(0,10);
+  input.max = new Date().toISOString().slice(0,10);
+  input.style.cssText = 'position:fixed;opacity:0;top:50%;left:50%;transform:translate(-50%,-50%)';
+  document.body.appendChild(input);
+  input.addEventListener('change', () => {
+    if(input.value) loadStarHistory(input.value, uid);
+    document.body.removeChild(input);
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(() => { if(document.body.contains(input)) document.body.removeChild(input); }, 300);
+  });
+  input.click();
+  input.focus();
 };
 
 // ── 수동 모의투자
