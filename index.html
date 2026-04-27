@@ -1174,18 +1174,44 @@ window.calcTodayStar = () => {
   const fNames  = new Set((kisData ? (kisData.f||[])  : []).map(s => s.name));
   const instNames = new Set((kisData ? (kisData.inst||[]) : []).map(s => s.name));
 
-  // _kisRows에서 메타(sector, ratio, chg, stars) 수집
+  // _kisRows에서 메타(sector, ratio, chg) 수집
   if(window._kisRows) {
     Object.values(window._kisRows).forEach(s => {
       if(!s.name) return;
       setMeta(s.name, s);
-      // ⭐ 연속등장 보조지표 저장
-      if(s.contDays > 0) {
-        if(!scores[s.name]) scores[s.name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
-        scores[s.name].stars = Math.max(scores[s.name].stars, Math.min(s.contDays, 5));
-      }
     });
   }
+
+  // ⭐ 연속등장 - 외국인(+기관), 외국인순매수 열에서만 계산
+  const hist7 = window._kisHistory7 || [];
+  const eligibleCols = ['fi', 'f'];
+  const starNames = new Set([...fiNames, ...fNames]);
+  starNames.forEach(name => {
+    let streak = 0;
+    for(const d of hist7) {
+      const inEligible = eligibleCols.some(col => (d[col]||[]).some(x => x.name === name));
+      if(inEligible) streak++;
+      else break;
+    }
+    if(streak > 0) {
+      if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
+      scores[name].stars = streak;
+    }
+  });
+
+  // 상승수급 연속등장도 체크
+  const upSudNames = new Set((window._upSudHistory7||[]).flatMap(d => (d.list||[]).map(s => s.name)));
+  upSudNames.forEach(name => {
+    let streak = 0;
+    for(const d of (window._upSudHistory7||[])) {
+      if((d.list||[]).some(x => x.name === name)) streak++;
+      else break;
+    }
+    if(streak > 0) {
+      if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
+      scores[name].stars = Math.max(scores[name].stars, streak);
+    }
+  });
 
   // 1. 외국인(+기관) 1열 +2
   fiNames.forEach(name => addScore(name, 2, '외국인(+기관)'));
