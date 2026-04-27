@@ -3252,8 +3252,7 @@ function renderSim() {
       return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
-            <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}${stars}</span>
-            <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
+            <span style="font-size:11px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px">${h.name}${stars}</span>
             <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
           </div>
           <span style="font-size:9px;flex-shrink:0">${sig.icon}</span>
@@ -3307,10 +3306,9 @@ function renderSim() {
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
-            <div><div style="color:var(--tx3)">수급</div><div style="font-weight:700;color:${(h.currentRatio||0)>=30?'var(--ac)':'var(--wa)'}">${(h.currentRatio!=null && h.currentRatio>0)?(h.currentRatio.toFixed(0)+'%'):'-'}</div></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
@@ -3356,10 +3354,9 @@ function renderSim() {
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
-            <div><div style="color:var(--tx3)">수급</div><div style="font-weight:700;color:${(h.currentRatio||0)>=30?'var(--ac)':'var(--wa)'}">${(h.currentRatio!=null && h.currentRatio>0)?(h.currentRatio.toFixed(0)+'%'):'-'}</div></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
