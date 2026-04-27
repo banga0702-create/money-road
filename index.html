@@ -1199,19 +1199,21 @@ window.calcTodayStar = () => {
     }
   });
 
-  // 상승수급 연속등장도 체크
-  const upSudNames = new Set((window._upSudHistory7||[]).flatMap(d => (d.list||[]).map(s => s.name)));
-  upSudNames.forEach(name => {
-    let streak = 0;
-    for(const d of (window._upSudHistory7||[])) {
-      if((d.list||[]).some(x => x.name === name)) streak++;
-      else break;
-    }
-    if(streak > 0) {
-      if(!scores[name]) scores[name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
-      scores[name].stars = Math.max(scores[name].stars, streak);
-    }
-  });
+  // 상승수급 연속등장 체크 - 오늘 상승수급에 있는 종목만
+  const upSudToday0 = (window._upSudHistory7||[]).find(d => d.date === today);
+  if(upSudToday0) {
+    (upSudToday0.list||[]).forEach(s => {
+      let streak = 0;
+      for(const d of (window._upSudHistory7||[])) {
+        if((d.list||[]).some(x => x.name === s.name)) streak++;
+        else break;
+      }
+      if(streak > 0) {
+        if(!scores[s.name]) scores[s.name] = { score: 0, reasons: [], sector: '', ratio: 0, chg: null, stars: 0 };
+        scores[s.name].stars = Math.max(scores[s.name].stars, streak);
+      }
+    });
+  }
 
   // 1. 외국인(+기관) 1열 +2
   fiNames.forEach(name => addScore(name, 2, '외국인(+기관)'));
