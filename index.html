@@ -1355,7 +1355,7 @@ window.openStarDatePicker = async (uid) => {
     const snap = await getDocs(col);
     const dates = snap.docs.map(d => d.id).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse();
     openDatePicker(dates, 'star', uid);
-    document.getElementById('moDatePicker').style.display = 'flex';
+    openMo('moDatePicker');
   } catch(e) {
     console.warn('starHistory 날짜 조회 실패', e);
   }
