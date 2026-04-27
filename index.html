@@ -2886,6 +2886,42 @@ function setNextMemo(id,val){
 
 function renderTrack(){ renderSim(); }
 
+window.simAddBuy = async (type, id) => {
+  // 종목 찾기
+  let arr, saveFunc;
+  if(type === 'auto') { arr = window._simHoldings; saveFunc = saveSim; }
+  else if(type === 'manual') { arr = window._simManual; saveFunc = saveSimManual; }
+  else if(type === 'star') { arr = window._simStar; saveFunc = saveSimStar; }
+  if(!arr) return;
+
+  const h = arr.find(x => x.id === id);
+  if(!h) return;
+
+  const qtyStr = prompt(`${h.name} 추가매수 수량 입력\n현재 ${h.qty}주 보유 / 매수가 ${h.buyPrice.toLocaleString()}원`, '');
+  if(!qtyStr) return;
+  const addQty = parseInt(qtyStr);
+  if(!addQty || addQty <= 0) return alert('올바른 수량을 입력하세요');
+
+  const curPrice = h.currentPrice || h.buyPrice;
+  const priceStr = prompt(`${h.name} 추가매수 단가 입력`, curPrice);
+  if(!priceStr) return;
+  const addPrice = parseInt(priceStr.replace(/,/g,''));
+  if(!addPrice || addPrice <= 0) return alert('올바른 단가를 입력하세요');
+
+  // 평단가 재계산
+  const totalQty = h.qty + addQty;
+  const totalAmount = (h.buyPrice * h.qty) + (addPrice * addQty);
+  const newAvg = Math.round(totalAmount / totalQty);
+
+  h.qty = totalQty;
+  h.buyPrice = newAvg;
+  h.buyAmount = totalAmount;
+
+  await saveFunc();
+  renderSim();
+  alert(`${h.name} 추가매수 완료\n평단가: ${newAvg.toLocaleString()}원 / 총 ${totalQty}주`);
+};
+
 function toggleSimHist() {
   const el = document.getElementById('simHistList');
   const icon = document.getElementById('simHistToggleIcon');
@@ -3229,7 +3265,10 @@ function renderSim() {
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
-          <button onclick="simSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+          <div style="display:flex;gap:4px">
+            <button onclick="simAddBuy('auto',${h.id})" style="background:var(--ac);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">추가</button>
+            <button onclick="simSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+          </div>
         </div>
       </div>`;
     }).join('') + '</div>';
@@ -3275,7 +3314,10 @@ function renderSim() {
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
-            <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+            <div style="display:flex;gap:4px">
+              <button onclick="simAddBuy('manual',${h.id})" style="background:var(--ac);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">추가</button>
+              <button onclick="simManualSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+            </div>
           </div>
         </div>`;
       }).join('') + '</div>';
@@ -3321,7 +3363,10 @@ function renderSim() {
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
-            <button onclick="simStarSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+            <div style="display:flex;gap:4px">
+              <button onclick="simAddBuy('star',${h.id})" style="background:var(--ac);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">추가</button>
+              <button onclick="simStarSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+            </div>
           </div>
         </div>`;
       }).join('') + '</div>';
