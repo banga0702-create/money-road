@@ -4788,6 +4788,23 @@ window.upSudFetch = async () => {
       return trb - tra; // 거래대금 높은 순
     });
 
+    // fBuyMap에 없는 종목 investor API로 개별 조회 (다른 API 호출 완료 후라 토큰 충돌 없음)
+    msg.textContent = '🔍 수급비중 계산 중...';
+    const missingStocks = result.filter(s => fBuyMap[s.hts_kor_isnm] === undefined && s.mksc_shrn_iscd);
+    for(const s of missingStocks) {
+      try {
+        await new Promise(r => setTimeout(r, 1200));
+        const ir = await fetch('/api/kis?action=investor&code=' + s.mksc_shrn_iscd);
+        const id = await ir.json();
+        const it = (id.output||[])[0];
+        if(it) {
+          const name = s.hts_kor_isnm;
+          fBuyMap[name] = Math.round(parseFloat(it.frgn_ntby_tr_pbmn||0) / 100);
+          iBuyMap[name] = Math.round(parseFloat(it.orgn_ntby_tr_pbmn||0) / 100);
+        }
+      } catch(e) { console.warn('investor 조회 실패:', s.hts_kor_isnm, e); }
+    }
+
     // 과거 upSudHistory에서 연속 등장 횟수 계산 (_upSudHistory7 캐시 사용)
     let upSudStreakMap = {};
     try {
