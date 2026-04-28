@@ -584,13 +584,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div id="stockList"></div>
     <div id="stockEmpty" class="empty"><div class="ico">📝</div><p>아직 기록된 종목이 없습니다<br>위 추가 버튼을 눌러 기록하세요</p></div>
 
-    <!-- 분위기파악 섹션 -->
-    <div class="sh" style="margin-top:16px">
-      <span class="sh-title">🔍 분위기파악</span>
-      <span style="font-size:10px;color:var(--tx3)" id="bunwigiCount"></span>
-    </div>
-    <div id="bunwigiList"><div class="empty" style="padding:16px"><p>순매수TOP 재실행 후 자동 업데이트돼요</p></div></div>
-
   </div>
 
   <!-- ══ 탭3: 특징주 ══ -->
@@ -2974,7 +2967,6 @@ async function saveHistMemo(idx, memo) {
 
 // ── 모의투자
 window._simHoldings = []; // 보유 종목
-window._simBunwigi = []; // 분위기파악 보유 종목
 window._simHistory = [];  // 매매 기록
 
 window.resetStars = async () => {
@@ -2994,15 +2986,7 @@ window.initSim = async () => {
       window._simHistory = snap.data().history || [];
     }
   } catch(e) {}
-  try {
-    const bsnap = await getDoc(doc(db, 'users', uid, 'simData', 'bunwigi'));
-    if(bsnap.exists()) {
-      window._simBunwigi = bsnap.data().holdings || [];
-      window._simBunwigiHistory = bsnap.data().history || [];
-    }
-  } catch(e) {}
   renderSim();
-  renderBunwigi();
 };
 
 window.saveSim = async () => {
@@ -3015,146 +2999,6 @@ window.saveSim = async () => {
       updatedAt: Date.now()
     });
   } catch(e) {}
-};
-
-// 분위기파악 저장
-window.saveBunwigi = async () => {
-  const uid = window._curUser?.uid;
-  if(!uid) return;
-  try {
-    await setDoc(doc(db, 'users', uid, 'simData', 'bunwigi'), {
-      holdings: window._simBunwigi,
-      history: window._simBunwigiHistory || [],
-      updatedAt: Date.now()
-    });
-  } catch(e) {}
-};
-
-// 분위기파악 렌더링
-window.renderBunwigi = () => {
-  const listEl = document.getElementById('bunwigiList');
-  const countEl = document.getElementById('bunwigiCount');
-  if(!listEl) return;
-  const holdings = (window._simBunwigi||[]).filter(h => !h.soldAt);
-  if(countEl) countEl.textContent = holdings.length + '종목';
-  if(!holdings.length) {
-    listEl.innerHTML = '<div class="empty" style="padding:16px"><p>순매수TOP 재실행 후 자동 업데이트돼요</p></div>';
-    return;
-  }
-  listEl.innerHTML = holdings.map(h => {
-    const cur = h.currentPrice || h.buyPrice;
-    const profit = (cur - h.buyPrice) * h.qty;
-    const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
-    const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
-    return `<div style="margin:0 16px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div>
-          <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px">${h.name}</span>
-          <span style="font-size:8px;color:var(--tx3);margin-left:4px">${h.buyDate}</span>
-        </div>
-        <span style="font-size:10px;font-weight:800;color:var(--ac)">수급${h.ratio}%</span>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:6px;text-align:center">
-        <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
-        <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
-        <div style="display:flex;gap:4px">
-          <button onclick="bunwigiAddBuy(${h.id})" style="background:var(--ac);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">추가</button>
-          <button onclick="bunwigiSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-};
-
-// 분위기파악 추가매수
-window.bunwigiAddBuy = async (id) => {
-  const h = window._simBunwigi.find(x => x.id === id);
-  if(!h) return;
-  const qtyStr = prompt(\`\${h.name} 추가매수 수량 입력\n현재 \${h.qty}주 보유\`, '');
-  if(!qtyStr) return;
-  const addQty = parseInt(qtyStr);
-  if(!addQty || addQty <= 0) return alert('올바른 수량을 입력하세요');
-  const priceStr = prompt(\`\${h.name} 추가매수 단가 입력\`, h.currentPrice || h.buyPrice);
-  if(!priceStr) return;
-  const addPrice = parseInt(priceStr.replace(/,/g,''));
-  if(!addPrice) return alert('올바른 단가를 입력하세요');
-  const totalQty = h.qty + addQty;
-  h.buyPrice = Math.round((h.buyPrice * h.qty + addPrice * addQty) / totalQty);
-  h.qty = totalQty;
-  await saveBunwigi();
-  renderBunwigi();
-};
-
-// 분위기파악 매도
-window.bunwigiSell = async (id) => {
-  const h = window._simBunwigi.find(x => x.id === id);
-  if(!h) return;
-  const cur = h.currentPrice || h.buyPrice;
-  const priceStr = prompt(\`\${h.name} 매도가 입력\`, cur);
-  if(!priceStr) return;
-  const sellPrice = parseInt(priceStr.replace(/,/g,''));
-  if(!sellPrice) return;
-  h.soldAt = new Date().toISOString().slice(0,10);
-  h.sellPrice = sellPrice;
-  h.profit = (sellPrice - h.buyPrice) * h.qty;
-  h.profitRate = +((sellPrice - h.buyPrice) / h.buyPrice * 100).toFixed(2);
-  if(!window._simBunwigiHistory) window._simBunwigiHistory = [];
-  window._simBunwigiHistory.unshift({...h});
-  await saveBunwigi();
-  renderBunwigi();
-};
-
-// 분위기파악 자동매수 (순매수TOP 16~60위 중 수급 30%↑)
-window.simBunwigiEntry = async (stocks) => {
-  if(!stocks || !stocks.length) return;
-  const now = new Date();
-  const hour = now.getHours();
-  const min = now.getMinutes();
-  if(hour < 15 || (hour === 15 && min < 30)) return;
-  const today = new Date().toISOString().slice(0,10);
-  const targets = stocks.filter(s => (s.ratio||0) >= 30);
-  if(!targets.length) return;
-  const newTargets = targets.filter(s => !window._simBunwigi.find(h => h.name === s.name && !h.soldAt));
-  if(!newTargets.length) return;
-
-  const needPrice = newTargets.filter(s => !s.currentPrice);
-  const pCodes = [...new Set(needPrice.map(s => s.code).filter(Boolean))];
-  const priceMap = {};
-  for(let i = 0; i < pCodes.length; i += 10) {
-    const batch = pCodes.slice(i, i+10).join(',');
-    try {
-      const r = await fetch('/api/kis?action=stock_price&codes=' + batch);
-      const d = await r.json();
-      (d.output||[]).forEach(p => { if(p.code) priceMap[p.code] = parseInt(p.stck_prpr || p.prdy_clpr || 0); });
-    } catch(e) {}
-  }
-
-  let added = 0;
-  for(const s of newTargets) {
-    const price = s.currentPrice || priceMap[s.code] || 0;
-    if(!price) continue;
-    const qty = price >= 1000000 ? 1 : Math.floor(1000000 / price);
-    if(!qty) continue;
-    window._simBunwigi.push({
-      id: Date.now() + Math.random(),
-      name: s.name, code: s.code||'',
-      sector: s.sector||'',
-      buyPrice: price, qty,
-      buyAmount: price * qty,
-      buyDate: today,
-      ratio: s.ratio,
-      currentPrice: price,
-      signal: 'hold'
-    });
-    added++;
-  }
-  if(added > 0) {
-    await saveBunwigi();
-    renderBunwigi();
-  }
 };
 
 // 특징주 재실행 후 30%↑ 종목 자동 매수
@@ -3356,24 +3200,10 @@ window.refreshSimPrices = async () => {
         } catch(e) {}
       }
     }
-    // 분위기파악 시세 갱신
-    const bun = (window._simBunwigi||[]).filter(h => !h.soldAt);
-    const bunCodes = [...new Set(bun.map(h => h.code).filter(Boolean))];
-    for(let i = 0; i < bunCodes.length; i += 10) {
-      const batch = bunCodes.slice(i, i+10).join(',');
-      const rb = await fetch('/api/kis?action=stock_price&codes=' + batch);
-      const db2 = await rb.json();
-      (db2.output||[]).forEach(p => {
-        const h = bun.find(h => h.code === p.code);
-        if(h) h.currentPrice = parseInt(p.stck_prpr || p.prdy_clpr || h.currentPrice);
-      });
-    }
     await saveSim();
     await saveSimManual();
     if(window.saveSimStar) await saveSimStar();
-    if(window.saveBunwigi) await saveBunwigi();
     renderSim();
-    if(window.renderBunwigi) renderBunwigi();
   } catch(e) { alert('시세 갱신 실패: ' + e.message); }
 };
 
@@ -4044,13 +3874,9 @@ window.kisTopFetch = async () => {
         await renderUpSudDateTabs(user.uid);
         window._kisUid = user.uid;
         window._kisLatestDate = today;
-        // 모의투자 자동 매수 (순매수TOP 화면 표시 15종목만)
+        // 모의투자 자동 매수 (순매수TOP만)
         if(window.simAutoEntry) {
-          const top15Set = new Set([...fi, ...f, ...inst].map(s => s.name));
-          const top15Stocks = all.filter(s => top15Set.has(s.name));
-          const extra30Stocks = all.filter(s => !top15Set.has(s.name));
-          simAutoEntry(top15Stocks);
-          if(window.simBunwigiEntry) simBunwigiEntry(extra30Stocks);
+          simAutoEntry(all);
         }
         // 저장 완료 후 오늘 탭 형식으로 바로 렌더링 (통일)
         await loadKisHistory(today, user.uid);
