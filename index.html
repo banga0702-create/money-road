@@ -4813,7 +4813,7 @@ window.upSudFetch = async () => {
         const code = s.mksc_shrn_iscd || '';
         const fBuy = fBuyMap[name] || 0;
         const iBuy = iBuyMap[name] || 0;
-        const ratio = tr > 0 ? +((fBuy + iBuy) / (tr * 100) * 100).toFixed(1) : 0;
+        const ratio = tr > 0 ? +((fBuy + iBuy) / (tr * 10000) * 100).toFixed(1) : 0;
         const ratioColor = ratio >= 30 ? 'var(--ac)' : ratio >= 15 ? 'var(--wa)' : 'var(--tx3)';
         window._kisRows = window._kisRows || {};
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
@@ -4831,8 +4831,8 @@ window.upSudFetch = async () => {
           + (sector ? '<span style="font-size:9px;color:var(--tx3)">' + sector + '</span>' : '')
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
           + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(s=>s.name===name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
+          + (ratio > 0 ? '<span style="font-size:9px;font-weight:800;color:' + ratioColor + ';background:rgba(0,0,0,0.04);border-radius:4px;padding:1px 4px">수급' + ratio + '%</span>' : '')
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
-          + (ratio > 0 ? '<span style="font-size:10px;font-weight:800;color:' + ratioColor + '"> 수급' + ratio + '%</span>' : '')
           + '</div>'
           + '<div style="font-size:9px;margin-top:3px">'
           + '<span id="inv_' + key + '"></span>'
