@@ -1223,11 +1223,9 @@ window.calcTodayStar = () => {
     setMeta(s.name, { chg: s.chg, sector: s.sector||'', ratio: s.ratio||0 });
   });
 
-  // 2. 순매수TOP(fi/f/inst 어느 열이든) 겹치면 +1
+  // 2. 순매수TOP(fi/f/inst 어느 열이든) +1 (독립적으로)
   const allTopNames = new Set([...fiNames, ...fNames, ...instNames]);
-  allTopNames.forEach(name => {
-    if(upSudNames.has(name)) addScore(name, 1, '순매수TOP');
-  });
+  allTopNames.forEach(name => addScore(name, 1, '순매수TOP'));
 
   // 3. 정배열 +1
   if(window._jbLastResults) {
