@@ -4804,7 +4804,7 @@ window.upSudFetch = async () => {
     const missingStocks = result.filter(s => fBuyMap[s.hts_kor_isnm] === undefined && s.mksc_shrn_iscd);
     for(const s of missingStocks) {
       try {
-        await new Promise(r => setTimeout(r, 400)); // 토큰 충돌 방지
+        await new Promise(r => setTimeout(r, 1500)); // 토큰 충돌 방지
         const ir = await fetch('/api/kis?action=investor&code=' + s.mksc_shrn_iscd);
         const id = await ir.json();
         const it = (id.output||[])[0];
