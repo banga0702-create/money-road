@@ -4820,6 +4820,8 @@ window.upSudFetch = async () => {
 
         window._kisRows = window._kisRows || {};
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
+        const fBuy = fBuyMap[name] ?? fBuyMap[code] ?? 0;
+        const iBuy = iBuyMap[name] ?? iBuyMap[code] ?? 0;
         window._kisRows[key] = { name, code, fBuy, iBuy, sector };
         const cardBg = 'background:var(--sf);border:1px solid var(--bd)';
         const streak = upSudStreakMap[name] || 0;
