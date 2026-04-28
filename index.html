@@ -4674,8 +4674,8 @@ window.etfReverseFetch = async () => {
       const name = s.hts_kor_isnm;
       const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
       const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
-      if(fBuy > 0) fBuyMap[name] = fBuy;
-      if(iBuy > 0) iBuyMap[name] = iBuy;
+      fBuyMap[name] = fBuy;
+      iBuyMap[name] = iBuy;
     });
 
     // ETF 판별: 종목명에 KODEX/TIGER/KINDEX/KOSEF/ARIRANG/HANARO/ACE/SOL/FOCUS 포함
@@ -4799,6 +4799,22 @@ window.upSudFetch = async () => {
         if(streak > 0) upSudStreakMap[name] = streak;
       });
     } catch(e) { console.warn('연속등장 계산 실패:', e); }
+
+    // fBuyMap에 없는 종목 investor API로 외국인/기관 순매수 개별 조회
+    const missingStocks = result.filter(s => fBuyMap[s.hts_kor_isnm] === undefined && s.mksc_shrn_iscd);
+    for(const s of missingStocks) {
+      try {
+        await new Promise(r => setTimeout(r, 400)); // 토큰 충돌 방지
+        const ir = await fetch('/api/kis?action=investor&code=' + s.mksc_shrn_iscd);
+        const id = await ir.json();
+        const it = (id.output||[])[0];
+        if(it) {
+          const name = s.hts_kor_isnm;
+          fBuyMap[name] = Math.round(parseFloat(it.frgn_ntby_tr_pbmn||0) / 100);
+          iBuyMap[name] = Math.round(parseFloat(it.orgn_ntby_tr_pbmn||0) / 100);
+        }
+      } catch(e) {}
+    }
 
     const listEl = document.getElementById('upSudList');
     if(!result.length) {
