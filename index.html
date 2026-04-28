@@ -4758,12 +4758,16 @@ window.upSudFetch = async () => {
       if(priceRes.ok) priceData = await priceRes.json();
     } catch(e) { console.warn('price_rank 실패, 코스피만 사용:', e); }
 
-    // 외국인/기관 순매수 맵
+    // 외국인/기관 순매수 맵 (종목명 + 종목코드 둘 다 키로)
     const fBuyMap = {}, iBuyMap = {};
     (fiData.output||[]).forEach(s => {
       const n = s.hts_kor_isnm;
-      fBuyMap[n] = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
-      iBuyMap[n] = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+      const c = s.mksc_shrn_iscd;
+      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
+      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+      fBuyMap[n] = fBuy;
+      iBuyMap[n] = iBuy;
+      if(c) { fBuyMap[c] = fBuy; iBuyMap[c] = iBuy; }
     });
 
     const seen = new Set();
@@ -4813,8 +4817,8 @@ window.upSudFetch = async () => {
         const rankCls = i < 3 ? ['r1','r2','r3'][i] : 'b-gr';
         const key = 'us_' + name.replace(/[^a-zA-Z0-9가-힣]/g,'');
         const code = s.mksc_shrn_iscd || '';
-        const fBuy = fBuyMap[name] || 0;
-        const iBuy = iBuyMap[name] || 0;
+        const fBuy = fBuyMap[name] ?? fBuyMap[code] ?? 0;
+        const iBuy = iBuyMap[name] ?? iBuyMap[code] ?? 0;
         const ratio = tr > 0 ? +((fBuy + iBuy) / (tr * 10000) * 100).toFixed(1) : 0;
         const ratioColor = ratio >= 30 ? 'var(--ac)' : ratio >= 15 ? 'var(--wa)' : 'var(--tx3)';
         window._kisRows = window._kisRows || {};
