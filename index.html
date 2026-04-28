@@ -1218,7 +1218,10 @@ window.calcTodayStar = () => {
   // 1. 상승수급 +1 (메인)
   const upSudToday = (window._upSudHistory7||[]).find(d => d.date === today);
   const upSudNames = new Set((upSudToday ? (upSudToday.list||[]) : []).map(s => s.name));
-  upSudNames.forEach(name => addScore(name, 1, '상승수급'));
+  (upSudToday ? (upSudToday.list||[]) : []).forEach(s => {
+    addScore(s.name, 1, '상승수급');
+    setMeta(s.name, { chg: s.chg, sector: s.sector||'', ratio: s.ratio||0 });
+  });
 
   // 2. 순매수TOP(fi/f/inst 어느 열이든) 겹치면 +1
   const allTopNames = new Set([...fiNames, ...fNames, ...instNames]);
