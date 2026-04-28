@@ -4788,23 +4788,6 @@ window.upSudFetch = async () => {
       return trb - tra; // 거래대금 높은 순
     });
 
-    // fBuyMap에 없는 종목 investor API로 개별 조회 (다른 API 호출 완료 후라 토큰 충돌 없음)
-    msg.textContent = '🔍 수급비중 계산 중...';
-    const missingStocks = result.filter(s => fBuyMap[s.hts_kor_isnm] === undefined && s.mksc_shrn_iscd);
-    for(const s of missingStocks) {
-      try {
-        await new Promise(r => setTimeout(r, 1200));
-        const ir = await fetch('/api/kis?action=investor&code=' + s.mksc_shrn_iscd);
-        const id = await ir.json();
-        const it = (id.output||[])[0];
-        if(it) {
-          const name = s.hts_kor_isnm;
-          fBuyMap[name] = Math.round(parseFloat(it.frgn_ntby_tr_pbmn||0) / 100);
-          iBuyMap[name] = Math.round(parseFloat(it.orgn_ntby_tr_pbmn||0) / 100);
-        }
-      } catch(e) { console.warn('investor 조회 실패:', s.hts_kor_isnm, e); }
-    }
-
     // 과거 upSudHistory에서 연속 등장 횟수 계산 (_upSudHistory7 캐시 사용)
     let upSudStreakMap = {};
     try {
@@ -4834,14 +4817,11 @@ window.upSudFetch = async () => {
         const rankCls = i < 3 ? ['r1','r2','r3'][i] : 'b-gr';
         const key = 'us_' + name.replace(/[^a-zA-Z0-9가-힣]/g,'');
         const code = s.mksc_shrn_iscd || '';
-        const fBuy = fBuyMap[name] ?? fBuyMap[code] ?? 0;
-        const iBuy = iBuyMap[name] ?? iBuyMap[code] ?? 0;
-        const ratio = tr > 0 ? +((fBuy + iBuy) / (tr * 10000) * 100).toFixed(1) : 0;
-        const ratioColor = ratio >= 30 ? 'var(--ac)' : ratio >= 15 ? 'var(--wa)' : 'var(--tx3)';
+
         window._kisRows = window._kisRows || {};
         const sector = (window._stockThemeMap && window._stockThemeMap[name]) || s.bstp_kor_isnm || '';
-        window._kisRows[key] = { name, code, fBuy, iBuy, sector, ratio };
-        const cardBg = ratio >= 30 ? 'background:var(--sf);border:1px solid var(--ac)' : 'background:var(--sf);border:1px solid var(--bd)';
+        window._kisRows[key] = { name, code, fBuy, iBuy, sector };
+        const cardBg = 'background:var(--sf);border:1px solid var(--bd)';
         const streak = upSudStreakMap[name] || 0;
         const stars = streak > 0 ? '<span style="font-size:10px;margin-left:1px">' + '⭐'.repeat(Math.min(streak,5)) + '</span>' : '';
         return '<div style="' + cardBg + ';border-radius:8px;padding:6px 8px;cursor:pointer" onclick="upSudClick(\'' + key + '\')">'
@@ -4854,7 +4834,6 @@ window.upSudFetch = async () => {
           + (sector ? '<span style="font-size:9px;color:var(--tx3)">' + sector + '</span>' : '')
           + '<span style="font-size:9px;color:var(--tx3);font-weight:700">💰' + tr + '억</span>'
           + (window._jbLastResults && window._jbLastResults.some(sec=>sec.stocks.some(s=>s.name===name)) ? '<span style="font-size:8px;font-weight:800;color:rgba(0,212,170,1);background:rgba(0,212,170,0.12);border:1px solid rgba(0,212,170,0.4);border-radius:4px;padding:1px 4px">정배열</span>' : '')
-          + (ratio > 0 ? '<span style="font-size:9px;font-weight:800;color:' + ratioColor + ';background:rgba(0,0,0,0.04);border-radius:4px;padding:1px 4px">수급' + ratio + '%</span>' : '')
           + '<span style="font-size:10px;color:var(--up);font-weight:800;margin-left:auto">+' + chg + '%</span>'
           + '</div>'
           + '<div style="font-size:9px;margin-top:3px">'
