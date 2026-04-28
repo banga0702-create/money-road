@@ -3046,26 +3046,26 @@ window.renderBunwigi = () => {
     const profit = (cur - h.buyPrice) * h.qty;
     const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
     const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
-    return \`<div style="margin:0 16px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px">
+    return `<div style="margin:0 16px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div>
-          <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px">\${h.name}</span>
-          <span style="font-size:8px;color:var(--tx3);margin-left:4px">\${h.buyDate}</span>
+          <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px">${h.name}</span>
+          <span style="font-size:8px;color:var(--tx3);margin-left:4px">${h.buyDate}</span>
         </div>
-        <span style="font-size:10px;font-weight:800;color:var(--ac)">수급\${h.ratio}%</span>
+        <span style="font-size:10px;font-weight:800;color:var(--ac)">수급${h.ratio}%</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:6px;text-align:center">
-        <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">\${h.buyPrice.toLocaleString()}</div></div>
-        <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:\${profitColor}">\${cur.toLocaleString()}</div></div>
+        <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
+        <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:9px;font-weight:800;color:\${profitColor}">\${profit>=0?'+':''}\${profit.toLocaleString()}원(\${rate}%)</span>
+        <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
         <div style="display:flex;gap:4px">
-          <button onclick="bunwigiAddBuy(\${h.id})" style="background:var(--ac);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">추가</button>
-          <button onclick="bunwigiSell(\${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
+          <button onclick="bunwigiAddBuy(${h.id})" style="background:var(--ac);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">추가</button>
+          <button onclick="bunwigiSell(${h.id})" style="background:var(--up);color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer">매도</button>
         </div>
       </div>
-    </div>\`;
+    </div>`;
   }).join('');
 };
 
