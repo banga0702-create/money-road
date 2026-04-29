@@ -2912,7 +2912,7 @@ function setNextMemo(id,val){
   t.nextMemo=val;save();
 }
 
-function renderTrack(){ renderSim(); }
+function renderTrack(){ renderSim(); if(window.applySimToggleState) applySimToggleState(); }
 
 window.simAddBuy = async (type, id) => {
   // 종목 찾기
@@ -2994,6 +2994,7 @@ window.initSim = async () => {
     }
   } catch(e) {}
   renderSim();
+  if(window.applySimToggleState) applySimToggleState();
 };
 
 window.saveSim = async () => {
@@ -3513,7 +3514,14 @@ window.addEventListener('load',()=>{
 });
 
 // ── 섹션 토글
-const _simToggle = {auto: true, manual: true, star: true};
+// 마지막 상태 로컬스토리지에서 복원
+const _simToggleDefault = {auto: true, manual: true, star: true};
+try {
+  const saved = JSON.parse(localStorage.getItem('simToggleState') || '{}');
+  Object.assign(_simToggleDefault, saved);
+} catch(e) {}
+const _simToggle = _simToggleDefault;
+
 window.toggleSimSection = (sec) => {
   _simToggle[sec] = !_simToggle[sec];
   const listId = sec === 'auto' ? 'simHoldList' : sec === 'manual' ? 'simManualList' : 'simStarList';
@@ -3522,6 +3530,19 @@ window.toggleSimSection = (sec) => {
   const arrow = document.getElementById(toggleId);
   if(el) el.style.display = _simToggle[sec] ? '' : 'none';
   if(arrow) arrow.textContent = _simToggle[sec] ? '▲' : '▼';
+  try { localStorage.setItem('simToggleState', JSON.stringify(_simToggle)); } catch(e) {}
+};
+
+// 페이지 로드 시 저장된 상태 적용
+window.applySimToggleState = () => {
+  ['auto', 'manual', 'star'].forEach(sec => {
+    const listId = sec === 'auto' ? 'simHoldList' : sec === 'manual' ? 'simManualList' : 'simStarList';
+    const toggleId = sec === 'auto' ? 'simAutoToggle' : sec === 'manual' ? 'simManualToggle' : 'simStarToggle';
+    const el = document.getElementById(listId);
+    const arrow = document.getElementById(toggleId);
+    if(el) el.style.display = _simToggle[sec] ? '' : 'none';
+    if(arrow) arrow.textContent = _simToggle[sec] ? '▲' : '▼';
+  });
 };
 
 // ── 주인공투자
