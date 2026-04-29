@@ -759,7 +759,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div id="simStarList"><div class="empty" style="padding:16px"><p>오늘의 주인공 종목을 추가하세요</p></div></div>
 
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimHist()">
-      <span class="sh-title">📋 매매 기록 <span id="simHistToggleIcon">▲</span></span>
+      <span class="sh-title">📋 매매 기록 <span id="simHistToggleIcon">▼</span></span>
       <span style="font-size:10px;color:var(--tx3)" id="simHistCount"></span>
     </div>
     <div id="simHistList" style="display:none" data-collapsed="true"><div class="empty" style="padding:16px"><p>완료된 매매가 없어요</p></div></div>
@@ -2956,7 +2956,7 @@ function toggleSimHist() {
   if(!el) return;
   const isHidden = el.style.display === 'none';
   el.style.display = isHidden ? 'block' : 'none';
-  if(icon) icon.textContent = isHidden ? '▼' : '▲';
+  if(icon) icon.textContent = isHidden ? '▲' : '▼';
 }
 
 async function deleteHistItem(idx) {
