@@ -1473,13 +1473,13 @@ window.renderSudTop1Cal = () => {
   // 요일 헤더
   const days = ['일','월','화','수','목','금','토'];
   // 토/일은 작게, 월~금은 넉넉하게
-  const colWidths = ['4%','18%','18%','18%','18%','18%','4%'];
+  const colWidths = ['7%','17%','17%','17%','17%','17%','7%'];
 
   let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed">
     <colgroup>${colWidths.map(w=>`<col style="width:${w}">`).join('')}</colgroup>
     <tr>${days.map((d,i) => {
       const isWe = i===0||i===6;
-      const color = i===0?'var(--dn)':i===6?'var(--pr)':'var(--tx3)';
+      const color = i===0?'#e53935':i===6?'#1565c0':'var(--tx3)';
       return `<th style="font-size:9px;color:${color};padding:4px 2px;text-align:center;font-weight:600">${d}</th>`;
     }).join('')}</tr>`;
 
@@ -1500,10 +1500,10 @@ window.renderSudTop1Cal = () => {
         const bgColor = isToday ? 'rgba(79,99,232,0.06)' : 'var(--sf)';
 
         if(isWe) {
-          // 토/일: 날짜만 작게
-          const color = dow===0?'var(--dn)':'var(--pr)';
-          html += `<td style="padding:2px;height:20px;text-align:center">
-            <div style="font-size:9px;color:${color}">${date}</div>
+          // 토/일: 날짜만
+          const color = dow===0?'#e53935':'#1565c0';
+          html += `<td style="padding:2px;height:52px;text-align:center;vertical-align:top">
+            <div style="font-size:10px;font-weight:700;color:${color};padding-top:4px">${date}</div>
           </td>`;
         } else {
           // 월~금: 넉넉한 칸
