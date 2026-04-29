@@ -584,6 +584,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div id="stockList"></div>
     <div id="stockEmpty" class="empty"><div class="ico">📝</div><p>아직 기록된 종목이 없습니다<br>위 추가 버튼을 눌러 기록하세요</p></div>
 
+    <!-- 오늘의 수급1등 섹션 -->
+    <div class="sh" style="margin-top:16px">
+      <span class="sh-title">🏆 오늘의 수급1등</span>
+    </div>
+    <div style="display:flex;gap:6px;padding:0 16px 8px;flex-wrap:wrap" id="sudTop1DateBtns"></div>
+    <div id="sudTop1List"><div class="empty" style="padding:16px"><p>순매수TOP 재실행 시 자동 기록돼요</p></div></div>
+
   </div>
 
   <!-- ══ 탭3: 특징주 ══ -->
@@ -1402,6 +1409,76 @@ window.simManualAdd = async (name, code, curPrice) => {
   await saveSimManual();
   renderSim();
   alert(name + ' 수동 모의투자 추가됐어요! 💰');
+};
+
+// ── 오늘의 수급1등
+window._sudTop1History = []; // [{date, name, code, ratio, chg, sector}]
+
+window.saveSudTop1 = async () => {
+  const uid = window._curUser?.uid;
+  if(!uid) return;
+  try {
+    await setDoc(doc(db, 'users', uid, 'sudTop1', 'history'), {
+      list: window._sudTop1History, updatedAt: Date.now()
+    });
+  } catch(e) {}
+};
+
+window.loadSudTop1 = async (uid) => {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid, 'sudTop1', 'history'));
+    if(snap.exists()) window._sudTop1History = snap.data().list || [];
+  } catch(e) {}
+  renderSudTop1DateBtns();
+  const today = new Date().toISOString().slice(0,10);
+  renderSudTop1(today);
+};
+
+window.renderSudTop1DateBtns = () => {
+  const el = document.getElementById('sudTop1DateBtns');
+  if(!el) return;
+  const dates = [...new Set((window._sudTop1History||[]).map(d => d.date))].sort().reverse().slice(0,7);
+  const today = new Date().toISOString().slice(0,10);
+  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  el.innerHTML = dates.map(d => {
+    const label = d === today ? '오늘' : d === yesterday ? '어제' : d.slice(5).replace('-','/');
+    return `<button id="sudTop1Btn-${d}" onclick="renderSudTop1('${d}')"
+      style="padding:4px 12px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:12px;cursor:pointer">${label}</button>`;
+  }).join('');
+  if(dates.length) {
+    const firstBtn = document.getElementById('sudTop1Btn-' + dates[0]);
+    if(firstBtn) { firstBtn.style.background='var(--pr)'; firstBtn.style.color='#fff'; firstBtn.style.borderColor='var(--pr)'; }
+  }
+};
+
+window.renderSudTop1 = (date) => {
+  const el = document.getElementById('sudTop1List');
+  if(!el) return;
+  // 날짜 버튼 활성화
+  document.querySelectorAll('[id^="sudTop1Btn-"]').forEach(b => {
+    b.style.background = 'transparent'; b.style.color = ''; b.style.borderColor = 'var(--bd)';
+  });
+  const activeBtn = document.getElementById('sudTop1Btn-' + date);
+  if(activeBtn) { activeBtn.style.background='var(--pr)'; activeBtn.style.color='#fff'; activeBtn.style.borderColor='var(--pr)'; }
+
+  const items = (window._sudTop1History||[]).filter(d => d.date === date);
+  if(!items.length) {
+    el.innerHTML = '<div class="empty" style="padding:16px"><p>해당 날짜 데이터가 없어요</p></div>';
+    return;
+  }
+  el.innerHTML = items.map(d => {
+    const ratioColor = (d.ratio||0) >= 30 ? 'var(--ac)' : 'var(--wa)';
+    return `<div style="margin:0 16px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;font-weight:800">${d.name}</div>
+        <div style="font-size:9px;color:var(--tx3)">${d.sector||''} · ${d.date}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:13px;font-weight:800;color:var(--up)">${d.chg>=0?'+':''}${d.chg}%</div>
+        <div style="font-size:11px;font-weight:800;color:${ratioColor}">수급 ${d.ratio}%</div>
+      </div>
+    </div>`;
+  }).join('');
 };
 
 window.saveSimManual = async () => {
@@ -2995,6 +3072,7 @@ window.initSim = async () => {
   } catch(e) {}
   renderSim();
   if(window.applySimToggleState) applySimToggleState();
+  if(window.loadSudTop1) await loadSudTop1(uid);
 };
 
 window.saveSim = async () => {
@@ -3903,6 +3981,21 @@ window.kisTopFetch = async () => {
         await renderUpSudDateTabs(user.uid);
         window._kisUid = user.uid;
         window._kisLatestDate = today;
+        // 오늘의 수급1등 저장
+        if(all.length > 0) {
+          const top1 = [...all].sort((a,b) => (b.ratio||0) - (a.ratio||0))[0];
+          if(top1 && top1.ratio > 0) {
+            if(!window._sudTop1History) window._sudTop1History = [];
+            const exists = window._sudTop1History.find(d => d.date === today);
+            if(!exists) {
+              window._sudTop1History.unshift({ date: today, name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' });
+              if(window.saveSudTop1) await saveSudTop1();
+              renderSudTop1DateBtns();
+              renderSudTop1(today);
+            }
+          }
+        }
+
         // 모의투자 자동 매수 (순매수TOP만)
         if(window.simAutoEntry) {
           simAutoEntry(all);
