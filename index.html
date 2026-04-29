@@ -578,9 +578,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 오늘의 수급1등 섹션 -->
     <div class="sh">
       <span class="sh-title">🏆 오늘의 수급1등</span>
-      <button onclick="openSudTop1Cal()" style="background:transparent;border:1px solid var(--bd);border-radius:8px;padding:2px 8px;font-size:12px;cursor:pointer">📅</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="sudTop1PrevMonth()" style="background:transparent;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">‹</button>
+        <span id="sudTop1MonthLabel" style="font-size:12px;font-weight:700"></span>
+        <button onclick="sudTop1NextMonth()" style="background:transparent;border:1px solid var(--bd);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer">›</button>
+      </div>
     </div>
-    <div id="sudTop1List"><div class="empty" style="padding:16px"><p>순매수TOP 재실행 시 자동 기록돼요</p></div></div>
+    <div id="sudTop1Cal" style="padding:0 16px 16px"></div>
 
     <!-- 종목 목록 -->
     <div class="sh" style="margin-top:16px">
@@ -1413,17 +1417,6 @@ window.simManualAdd = async (name, code, curPrice) => {
 // ── 오늘의 수급1등
 window._sudTop1History = []; // [{date, name, code, ratio, chg, sector}]
 
-window.openSudTop1Cal = async () => {
-  const dates = [...new Set((window._sudTop1History||[]).map(d => d.date))].sort().reverse();
-  openDatePicker(dates, 'sudTop1');
-  openMo('moDatePicker');
-};
-
-window.loadSudTop1History = (date) => {
-  renderSudTop1(date);
-  closeMo('moDatePicker');
-};
-
 window.saveSudTop1 = async () => {
   const uid = window._curUser?.uid;
   if(!uid) return;
@@ -1439,55 +1432,96 @@ window.loadSudTop1 = async (uid) => {
     const snap = await getDoc(doc(db, 'users', uid, 'sudTop1', 'history'));
     if(snap.exists()) window._sudTop1History = snap.data().list || [];
   } catch(e) {}
-  const today = new Date().toISOString().slice(0,10);
-  renderSudTop1(today);
+  renderSudTop1Cal();
 };
 
-window.renderSudTop1DateBtns = () => {
-  const el = document.getElementById('sudTop1DateBtns');
-  if(!el) return;
-  const dates = [...new Set((window._sudTop1History||[]).map(d => d.date))].sort().reverse().slice(0,7);
-  const today = new Date().toISOString().slice(0,10);
-  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
-  el.innerHTML = dates.map(d => {
-    const label = d === today ? '오늘' : d === yesterday ? '어제' : d.slice(5).replace('-','/');
-    return `<button id="sudTop1Btn-${d}" onclick="renderSudTop1('${d}')"
-      style="padding:4px 12px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:12px;cursor:pointer">${label}</button>`;
-  }).join('');
-  if(dates.length) {
-    const firstBtn = document.getElementById('sudTop1Btn-' + dates[0]);
-    if(firstBtn) { firstBtn.style.background='var(--pr)'; firstBtn.style.color='#fff'; firstBtn.style.borderColor='var(--pr)'; }
-  }
+// 수급1등 달력 현재 월 상태
+window._sudTop1CalYear = new Date().getFullYear();
+window._sudTop1CalMonth = new Date().getMonth();
+
+window.sudTop1PrevMonth = () => {
+  if(window._sudTop1CalMonth === 0) { window._sudTop1CalMonth = 11; window._sudTop1CalYear--; }
+  else window._sudTop1CalMonth--;
+  renderSudTop1Cal();
 };
 
-window.renderSudTop1 = (date) => {
-  const el = document.getElementById('sudTop1List');
-  if(!el) return;
-  // 날짜 버튼 활성화
-  document.querySelectorAll('[id^="sudTop1Btn-"]').forEach(b => {
-    b.style.background = 'transparent'; b.style.color = ''; b.style.borderColor = 'var(--bd)';
-  });
-  const activeBtn = document.getElementById('sudTop1Btn-' + date);
-  if(activeBtn) { activeBtn.style.background='var(--pr)'; activeBtn.style.color='#fff'; activeBtn.style.borderColor='var(--pr)'; }
+window.sudTop1NextMonth = () => {
+  if(window._sudTop1CalMonth === 11) { window._sudTop1CalMonth = 0; window._sudTop1CalYear++; }
+  else window._sudTop1CalMonth++;
+  renderSudTop1Cal();
+};
 
-  const items = (window._sudTop1History||[]).filter(d => d.date === date);
-  if(!items.length) {
-    el.innerHTML = '<div class="empty" style="padding:16px"><p>해당 날짜 데이터가 없어요</p></div>';
-    return;
+window.renderSudTop1 = () => renderSudTop1Cal();
+
+window.renderSudTop1Cal = () => {
+  const el = document.getElementById('sudTop1Cal');
+  const labelEl = document.getElementById('sudTop1MonthLabel');
+  if(!el) return;
+
+  const year = window._sudTop1CalYear;
+  const month = window._sudTop1CalMonth;
+  if(labelEl) labelEl.textContent = year + '년 ' + (month+1) + '월';
+
+  // 데이터 맵
+  const dataMap = {};
+  (window._sudTop1History||[]).forEach(d => { dataMap[d.date] = d; });
+
+  const today = new Date().toISOString().slice(0,10);
+  const firstDay = new Date(year, month, 1).getDay(); // 0=일
+  const lastDate = new Date(year, month+1, 0).getDate();
+
+  // 요일 헤더
+  const days = ['일','월','화','수','목','금','토'];
+  // 토/일은 작게, 월~금은 넉넉하게
+  const colWidths = ['4%','18%','18%','18%','18%','18%','4%'];
+
+  let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed">
+    <colgroup>${colWidths.map(w=>`<col style="width:${w}">`).join('')}</colgroup>
+    <tr>${days.map((d,i) => {
+      const isWe = i===0||i===6;
+      const color = i===0?'var(--dn)':i===6?'var(--pr)':'var(--tx3)';
+      return `<th style="font-size:9px;color:${color};padding:4px 2px;text-align:center;font-weight:600">${d}</th>`;
+    }).join('')}</tr>`;
+
+  let date = 1;
+  for(let week = 0; week < 6; week++) {
+    if(date > lastDate) break;
+    html += '<tr style="vertical-align:top">';
+    for(let dow = 0; dow < 7; dow++) {
+      const isWe = dow===0||dow===6;
+      if((week===0 && dow < firstDay) || date > lastDate) {
+        html += `<td style="padding:2px;height:${isWe?'20px':'52px'}"></td>`;
+      } else {
+        const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(date).padStart(2,'0');
+        const isToday = dateStr === today;
+        const data = dataMap[dateStr];
+        const ratioColor = data && (data.ratio||0) >= 30 ? 'var(--ac)' : 'var(--wa)';
+        const borderColor = isToday ? 'var(--pr)' : 'var(--bd)';
+        const bgColor = isToday ? 'rgba(79,99,232,0.06)' : 'var(--sf)';
+
+        if(isWe) {
+          // 토/일: 날짜만 작게
+          const color = dow===0?'var(--dn)':'var(--pr)';
+          html += `<td style="padding:2px;height:20px;text-align:center">
+            <div style="font-size:9px;color:${color}">${date}</div>
+          </td>`;
+        } else {
+          // 월~금: 넉넉한 칸
+          html += `<td style="padding:2px;height:52px">
+            <div style="background:${bgColor};border:1px solid ${borderColor};border-radius:6px;padding:3px 4px;height:100%;box-sizing:border-box">
+              <div style="font-size:9px;font-weight:700;color:${isToday?'var(--pr)':'var(--tx)'}">${date}</div>
+              ${data ? `<div style="font-size:8px;font-weight:800;color:var(--tx);line-height:1.2;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${data.name}</div>
+              <div style="font-size:8px;font-weight:800;color:${ratioColor}">${data.ratio}%</div>` : ''}
+            </div>
+          </td>`;
+        }
+        date++;
+      }
+    }
+    html += '</tr>';
   }
-  el.innerHTML = items.map(d => {
-    const ratioColor = (d.ratio||0) >= 30 ? 'var(--ac)' : 'var(--wa)';
-    return `<div style="margin:0 16px 6px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:13px;font-weight:800">${d.name}</div>
-        <div style="font-size:9px;color:var(--tx3)">${d.sector||''} · ${d.date}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:13px;font-weight:800;color:var(--up)">${d.chg>=0?'+':''}${d.chg}%</div>
-        <div style="font-size:11px;font-weight:800;color:${ratioColor}">수급 ${d.ratio}%</div>
-      </div>
-    </div>`;
-  }).join('');
+  html += '</table>';
+  el.innerHTML = html;
 };
 
 window.saveSimManual = async () => {
@@ -3999,8 +4033,7 @@ window.kisTopFetch = async () => {
             if(!exists) {
               window._sudTop1History.unshift({ date: today, name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' });
               if(window.saveSudTop1) await saveSudTop1();
-              renderSudTop1DateBtns();
-              renderSudTop1(today);
+              if(window.renderSudTop1Cal) renderSudTop1Cal();
             }
           }
         }
