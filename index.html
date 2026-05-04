@@ -900,7 +900,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 종목명 검색 -->
     <div style="background:var(--sf2);border-radius:14px;padding:14px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:700;color:var(--pr);margin-bottom:10px">🔍 종목명으로 자동 불러오기</div>
-      <input type="text" id="cdSearchName" placeholder="종목명 입력 (예: SK하이닉스)" style="font-size:16px;padding:12px 14px;margin-bottom:8px">
+      <input type="text" id="cdSearchName" placeholder="종목명 입력 (예: SK하이닉스)" style="font-size:16px;padding:12px 14px;margin-bottom:8px" onkeydown="if(event.key==='Enter') fetchCandlePrice()">
       <button class="btn btn-pr" onclick="fetchCandlePrice()" style="font-size:14px;padding:12px">검색하기</button>
       <div id="cdCodeMsg" style="font-size:12px;margin-top:8px;min-height:16px;color:var(--ac);font-weight:600"></div>
       <!-- 검색 결과 목록 -->
