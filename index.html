@@ -2501,7 +2501,7 @@ function animPct(id,target){
 function renderStockList(){
   const el=document.getElementById('stockList');
   const empty=document.getElementById('stockEmpty');
-  document.getElementById('stockCnt').textContent=`${S.stocks.length}/9 종목`;
+  const cntEl = document.getElementById('stockCnt'); if(cntEl) cntEl.textContent=`${S.stocks.length}/9 종목`;
   if(!S.stocks.length){el.innerHTML='';empty.style.display='flex';return;}
   empty.style.display='none';
   el.innerHTML=S.stocks.map(s=>`
