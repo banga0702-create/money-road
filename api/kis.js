@@ -130,9 +130,13 @@ export default async function handler(req, res) {
       });
       (iData.output || []).forEach(s => {
         if(codeMap[s.mksc_shrn_iscd]) {
-          // 이미 있으면 기관 금액만 업데이트
+          // 이미 있으면 기관 금액 + 거래대금 업데이트
           codeMap[s.mksc_shrn_iscd].orgn_ntby_tr_pbmn = s.orgn_ntby_tr_pbmn;
           codeMap[s.mksc_shrn_iscd].orgn_ntby_qty = s.orgn_ntby_qty;
+          // 거래대금은 더 큰 값 사용
+          if(parseFloat(s.acml_tr_pbmn||0) > parseFloat(codeMap[s.mksc_shrn_iscd].acml_tr_pbmn||0)) {
+            codeMap[s.mksc_shrn_iscd].acml_tr_pbmn = s.acml_tr_pbmn;
+          }
         } else {
           codeMap[s.mksc_shrn_iscd] = { ...s };
         }
