@@ -4032,8 +4032,11 @@ window.kisTopFetch = async () => {
         await renderUpSudDateTabs(user.uid);
         window._kisUid = user.uid;
         window._kisLatestDate = today;
-        // 오늘의 수급1등 저장
-        if(all.length > 0) {
+        // 오늘의 수급1등 저장 (15:30 이후에만)
+        const _now = new Date();
+        const _hour = _now.getHours();
+        const _min = _now.getMinutes();
+        if(all.length > 0 && (_hour > 15 || (_hour === 15 && _min >= 30))) {
           const top1 = [...all].sort((a,b) => (b.ratio||0) - (a.ratio||0))[0];
           if(top1 && top1.ratio > 0) {
             if(!window._sudTop1History) window._sudTop1History = [];
