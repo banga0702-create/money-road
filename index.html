@@ -3855,37 +3855,45 @@ window.kisTopFetch = async () => {
     if(data.error) throw new Error(data.error);
     if(!data.output || !data.output.length) throw new Error('데이터가 없어요. 장 중(09:30 이후)에 다시 시도해주세요.');
 
-    const all = data.output.map(s => ({
-      name: s.hts_kor_isnm,
-      code: s.mksc_shrn_iscd,
-      fBuy: Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100),
-      iBuy: Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100),
-    }));
-
-    // 종목코드로 거래대금/등락률 조회 (10개씩 배치)
-    const allCodes = all.map(s => s.code).filter(Boolean);
-    let priceMap = {};
-    try {
-      const batchSize = 10;
-      for(let i = 0; i < allCodes.length; i += batchSize) {
-        const batch = allCodes.slice(i, i + batchSize).join(',');
-        const pr = await fetch('/api/kis?action=stock_price&codes=' + batch);
-        const pd = await pr.json();
-        (pd.output || []).forEach(s => { priceMap[s.code] = s; });
-      }
-    } catch(e) { console.warn('시세 조회 실패:', e); }
-
-    // 거래대금/등락률/수급비중 추가
-    all.forEach(s => {
-      const p = priceMap[s.code];
-      if(p) {
-        s.trPbmn = Math.round(parseFloat(p.acml_tr_pbmn) / 100000000); // 억
-        s.chg = parseFloat(p.prdy_ctrt); // 등락률
-        s.ratio = s.trPbmn > 0 ? +((s.fBuy + s.iBuy) / s.trPbmn * 100).toFixed(1) : 0; // 수급비중%
-        s.sector = p.bstp_kor_isnm || ''; // 업종(섹터)
-        s.currentPrice = parseInt(p.stck_prpr || p.prdy_clpr || 0); // 현재가
-      }
+    const all = data.output.map(s => {
+      const fBuy = Math.round(parseFloat(s.frgn_ntby_tr_pbmn) / 100);
+      const iBuy = Math.round(parseFloat(s.orgn_ntby_tr_pbmn) / 100);
+      const trPbmn = Math.round(parseFloat(s.acml_tr_pbmn||0) / 100000000); // 억
+      const ratio = trPbmn > 0 ? +((fBuy + iBuy) / trPbmn * 100).toFixed(1) : 0;
+      return {
+        name: s.hts_kor_isnm,
+        code: s.mksc_shrn_iscd,
+        fBuy, iBuy, trPbmn, ratio,
+        chg: parseFloat(s.prdy_ctrt || 0),
+        sector: s.bstp_kor_isnm || '',
+        currentPrice: parseInt(s.stck_prpr || s.prdy_clpr || 0),
+      };
     });
+
+    // 거래대금/현재가 보완 (stock_price 배치 - acml_tr_pbmn 없는 종목 보완용)
+    const needPrice = all.filter(s => !s.trPbmn || !s.currentPrice);
+    if(needPrice.length > 0) {
+      const allCodes = needPrice.map(s => s.code).filter(Boolean);
+      let priceMap = {};
+      try {
+        for(let i = 0; i < allCodes.length; i += 10) {
+          const batch = allCodes.slice(i, i+10).join(',');
+          const pr = await fetch('/api/kis?action=stock_price&codes=' + batch);
+          const pd = await pr.json();
+          (pd.output || []).forEach(s => { priceMap[s.code] = s; });
+        }
+      } catch(e) { console.warn('시세 보완 조회 실패:', e); }
+      all.forEach(s => {
+        const p = priceMap[s.code];
+        if(p) {
+          if(!s.trPbmn) s.trPbmn = Math.round(parseFloat(p.acml_tr_pbmn) / 100000000);
+          if(!s.currentPrice) s.currentPrice = parseInt(p.stck_prpr || p.prdy_clpr || 0);
+          if(!s.chg) s.chg = parseFloat(p.prdy_ctrt || 0);
+          if(!s.sector) s.sector = p.bstp_kor_isnm || '';
+          if(!s.ratio && s.trPbmn > 0) s.ratio = +((s.fBuy + s.iBuy) / s.trPbmn * 100).toFixed(1);
+        }
+      });
+    }
 
     // 클릭용 임시 데이터 저장소
     window._kisRows = {};
