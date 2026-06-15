@@ -99,7 +99,10 @@ export default async function handler(req, res) {
   // Vercel Cron은 Authorization 헤더로 검증
   const authHeader = req.headers['authorization'];
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    // Vercel Cron 자동실행은 통과
+    if (!req.headers['x-vercel-cron']) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   try {
