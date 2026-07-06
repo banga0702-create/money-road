@@ -216,15 +216,24 @@ export default async function handler(req, res) {
         await starRef.set({ ...starData, holdings: starHoldings, updatedAt: Date.now() });
       }
 
-      // 5. 수급1등 저장 (캘린더용)
-      const top1 = [...all].sort((a, b) => (b.ratio||0) - (a.ratio||0))[0];
+      // 5. 수급1등 저장 (캘린더용) - 30%↑ 전체 + 1등
+      const sorted = [...all].sort((a, b) => (b.ratio||0) - (a.ratio||0));
+      const top1 = sorted[0];
       if (top1 && top1.ratio > 0) {
         const sudRef = db.collection('users').doc(uid).collection('sudTop1').doc('history');
         const sudSnap = await sudRef.get();
         const sudData = sudSnap.exists ? sudSnap.data() : { list: [] };
         const list = sudData.list || [];
         if (!list.find(d => d.date === today)) {
-          list.unshift({ date: today, name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' });
+          // 30%↑ 종목 전체 (없으면 1등만)
+          const list30 = sorted.filter(s => (s.ratio||0) >= 30).map(s => ({
+            name: s.name, code: s.code||'', ratio: s.ratio, chg: s.chg||0, sector: s.sector||''
+          }));
+          list.unshift({
+            date: today,
+            name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'',
+            list30: list30.length > 0 ? list30 : [{ name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' }]
+          });
           await sudRef.set({ list, updatedAt: Date.now() });
         }
       }
