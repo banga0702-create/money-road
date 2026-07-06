@@ -146,13 +146,12 @@ async function fetchInstTop1() {
 }
 
 export default async function handler(req, res) {
-  // Vercel Cron은 Authorization 헤더로 검증
+  // Vercel Cron 자동실행 또는 CRON_SECRET 인증
   const authHeader = req.headers['authorization'];
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Vercel Cron 자동실행은 통과
-    if (!req.headers['x-vercel-cron']) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isValidSecret = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  if (!isVercelCron && !isValidSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
@@ -178,7 +177,7 @@ export default async function handler(req, res) {
       const uid = userDoc.id;
 
       // 4. 수급1등 자동투자 (simStar) - 외국인+기관, 외국인순매수, 기관순매수 각 1등
-      const starRef = db.collection('users').doc(uid).collection('simStar').doc('main');
+      const starRef = db.collection('users').doc(uid).collection('simData').doc('star');
       const starSnap = await starRef.get();
       const starData = starSnap.exists ? starSnap.data() : { holdings: [] };
       const starHoldings = starData.holdings || [];
