@@ -739,15 +739,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     </div>
 
-    <div class="sh" onclick="toggleSimSection('auto')" style="cursor:pointer">
-      <span class="sh-title">🤖 자동투자 <span id="simAutoToggle">▲</span></span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span id="simAutoSummary" style="font-size:10px;color:var(--tx3)"></span>
-        <span style="font-size:10px;color:var(--tx3)" id="simBuyCount"></span>
-      </div>
-    </div>
-    <div id="simHoldList"><div class="empty" style="padding:24px"><div class="ico">💰</div><p>특징주 재실행 시 수급 30%↑ 종목이<br>자동으로 매수 기록됩니다</p></div></div>
-
     <!-- 종봉투자 -->
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('manual')">
       <span class="sh-title">🕯️ 종봉투자 <span id="simManualToggle">▲</span></span>
@@ -3130,74 +3121,7 @@ window.saveSim = async () => {
   } catch(e) {}
 };
 
-// 특징주 재실행 후 30%↑ 종목 자동 매수
-window.simAutoEntry = async (stocks) => {
-  if(!stocks || !stocks.length) return;
-  // 장마감(15:30) 이후에만 자동매수
-  const now = new Date();
-  const hour = now.getHours();
-  const min = now.getMinutes();
-  if(hour < 15 || (hour === 15 && min < 30)) return;
-  const today = new Date().toISOString().slice(0,10);
-  const targets = stocks.filter(s => (s.ratio||0) >= 30);
-  if(!targets.length) return;
 
-  // 보유중 종목 재등장 시 ⭐ 누적 (하루 1개, 매수일과 같은 날은 제외)
-  targets.forEach(s => {
-    const holding = window._simHoldings.find(h => h.name === s.name && !h.soldAt);
-    if(holding && holding.reEntryDate !== today && holding.buyDate !== today) {
-      holding.reEntryCount = (holding.reEntryCount || 0) + 1;
-      holding.reEntryDate = today;
-    }
-  });
-
-  // 이미 보유중이 아닌 종목만 신규 매수
-  const newTargets = targets.filter(s => !window._simHoldings.find(h => h.name === s.name && !h.soldAt));
-  console.log('[simAutoEntry] 30%↑ 종목:', targets.map(s=>s.name+' '+s.ratio+'%'));
-  console.log('[simAutoEntry] 신규 매수 대상:', newTargets.map(s=>s.name));
-  if(!newTargets.length) { renderSim(); return; }
-
-  // 배치로 현재가 조회 (이미 currentPrice가 있으면 재조회 생략)
-  const needPrice = newTargets.filter(s => !s.currentPrice);
-  const pCodes = [...new Set(needPrice.map(s => s.code).filter(Boolean))];
-  const priceMap = {};
-  for(let i = 0; i < pCodes.length; i += 10) {
-    const batch = pCodes.slice(i, i+10).join(',');
-    try {
-      const r = await fetch('/api/kis?action=stock_price&codes=' + batch);
-      const d = await r.json();
-      (d.output||[]).forEach(p => { if(p.code) priceMap[p.code] = parseInt(p.stck_prpr || p.prdy_clpr || 0); });
-    } catch(e) {}
-  }
-
-  let added = 0;
-  for(const s of newTargets) {
-    const price = s.currentPrice || priceMap[s.code] || 0;
-    console.log('[simAutoEntry] 가격확인:', s.name, 'currentPrice:', s.currentPrice, 'priceMap:', priceMap[s.code], '최종price:', price);
-    if(!price) continue;
-    const qty = price >= 1000000 ? 1 : Math.floor(1000000 / price);
-    if(!qty) continue;
-    window._simHoldings.push({
-      id: Date.now() + Math.random(),
-      name: s.name,
-      code: s.code || '',
-      sector: (window._stockThemeMap && window._stockThemeMap[s.name]) || s.sector || '',
-      buyPrice: price,
-      qty,
-      buyAmount: price * qty,
-      buyDate: today,
-      ratio: s.ratio,
-      currentPrice: price,
-      currentRatio: s.ratio,
-      signal: 'hold'
-    });
-    added++;
-  }
-  if(added > 0) {
-    await saveSim();
-    renderSim();
-  }
-};
 
 // 시세 갱신
 window.refreshSimPrices = async () => {
@@ -3366,7 +3290,6 @@ function renderSim() {
   const holdEl = document.getElementById('simHoldList');
   const histEl = document.getElementById('simHistList');
   const summaryEl = document.getElementById('simSummary');
-  const buyCountEl = document.getElementById('simBuyCount');
   const histCountEl = document.getElementById('simHistCount');
   if(!holdEl) return;
 
@@ -3381,11 +3304,6 @@ function renderSim() {
   });
   const totalProfit = totalCur - totalBuy;
   const totalRate = totalBuy > 0 ? (totalProfit / totalBuy * 100).toFixed(2) : '0.00';
-  const autoSumEl = document.getElementById('simAutoSummary');
-  if(autoSumEl) autoSumEl.innerHTML = totalBuy > 0
-    ? `원금 <b>${(totalBuy/10000).toFixed(0)}만</b> <span style="color:${totalProfit>=0?'var(--up)':'var(--dn)'}">${totalProfit>=0?'+':''}${totalProfit.toLocaleString()}원(${totalRate}%)</span>` : '';
-
-  if(buyCountEl) buyCountEl.textContent = holdings.length + '종목';
   if(histCountEl) histCountEl.textContent = history.length + '건';
 
   const signalMap = {
@@ -4049,10 +3967,6 @@ window.kisTopFetch = async () => {
           }
         }
 
-        // 모의투자 자동 매수 (순매수TOP만)
-        if(window.simAutoEntry) {
-          simAutoEntry(all);
-        }
         // 저장 완료 후 오늘 탭 형식으로 바로 렌더링 (통일)
         await loadKisHistory(today, user.uid);
         const todayBtn = document.getElementById('kisDateBtn-' + today);
