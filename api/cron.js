@@ -223,18 +223,17 @@ export default async function handler(req, res) {
         const sudSnap = await sudRef.get();
         const sudData = sudSnap.exists ? sudSnap.data() : { list: [] };
         const list = sudData.list || [];
-        if (!list.find(d => d.date === today)) {
-          // 30%↑ 종목 전체 (없으면 1등만)
-          const list30 = sorted.filter(s => (s.ratio||0) >= 30).map(s => ({
+        // 오늘 날짜 기존 데이터 삭제 후 새로 저장
+        const filtered = list.filter(d => d.date !== today);
+        const list30 = sorted.filter(s => (s.ratio||0) >= 30).map(s => ({
             name: s.name, code: s.code||'', ratio: s.ratio, chg: s.chg||0, sector: s.sector||''
           }));
-          list.unshift({
+        filtered.unshift({
             date: today,
             name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'',
             list30: list30.length > 0 ? list30 : [{ name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' }]
           });
-          await sudRef.set({ list, updatedAt: Date.now() });
-        }
+        await sudRef.set({ list: filtered, updatedAt: Date.now() });
       }
     }
 
