@@ -1521,7 +1521,8 @@ window.renderSudTop1Cal = () => {
         const isToday = dateStr === today;
         const data = dataMap[dateStr];
         const ratioColor = data && (data.ratio||0) >= 30 ? 'var(--ac)' : 'var(--wa)';
-        const borderColor = isToday ? 'var(--pr)' : (data ? 'var(--ac)' : 'var(--bd)');
+        const has30 = data && data.list30 && data.list30.some(s => (s.ratio||0) >= 30);
+        const borderColor = isToday ? 'var(--pr)' : has30 ? 'var(--ac)' : 'var(--bd)';
         const bgColor = isToday ? 'rgba(79,99,232,0.06)' : 'var(--sf)';
         const hasMore = data && data.list30 && data.list30.length > 1;
 
