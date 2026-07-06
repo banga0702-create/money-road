@@ -739,16 +739,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     </div>
 
-    <!-- 종봉투자 -->
-    <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('manual')">
-      <span class="sh-title">🕯️ 종봉투자 <span id="simManualToggle">▲</span></span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span id="simManualSummary" style="font-size:10px;color:var(--tx3)"></span>
-        <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
-      </div>
-    </div>
-    <div id="simManualList"><div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div></div>
-
     <!-- 수급1등 자동투자 -->
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('star')">
       <span class="sh-title">🤖 수급1등 자동투자 <span id="simStarToggle">▲</span></span>
@@ -758,6 +748,16 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
     </div>
     <div id="simStarList"><div class="empty" style="padding:16px"><p>크론잡 실행 시 수급1등 종목이 자동 매수됩니다</p></div></div>
+
+    <!-- 종봉투자 -->
+    <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('manual')">
+      <span class="sh-title">🕯️ 종봉투자 <span id="simManualToggle">▲</span></span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="simManualSummary" style="font-size:10px;color:var(--tx3)"></span>
+        <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
+      </div>
+    </div>
+    <div id="simManualList"><div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div></div>
 
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimHist()">
       <span class="sh-title">📋 매매 기록 <span id="simHistToggleIcon">▼</span></span>
