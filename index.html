@@ -4057,20 +4057,66 @@ window.kisTopFetch = async () => {
         await renderUpSudDateTabs(user.uid);
         window._kisUid = user.uid;
         window._kisLatestDate = today;
-        // 오늘의 수급1등 저장 (15:30 이후에만)
+        // 오늘의 수급1등 저장 + 수급1등 자동투자 (15:30 이후에만)
         const _now = new Date();
         const _hour = _now.getHours();
         const _min = _now.getMinutes();
         if(all.length > 0 && (_hour > 15 || (_hour === 15 && _min >= 30))) {
-          const top1 = [...all].sort((a,b) => (b.ratio||0) - (a.ratio||0))[0];
+          const sorted = [...all].sort((a,b) => (b.ratio||0) - (a.ratio||0));
+          const top1 = sorted[0];
+
+          // 캘린더 저장 - 30%↑ 전체, 없으면 1등만
           if(top1 && top1.ratio > 0) {
             if(!window._sudTop1History) window._sudTop1History = [];
-            const exists = window._sudTop1History.find(d => d.date === today);
-            if(!exists) {
-              window._sudTop1History.unshift({ date: today, name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' });
-              if(window.saveSudTop1) await saveSudTop1();
-              if(window.renderSudTop1Cal) renderSudTop1Cal();
-            }
+            const list30 = sorted.filter(s => (s.ratio||0) >= 30).map(s => ({
+              name: s.name, code: s.code||'', ratio: s.ratio, chg: s.chg||0, sector: s.sector||''
+            }));
+            const newEntry = {
+              date: today, name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'',
+              list30: list30.length > 0 ? list30 : [{ name: top1.name, code: top1.code||'', ratio: top1.ratio, chg: top1.chg||0, sector: top1.sector||'' }]
+            };
+            const existsIdx = window._sudTop1History.findIndex(d => d.date === today);
+            if(existsIdx >= 0) window._sudTop1History[existsIdx] = newEntry;
+            else window._sudTop1History.unshift(newEntry);
+            if(window.saveSudTop1) await saveSudTop1();
+            if(window.renderSudTop1Cal) renderSudTop1Cal();
+          }
+
+          // 수급1등 자동투자 - 외국인+기관, 외국인순매수, 기관순매수 각 1등
+          const fiTop1 = fi[0] || null;
+          const fTop1  = f[0]  || null;
+          const iTop1  = inst[0] || null;
+          const autoTops = [
+            { stock: fiTop1, type: '외국인+기관' },
+            { stock: fTop1,  type: '외국인순매수' },
+            { stock: iTop1,  type: '기관순매수' },
+          ].filter(t => t.stock && t.stock.name);
+
+          if(!window._simStar) window._simStar = [];
+          let autoAdded = 0;
+          for(const { stock: s, type } of autoTops) {
+            if(window._simStar.find(h => h.autoType === type && h.buyDate === today && !h.soldAt)) continue;
+            const price = s.currentPrice || 0;
+            if(!price) continue;
+            const qty = price >= 3000000 ? 1 : Math.floor(3000000 / price);
+            if(!qty) continue;
+            window._simStar.push({
+              id: Date.now() + Math.random(),
+              name: s.name, code: s.code||'',
+              sector: s.sector||'',
+              buyPrice: price, qty,
+              buyAmount: price * qty,
+              buyDate: today,
+              ratio: s.ratio||0,
+              currentPrice: price,
+              signal: 'hold',
+              autoType: type
+            });
+            autoAdded++;
+          }
+          if(autoAdded > 0) {
+            if(window.saveSimStar) await saveSimStar();
+            if(window.renderSim) renderSim();
           }
         }
 
