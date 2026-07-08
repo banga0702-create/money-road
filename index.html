@@ -152,9 +152,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .tbar-scale{display:flex;justify-content:space-between;font-size:8px;color:var(--tx3);font-weight:600;margin-top:5px}
 /* 구간 블록 게이지 */
 .zone-bar{display:flex;gap:3px;margin-top:12px}
-.zone-block{flex:1;border-radius:8px;padding:8px 4px 6px;text-align:center;opacity:.8;transition:all .3s;border:1.5px solid var(--bd);cursor:default;background:var(--sf)!important}
+.zone-block{flex:1;border-radius:8px;padding:5px 3px 4px;text-align:center;opacity:.8;transition:all .3s;border:1.5px solid var(--bd);cursor:default;background:var(--sf)!important}
 .zone-block.active{opacity:1;transform:translateY(-2px);border:2px solid var(--tx)!important;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.zone-block-icon{font-size:16px;line-height:1}
+.zone-block-icon{font-size:13px;line-height:1}
 .zone-block-label{font-size:8px;font-weight:800;margin-top:3px;letter-spacing:-.3px}
 .zone-block-arrow{font-size:9px;font-weight:900;margin-top:2px}
 /* 메모바 */
@@ -224,16 +224,16 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 .candle-item{margin:0 16px 8px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px}
 /* ── 오늘의 시장 한 줄 카드 ── */
 .mkt-comment{margin:10px 16px 0;border-radius:16px;overflow:hidden;border:1px solid var(--bd)}
-.mkt-comment-top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;gap:8px}
+.mkt-comment-top{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 6px;gap:8px}
 .mkt-temp-block{display:flex;align-items:center;gap:8px}
 .mkt-temp-ico{font-size:26px;line-height:1}
-.mkt-temp-deg{font-size:30px;font-weight:900;letter-spacing:-1.5px;line-height:1}
+.mkt-temp-deg{font-size:24px;font-weight:900;letter-spacing:-1.5px;line-height:1}
 .mkt-temp-unit{font-size:14px;font-weight:700;opacity:.6;align-self:flex-end;margin-bottom:2px}
 .mkt-psych-pill{display:flex;flex-direction:column;align-items:center;gap:3px}
 .mkt-psych-lbl{font-size:9px;font-weight:700;color:var(--tx3)}
 .mkt-psych-badge{font-size:13px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:.3px}
 .mkt-divider{height:1px;background:var(--bd);margin:0 14px}
-.mkt-comment-body{padding:10px 14px 13px;display:flex;align-items:flex-start;gap:8px}
+.mkt-comment-body{padding:7px 14px 10px;display:flex;align-items:flex-start;gap:8px}
 .mkt-comment-icon{font-size:16px;flex-shrink:0;margin-top:1px}
 .mkt-comment-text{font-size:12px;font-weight:600;line-height:1.65;color:var(--tx2);flex:1}
 .mkt-diff-row{display:flex;align-items:center;gap:6px;padding:8px 14px;border-top:1px solid var(--bd);background:var(--sf2)}
@@ -451,6 +451,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     </div>
 
 
+
+    <!-- 외국인 일별 매매동향 -->
+    <div class="temp-card" style="margin-top:10px" id="invDailyCard">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🌏 외국인 매매동향 <span style="font-size:9px;font-weight:600;color:var(--tx3)">코스피 · 일별 · 억원</span></span>
+        <span id="invDailyBadge"></span>
+      </div>
+      <div id="invDailyList" style="margin-top:8px"><div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오는 중...</div></div>
+    </div>
 
     <!-- 시장온도 카드 -->
     <div class="mkt-comment" id="mktComment" style="margin-top:10px">
@@ -6080,6 +6089,58 @@ window.fetchMarketIndex = async () => {
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
+// 외국인 일별 매매동향 - 홈 화면 (독립 실행)
+window.fetchInvestorDaily = async () => {
+  const listEl = document.getElementById('invDailyList');
+  const badgeEl = document.getElementById('invDailyBadge');
+  if(!listEl) return;
+  try {
+    const r = await fetch('/api/kis?action=investor_daily');
+    const d = await r.json();
+    let rows = d.output || [];
+    if(!rows.length) { listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">데이터가 없어요</div>'; return; }
+
+    // 최신 날짜 순 정렬 후 10일치
+    rows = [...rows].sort((a,b) => (b.stck_bsop_date||'').localeCompare(a.stck_bsop_date||'')).slice(0,10);
+
+    // 억원 변환 (원본 단위: 백만원)
+    const items = rows.map(x => ({
+      date: (x.stck_bsop_date||'').slice(4,6) + '/' + (x.stck_bsop_date||'').slice(6,8),
+      f: Math.round((parseFloat(x.frgn_ntby_tr_pbmn)||0) / 100),
+      p: Math.round((parseFloat(x.prsn_ntby_tr_pbmn)||0) / 100),
+      o: Math.round((parseFloat(x.orgn_ntby_tr_pbmn)||0) / 100),
+    }));
+
+    // 외국인 연속 순매도/순매수 계산 (최신일부터)
+    let sellStreak = 0, buyStreak = 0;
+    for(const it of items) { if(it.f < 0) sellStreak++; else break; }
+    if(sellStreak === 0) for(const it of items) { if(it.f > 0) buyStreak++; else break; }
+
+    if(badgeEl) {
+      if(sellStreak >= 5) badgeEl.innerHTML = '<span style="font-size:9px;font-weight:800;background:rgba(255,80,80,0.15);color:var(--dn);border:1px solid rgba(255,80,80,0.4);border-radius:20px;padding:3px 8px">🚨 경고 · 외국인 ' + sellStreak + '일 연속 순매도</span>';
+      else if(sellStreak >= 3) badgeEl.innerHTML = '<span style="font-size:9px;font-weight:800;background:rgba(245,166,35,0.15);color:#f5a623;border:1px solid rgba(245,166,35,0.4);border-radius:20px;padding:3px 8px">⚠️ 주의 · 외국인 ' + sellStreak + '일 연속 순매도</span>';
+      else if(buyStreak >= 3) badgeEl.innerHTML = '<span style="font-size:9px;font-weight:800;background:rgba(0,212,170,0.12);color:var(--ac);border:1px solid rgba(0,212,170,0.3);border-radius:20px;padding:3px 8px">😊 외국인 ' + buyStreak + '일 연속 순매수</span>';
+      else badgeEl.innerHTML = '';
+    }
+
+    const fmtAmt = (v) => {
+      const col = v > 0 ? 'var(--up)' : v < 0 ? 'var(--dn)' : 'var(--tx3)';
+      return '<span style="color:' + col + ';font-weight:700">' + (v > 0 ? '+' : '') + v.toLocaleString() + '</span>';
+    };
+
+    listEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:9px;color:var(--tx3);font-weight:700;padding:2px 6px;text-align:right"><span style="text-align:left">일자</span><span>외국인</span><span>개인</span><span>기관계</span></div>'
+      + items.map((it, i) =>
+        '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:10px;padding:4px 6px;text-align:right;border-radius:6px;' + (i===0 ? 'background:var(--sf2)' : '') + '">'
+        + '<span style="text-align:left;color:var(--tx2);font-weight:700">' + it.date + '</span>'
+        + fmtAmt(it.f) + fmtAmt(it.p) + fmtAmt(it.o) + '</div>'
+      ).join('');
+  } catch(e) {
+    console.warn('외국인 매매동향 실패:', e);
+    listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오기 실패 - 새로고침 해주세요</div>';
+  }
+};
+
 // ETF 52주 현황 - fetchMarketIndex와 독립 실행
 window.fetchEtf52Week = async () => {
   try {
@@ -6495,6 +6556,7 @@ onAuthStateChanged(auth, async (user) => {
       // 홈화면 시장현황 카드 자동 로드
       fetchMarketIndex();
       setTimeout(fetchEtf52Week, 3000); // 토큰 충돌 방지 딜레이
+      setTimeout(fetchInvestorDaily, 6000); // 외국인 일별 매매동향
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
