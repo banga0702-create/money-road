@@ -1604,18 +1604,26 @@ window.initSimStar = async () => {
     if(el) el.innerHTML = '<div class="empty" style="padding:16px"><p>⚠️ 불러오기 실패 - 새로고침 해주세요</p></div>';
     return;
   }
-  // 같은 날 + 같은 카테고리 자동매수 중복 정리 (하나만 남김)
+  // 같은 날 + 같은 종목 자동매수를 한 카드로 합침 (완전 중복은 버림)
   if(window._simStar && window._simStar.length) {
-    const seen = new Set();
     const before = window._simStar.length;
-    window._simStar = window._simStar.filter(h => {
-      if(!h.autoType || h.soldAt) return true; // 수동매수·매도완료는 건드리지 않음
-      const key = h.autoType + '|' + h.buyDate;
-      if(seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    if(window._simStar.length !== before && window.saveSimStar) await saveSimStar();
+    const merged = [];
+    for(const h of window._simStar) {
+      if(!h.autoType || h.soldAt) { merged.push(h); continue; } // 수동매수·매도완료는 그대로
+      const base = merged.find(m => m.autoType && !m.soldAt && m.name === h.name && m.buyDate === h.buyDate);
+      if(!base) { merged.push(h); continue; }
+      const baseTypes = base.autoType.split(',');
+      const newTypes = h.autoType.split(',').filter(t => !baseTypes.includes(t));
+      if(newTypes.length) { // 새 카테고리면 합산
+        base.autoType = baseTypes.concat(newTypes).join(',');
+        base.qty += h.qty;
+        base.buyAmount += h.buyAmount;
+      } // 같은 카테고리 완전 중복이면 그냥 버림
+    }
+    if(merged.length !== before) {
+      window._simStar = merged;
+      if(window.saveSimStar) await saveSimStar();
+    }
   }
   // 불러온 데이터로 화면 다시 그리기 (이게 빠져서 빈 화면이었음)
   if(window.renderSim) renderSim();
@@ -3499,8 +3507,9 @@ function renderSim() {
       starEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
         starItems.map(h => {
         const cur = h.currentPrice || h.buyPrice;
-        const profit = (cur - h.buyPrice) * h.qty;
-        const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
+        const totalBuyAmt = h.buyAmount || (h.buyPrice * h.qty);
+        const profit = cur * h.qty - totalBuyAmt;
+        const rate = totalBuyAmt > 0 ? (profit / totalBuyAmt * 100).toFixed(2) : '0.00';
         const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
         const sig = signalMap[h.signal || 'hold'];
         // 정배열/데드크로스 판단
@@ -3512,7 +3521,7 @@ function renderSim() {
           : isJungbae
             ? `<span style="font-size:8px;background:rgba(80,200,120,0.15);color:var(--up);border-radius:4px;padding:1px 4px;flex-shrink:0">정배열</span>`
             : '';
-        const typeLabel = h.autoType === '외국인+기관' ? '🔵외+기' : h.autoType === '외국인순매수' ? '🟢외인' : h.autoType === '기관순매수' ? '🟠기관' : '';
+        const typeLabel = (h.autoType||'').split(',').map(t => t === '외국인+기관' ? '🔵외+기' : t === '외국인순매수' ? '🟢외인' : t === '기관순매수' ? '🟠기관' : '').filter(Boolean).join('/');
         return `<div style="background:var(--sf);border:1.5px solid ${isDeadCross ? 'rgba(255,80,80,0.5)' : 'rgba(245,197,66,0.4)'};border-radius:10px;padding:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
             <span style="font-size:9px;color:var(--tx3)">${typeLabel}</span>
@@ -3526,10 +3535,11 @@ function renderSim() {
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:2px;text-align:center">
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
           </div>
+          <div style="font-size:8px;color:var(--tx2);font-weight:700;text-align:center;margin-bottom:4px;background:var(--sf2);border-radius:5px;padding:2px 0">${h.qty}주 · 총 ${Math.round(totalBuyAmt/10000).toLocaleString()}만원</div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
             <div style="display:flex;gap:4px">
@@ -3747,8 +3757,8 @@ window.autoInvestRun = async (fi, f, inst) => {
 
   const added = [], failed = [];
   for(const { stock: s, type } of tops) {
-    // 오늘 같은 카테고리로 이미 매수했으면 스킵 (재실행 여러 번 눌러도 중복매수 안 됨)
-    if(window._simStar.find(h => h.autoType === type && h.buyDate === today)) continue;
+    // 오늘 이 카테고리로 이미 매수됐으면 스킵 (합쳐진 카드 포함해서 확인)
+    if(window._simStar.find(h => h.buyDate === today && (h.autoType||'').split(',').includes(type))) continue;
     // 5) 가격 확보: 목록에 있으면 그걸 쓰고, 없으면 현재가 API로 보완
     let price = s.currentPrice || 0;
     if(!price && s.code) {
@@ -3761,19 +3771,28 @@ window.autoInvestRun = async (fi, f, inst) => {
     if(!price) { failed.push('❌ ' + type + ' ' + s.name + ' - 가격 조회 실패'); continue; }
     // 6) 300만원 기준 수량 계산 (1주가 300만원 넘으면 1주)
     const qty = price >= 3000000 ? 1 : Math.floor(3000000 / price);
-    window._simStar.push({
-      id: Date.now() + Math.random(),
-      name: s.name, code: s.code || '',
-      sector: s.sector || '',
-      buyPrice: price, qty,
-      buyAmount: price * qty,
-      buyDate: today,
-      ratio: s.ratio || 0,
-      currentPrice: price,
-      signal: 'hold',
-      autoType: type
-    });
-    added.push('✅ ' + type + ': ' + s.name + ' ' + qty + '주 (' + price.toLocaleString() + '원)');
+    // 7) 같은 날 같은 종목 카드가 이미 있으면 한 카드로 합침 (카테고리당 300만씩 추가)
+    const exist = window._simStar.find(h => h.buyDate === today && h.name === s.name && !h.soldAt && h.autoType);
+    if(exist) {
+      exist.autoType = exist.autoType + ',' + type;
+      exist.qty += qty;
+      exist.buyAmount += price * qty;
+      added.push('✅ ' + type + ': ' + s.name + ' ' + qty + '주 추가 → 총 ' + exist.qty + '주');
+    } else {
+      window._simStar.push({
+        id: Date.now() + Math.random(),
+        name: s.name, code: s.code || '',
+        sector: s.sector || '',
+        buyPrice: price, qty,
+        buyAmount: price * qty,
+        buyDate: today,
+        ratio: s.ratio || 0,
+        currentPrice: price,
+        signal: 'hold',
+        autoType: type
+      });
+      added.push('✅ ' + type + ': ' + s.name + ' ' + qty + '주 (' + price.toLocaleString() + '원)');
+    }
   }
 
   // 7) 저장 + 화면 갱신 + 결과 알림
