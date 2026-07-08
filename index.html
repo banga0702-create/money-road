@@ -452,14 +452,6 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
 
 
-    <!-- 외국인 일별 매매동향 -->
-    <div class="temp-card" style="margin-top:10px" id="invDailyCard">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🌏 외국인 매매동향 <span style="font-size:9px;font-weight:600;color:var(--tx3)">코스피 · 일별 · 억원</span></span>
-        <span id="invDailyBadge"></span>
-      </div>
-      <div id="invDailyList" style="margin-top:8px"><div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오는 중...</div></div>
-    </div>
 
     <!-- 시장온도 카드 -->
     <div class="mkt-comment" id="mktComment" style="margin-top:10px">
@@ -556,6 +548,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
         </div>
       </div>
+    </div>
+
+    <!-- 외국인 일별 매매동향 -->
+    <div id="invDailyCard" style="margin:10px 16px 0;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🌏 외국인 매매동향 <span style="font-size:9px;font-weight:600;color:var(--tx3)">코스피 · 일별 · 억원</span></span>
+        <span id="invDailyBadge"></span>
+      </div>
+      <div id="invDailyList" style="margin-top:8px"><div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오는 중...</div></div>
     </div>
 
     <!-- 오늘의 주인공 -->
@@ -6100,17 +6101,18 @@ window.fetchInvestorDaily = async () => {
     let rows = d.output || [];
     if(!rows.length) { listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">데이터가 없어요</div>'; return; }
 
-    // 최신 날짜 순 정렬 후 10일치
-    rows = [...rows].sort((a,b) => (b.stck_bsop_date||'').localeCompare(a.stck_bsop_date||'')).slice(0,10);
+    // 최신 날짜 순 정렬 (전체 보관, 표시는 renderInvDaily에서)
+    rows = [...rows].sort((a,b) => (b.stck_bsop_date||'').localeCompare(a.stck_bsop_date||''));
 
     // 억원 변환 (원본 단위: 백만원)
-    const items = rows.map(x => ({
+    window._invDailyItems = rows.map(x => ({
       date: (x.stck_bsop_date||'').slice(4,6) + '/' + (x.stck_bsop_date||'').slice(6,8),
       f: Math.round((parseFloat(x.frgn_ntby_tr_pbmn)||0) / 100),
       p: Math.round((parseFloat(x.prsn_ntby_tr_pbmn)||0) / 100),
       o: Math.round((parseFloat(x.orgn_ntby_tr_pbmn)||0) / 100),
     }));
 
+    const items = window._invDailyItems;
     // 외국인 연속 순매도/순매수 계산 (최신일부터)
     let sellStreak = 0, buyStreak = 0;
     for(const it of items) { if(it.f < 0) sellStreak++; else break; }
@@ -6123,23 +6125,41 @@ window.fetchInvestorDaily = async () => {
       else badgeEl.innerHTML = '';
     }
 
-    const fmtAmt = (v) => {
-      const col = v > 0 ? 'var(--up)' : v < 0 ? 'var(--dn)' : 'var(--tx3)';
-      return '<span style="color:' + col + ';font-weight:700">' + (v > 0 ? '+' : '') + v.toLocaleString() + '</span>';
-    };
-
-    listEl.innerHTML =
-      '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:9px;color:var(--tx3);font-weight:700;padding:2px 6px;text-align:right"><span style="text-align:left">일자</span><span>외국인</span><span>개인</span><span>기관계</span></div>'
-      + items.map((it, i) =>
-        '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:10px;padding:4px 6px;text-align:right;border-radius:6px;' + (i===0 ? 'background:var(--sf2)' : '') + '">'
-        + '<span style="text-align:left;color:var(--tx2);font-weight:700">' + it.date + '</span>'
-        + fmtAmt(it.f) + fmtAmt(it.p) + fmtAmt(it.o) + '</div>'
-      ).join('');
+    window._invDailyShow = 10;
+    renderInvDaily();
   } catch(e) {
     console.warn('외국인 매매동향 실패:', e);
     listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오기 실패 - 새로고침 해주세요</div>';
   }
 };
+
+// 외국인 일별 매매동향 표 렌더링 (기본 10일 + 더보기)
+window.renderInvDaily = () => {
+  const listEl = document.getElementById('invDailyList');
+  const items = window._invDailyItems || [];
+  if(!listEl || !items.length) return;
+  const show = window._invDailyShow || 10;
+  const visible = items.slice(0, show);
+  const hasMore = items.length > show;
+
+  const fmtAmt = (v) => {
+    const col = v > 0 ? 'var(--up)' : v < 0 ? 'var(--dn)' : 'var(--tx3)';
+    return '<span style="color:' + col + ';font-weight:700">' + (v > 0 ? '+' : '') + v.toLocaleString() + '</span>';
+  };
+
+  listEl.innerHTML =
+    '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:9px;color:var(--tx3);font-weight:700;padding:2px 6px;text-align:right"><span style="text-align:left">일자</span><span>외국인</span><span>개인</span><span>기관계</span></div>'
+    + visible.map((it, i) =>
+      '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:10px;padding:4px 6px;text-align:right;border-radius:6px;' + (i===0 ? 'background:var(--sf2)' : '') + '">'
+      + '<span style="text-align:left;color:var(--tx2);font-weight:700">' + it.date + '</span>'
+      + fmtAmt(it.f) + fmtAmt(it.p) + fmtAmt(it.o) + '</div>'
+    ).join('')
+    + (hasMore
+      ? '<button onclick="invDailyMore()" style="width:100%;margin-top:6px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer">▼ 더보기 (' + (items.length - show) + '일 남음)</button>'
+      : (show > 10 ? '<button onclick="invDailyLess()" style="width:100%;margin-top:6px;background:var(--sf2);color:var(--tx3);border:1px solid var(--bd);border-radius:8px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer">▲ 접기</button>' : ''));
+};
+window.invDailyMore = () => { window._invDailyShow = (window._invDailyShow || 10) + 10; renderInvDaily(); };
+window.invDailyLess = () => { window._invDailyShow = 10; renderInvDaily(); };
 
 // ETF 52주 현황 - fetchMarketIndex와 독립 실행
 window.fetchEtf52Week = async () => {
