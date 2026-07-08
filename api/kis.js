@@ -402,6 +402,19 @@ export default async function handler(req, res) {
       return res.status(200).json({ results });
     }
 
+    // 시장별 투자자매매동향(일별) - 외국인/개인/기관 일자별 순매수 (FHPTJ04040000)
+    if (action === 'investor_daily') {
+      const token = await getToken();
+      const { market = 'KSP' } = req.query; // KSP:코스피, KSQ:코스닥
+      const today = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0,10).replace(/-/g,'');
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=${today}&FID_INPUT_ISCD_1=${market}&FID_INPUT_DATE_2=${today}&FID_INPUT_ISCD_2=0001`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHPTJ04040000', 'custtype': 'P' } }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'action 파라미터가 필요해요' });
 
   } catch (e) {
