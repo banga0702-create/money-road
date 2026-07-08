@@ -455,9 +455,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     <!-- 시장온도 카드 -->
     <div class="mkt-comment" id="mktComment" style="margin-top:10px">
-      <div style="padding:10px 14px 0;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:10px 14px 8px;display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;font-weight:800;color:var(--tx2)">🌡️ 오늘의 시장온도</span>
-        <button onclick="toggleMktCal()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">📅</button>
+        <span class="mkt-temp-ico" id="mktTempIco" style="font-size:16px">🌡️</span>
+        <span class="mkt-temp-deg" id="mktTempDeg" style="font-size:18px">—</span>
+        <span class="mkt-temp-unit" style="font-size:11px">°C</span>
+        <div style="flex:1"></div>
+        <span style="font-size:9px;font-weight:700;color:var(--tx3)">투자심리</span>
+        <span class="mkt-psych-badge" id="mktPsych" style="font-size:11px;padding:3px 10px">—</span>
+        <button onclick="toggleMktCal()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:26px;height:26px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">📅</button>
       </div>
       <!-- 달력 -->
       <div id="mktCalWrap" style="display:none;padding:10px 14px 4px">
@@ -477,18 +483,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         </div>
         <div id="mktCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px"></div>
       </div>
-      <div class="mkt-comment-top">
-        <div class="mkt-temp-block">
-          <span class="mkt-temp-ico" id="mktTempIco">🌡️</span>
-          <span class="mkt-temp-deg" id="mktTempDeg">—</span>
-          <span class="mkt-temp-unit">°C</span>
-        </div>
-        <div class="mkt-psych-block" style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:10px;font-weight:700;color:var(--tx3)">투자심리</span>
-          <span class="mkt-psych-badge" id="mktPsych">—</span>
-        </div>
-      </div>
-      <div class="mkt-divider"></div>
+
       <div class="zone-bar" id="zoneBar" style="padding:10px 14px 0">
         <div class="zone-block" id="zb-panic" style="background:rgba(59,130,246,.15)">
           <div class="zone-block-icon">🥶</div>
@@ -6154,12 +6149,15 @@ window.renderInvDaily = () => {
       + '<span style="text-align:left;color:var(--tx2);font-weight:700">' + it.date + '</span>'
       + fmtAmt(it.f) + fmtAmt(it.p) + fmtAmt(it.o) + '</div>'
     ).join('')
-    + (hasMore
-      ? '<button onclick="invDailyMore()" style="width:100%;margin-top:6px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer">▼ 더보기 (' + (items.length - show) + '일 남음)</button>'
-      : (show > 10 ? '<button onclick="invDailyLess()" style="width:100%;margin-top:6px;background:var(--sf2);color:var(--tx3);border:1px solid var(--bd);border-radius:8px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer">▲ 접기</button>' : ''));
+    + ((hasMore || show > 10)
+      ? '<div style="display:flex;gap:6px;margin-top:6px">'
+        + (hasMore ? '<button onclick="invDailyMore()" style="flex:1;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer">▼ 더보기 (' + (items.length - show) + '일 남음)</button>' : '')
+        + (show > 10 ? '<button onclick="invDailyLess()" style="flex:1;background:var(--sf2);color:var(--tx3);border:1px solid var(--bd);border-radius:8px;padding:6px 0;font-size:10px;font-weight:700;cursor:pointer">▲ 접기</button>' : '')
+        + '</div>'
+      : '');
 };
 window.invDailyMore = () => { window._invDailyShow = (window._invDailyShow || 10) + 10; renderInvDaily(); };
-window.invDailyLess = () => { window._invDailyShow = 10; renderInvDaily(); };
+window.invDailyLess = () => { window._invDailyShow = Math.max(10, (window._invDailyShow || 10) - 10); renderInvDaily(); };
 
 // ETF 52주 현황 - fetchMarketIndex와 독립 실행
 window.fetchEtf52Week = async () => {
