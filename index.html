@@ -399,8 +399,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
           <span style="font-size:12px;font-weight:800;color:var(--tx2)">📊 오늘의 지수</span>
           <span class="tc-status" id="tcStatus" style="color:var(--tx3);font-size:14px;font-weight:900"></span>
         </div>
-        <div style="text-align:right">
+        <div style="display:flex;align-items:center;gap:6px">
           <div class="tc-time" id="tcTime"></div>
+          <button id="homeRefreshBtn" onclick="homeRefresh()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:26px;height:26px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔄</button>
         </div>
       </div>
       <!-- 원형 게이지 2개 -->
@@ -739,7 +740,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div class="form-hdr" style="flex-direction:column;align-items:flex-start;gap:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
         <span class="form-hdr-title">💰 모의투자</span>
-        <button class="btn btn-ac btn-sm" onclick="refreshSimPrices()">🔄 시세갱신</button>
+        <button class="btn btn-ac btn-sm" id="simRefreshBtn" onclick="refreshSimPrices()">🔄 시세갱신</button>
       </div>
 
     </div>
@@ -3201,10 +3202,12 @@ window.saveSim = async () => {
 
 // 시세 갱신
 window.refreshSimPrices = async () => {
-  const holdings = window._simHoldings.filter(h => !h.soldAt);
-  if(!holdings.length) return;
+  const btn = document.getElementById('simRefreshBtn');
+  if(btn && btn.dataset.busy) return; // 연타 방지
+  if(btn) { btn.dataset.busy = '1'; btn.textContent = '⏳ 갱신중...'; }
+  // 옛 자동투자 목록은 비어있어도 나머지(수급1등/종봉)는 계속 진행
+  const holdings = (window._simHoldings||[]).filter(h => !h.soldAt);
   const codes = [...new Set(holdings.map(h => h.code).filter(Boolean))];
-  if(!codes.length) return;
 
   try {
     // 10개씩 배치 조회
@@ -3349,7 +3352,12 @@ window.refreshSimPrices = async () => {
     await saveSimManual();
     if(window.saveSimStar) await saveSimStar();
     renderSim();
-  } catch(e) { alert('시세 갱신 실패: ' + e.message); }
+    if(btn) { btn.textContent = '✅ 갱신완료'; setTimeout(() => { btn.textContent = '🔄 시세갱신'; }, 1500); }
+  } catch(e) {
+    alert('시세 갱신 실패: ' + e.message);
+    if(btn) btn.textContent = '🔄 시세갱신';
+  }
+  if(btn) delete btn.dataset.busy;
 };
 
 // 매도 처리
@@ -6135,6 +6143,24 @@ window.fetchMarketIndex = async () => {
     document.getElementById('mktIndexCard').style.display = 'block';
 
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
+};
+
+// 홈 화면 전체 새로고침 (지수/시장온도/투자자현황/외국인동향)
+window.homeRefresh = async () => {
+  const btn = document.getElementById('homeRefreshBtn');
+  if(btn && btn.dataset.busy) return; // 연타 방지
+  if(btn) { btn.dataset.busy = '1'; btn.textContent = '⏳'; }
+  try {
+    // 지수 게이지 + 시장온도 + 투자자현황 (한 함수가 다 처리)
+    if(window.fetchMarketIndex) await fetchMarketIndex();
+    await new Promise(r => setTimeout(r, 1500)); // 토큰 충돌 방지
+    // KODEX 52주
+    if(window.fetchEtf52Week) await fetchEtf52Week();
+    await new Promise(r => setTimeout(r, 1500));
+    // 외국인 일별 매매동향
+    if(window.fetchInvestorDaily) await fetchInvestorDaily();
+  } catch(e) { console.warn('홈 새로고침 실패:', e); }
+  if(btn) { delete btn.dataset.busy; btn.textContent = '🔄'; }
 };
 
 // 외국인 일별 매매동향 - 홈 화면 (독립 실행)
