@@ -542,17 +542,17 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:10px 14px">
         <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:4px;align-items:center">
           <div style="font-size:9px;color:var(--tx3);font-weight:700"></div>
-          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">개인</div>
           <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">외국인</div>
           <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">기관</div>
+          <div style="font-size:9px;color:var(--tx3);font-weight:700;text-align:center">개인</div>
           <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">코스피</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKp">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKp">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKp">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKp">—</div>
           <div style="font-size:10px;font-weight:700;color:var(--tx2);padding:3px 0">코스닥</div>
-          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktFrgnKq">—</div>
           <div style="font-size:10px;font-weight:800;text-align:center" id="mktOrgnKq">—</div>
+          <div style="font-size:10px;font-weight:800;text-align:center" id="mktIndvKq">—</div>
         </div>
       </div>
     </div>
@@ -6472,11 +6472,11 @@ window.renderInvDaily = () => {
   };
 
   listEl.innerHTML =
-    '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:9px;color:var(--tx3);font-weight:700;padding:2px 6px;text-align:right"><span style="text-align:left">일자</span><span>외국인</span><span>개인</span><span>기관계</span></div>'
+    '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:9px;color:var(--tx3);font-weight:700;padding:2px 6px;text-align:right"><span style="text-align:left">일자</span><span>외국인</span><span>기관계</span><span>개인</span></div>'
     + visible.map((it, i) =>
       '<div style="display:grid;grid-template-columns:0.8fr 1.4fr 1.4fr 1.4fr;gap:2px;font-size:10px;padding:4px 6px;text-align:right;border-radius:6px;' + (i===0 ? 'background:var(--sf2)' : '') + '">'
       + '<span style="text-align:left;color:var(--tx2);font-weight:700">' + it.date + '</span>'
-      + fmtAmt(it.f) + fmtAmt(it.p) + fmtAmt(it.o) + '</div>'
+      + fmtAmt(it.f) + fmtAmt(it.o) + fmtAmt(it.p) + '</div>'
     ).join('')
     + ((hasMore || show > 10)
       ? '<div style="display:flex;gap:6px;margin-top:6px">'
