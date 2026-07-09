@@ -402,7 +402,18 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <div style="display:flex;align-items:center;gap:6px">
           <div class="tc-time" id="tcTime"></div>
           <button id="homeRefreshBtn" onclick="homeRefresh()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:26px;height:26px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔄</button>
+          <button onclick="toggleIdxCal()" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;width:26px;height:26px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">📅</button>
         </div>
+      </div>
+      <!-- 지수 달력 -->
+      <div id="idxCalWrap" style="display:none;padding:6px 4px 2px">
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px">
+          <button onclick="idxCalMove(-1)" style="background:transparent;border:1px solid var(--bd);border-radius:6px;padding:1px 8px;font-size:11px;cursor:pointer">‹</button>
+          <span id="idxCalTitle" style="font-size:11px;font-weight:800;color:var(--tx2)"></span>
+          <button onclick="idxCalMove(1)" style="background:transparent;border:1px solid var(--bd);border-radius:6px;padding:1px 8px;font-size:11px;cursor:pointer">›</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:8px;color:var(--tx3);text-align:center;margin-bottom:2px"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+        <div id="idxCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px"></div>
       </div>
       <!-- 원형 게이지 2개 -->
       <div class="g2row">
@@ -1920,6 +1931,7 @@ window.calcMktAuto = function() {
   }
   if(!S.monthHist) S.monthHist = {};
   S.monthHist[dateKey] = score;
+  if(typeof save === 'function') save(); // 온도 달력 저장 (이게 빠져서 새로고침하면 증발했었음)
 
   renderHome();
 }
@@ -6112,6 +6124,16 @@ window.fetchMarketIndex = async () => {
     window._mktKosdaqChg = parseFloat(kq?.bstp_nmix_prdy_ctrt) || 0;
     window._mktKospiIdx  = parseFloat(kp?.bstp_nmix_prpr) ? parseFloat(kp.bstp_nmix_prpr).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
     window._mktKosdaqIdx = parseFloat(kq?.bstp_nmix_prpr) ? parseFloat(kq.bstp_nmix_prpr).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
+    // 일별 지수 기록 저장 (지수 달력용 - 하루 중 마지막 조회값이 남음)
+    try {
+      const idxKey = new Date().toISOString().slice(0,10);
+      if(!S.idxHist) S.idxHist = {};
+      S.idxHist[idxKey] = {
+        kp: parseFloat(kp?.bstp_nmix_prpr)||0, kpc: parseFloat(kp?.bstp_nmix_prdy_ctrt)||0,
+        kq: parseFloat(kq?.bstp_nmix_prpr)||0, kqc: parseFloat(kq?.bstp_nmix_prdy_ctrt)||0
+      };
+      if(typeof save === 'function') save();
+    } catch(eI) {}
     // 외국인/기관 순매수도 저장
     window._mktFBuy = Math.round(((parseFloat(kp?.frgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.frgn_ntby_tr_pbmn)||0)) / 100);
     window._mktIBuy = Math.round(((parseFloat(kp?.orgn_ntby_tr_pbmn)||0) + (parseFloat(kq?.orgn_ntby_tr_pbmn)||0)) / 100);
@@ -6221,7 +6243,7 @@ window.runCalBacktest = async () => {
     list.forEach(s => {
       if(!s.code || !s.name || seen.has(s.name)) return;
       seen.add(s.name);
-      entries.push({ date: e.date, name: s.name, code: s.code, ratio: s.ratio || 0 });
+      entries.push({ date: e.date, name: s.name, code: s.code, ratio: s.ratio || 0, top1: s.name === e.name });
     });
   });
   if(!entries.length) { resEl.innerHTML = '<div class="empty" style="padding:16px"><p>달력에 기록이 아직 없어요</p></div>'; return; }
@@ -6281,7 +6303,7 @@ window.runCalBacktest = async () => {
 
     const ok = results.filter(r => !r.skip);
     const g30 = ok.filter(r => (r.ratio||0) >= 30);
-    const gLow = ok.filter(r => (r.ratio||0) < 30);
+    const gTop1 = ok.filter(r => r.top1);
     const gFirst = ok.filter(r => r.seq === 1);
     const gRe = ok.filter(r => r.seq >= 2);
     const stat = (arr) => {
@@ -6291,7 +6313,7 @@ window.runCalBacktest = async () => {
       const gain = arr.reduce((a,b) => a + b.gain, 0);
       return { n: arr.length, avg, win, gain };
     };
-    const s30 = stat(g30), sLow = stat(gLow), sAll = stat(ok);
+    const s30 = stat(g30), sAll = stat(ok);
     const fmtR = (v) => '<span style="color:' + (v >= 0 ? 'var(--up)' : 'var(--dn)') + ';font-weight:800">' + (v >= 0 ? '+' : '') + v.toFixed(2) + '%</span>';
     const fmtG = (v) => '<span style="color:' + (v >= 0 ? 'var(--up)' : 'var(--dn)') + '">' + (v >= 0 ? '+' : '') + v.toLocaleString() + '원</span>';
 
@@ -6304,8 +6326,8 @@ window.runCalBacktest = async () => {
     resEl.innerHTML =
       '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">달력의 수급1등 + 30%↑ 종목을 그날 종가에 300만원씩 매수했다면? · 6월부터 (총 ' + sAll.n + '건 · 평균 ' + (sAll.avg>=0?'+':'') + sAll.avg.toFixed(2) + '% · 합계 ' + (sAll.gain>=0?'+':'') + sAll.gain.toLocaleString() + '원)</div>'
       + '<div style="display:flex;gap:8px;margin-bottom:8px">'
-      + grpBox('🏆 수급 30%↑', s30, 'var(--ac)')
-      + grpBox('⚪ 30% 미만', sLow, 'var(--bd)')
+      + grpBox('🏆 수급 30%↑ 전부', s30, 'var(--ac)')
+      + grpBox('👑 1일 1등만', stat(gTop1), 'var(--pr)')
       + '</div>'
       + '<div style="display:flex;gap:8px;margin-bottom:10px">'
       + grpBox('🆕 첫 등장', stat(gFirst), 'var(--bd)')
@@ -6320,6 +6342,58 @@ window.runCalBacktest = async () => {
     if(btn) btn.textContent = '▶ 실행';
   }
   if(btn) delete btn.dataset.busy;
+};
+
+// 지수 달력: 일별 코스피/코스닥 기록 보기
+window._idxCalY = new Date().getFullYear();
+window._idxCalM = new Date().getMonth();
+window.toggleIdxCal = () => {
+  const wrap = document.getElementById('idxCalWrap');
+  if(!wrap) return;
+  const open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'block';
+  if(!open) renderIdxCal();
+};
+window.idxCalMove = (dir) => {
+  window._idxCalM += dir;
+  if(window._idxCalM < 0) { window._idxCalM = 11; window._idxCalY--; }
+  if(window._idxCalM > 11) { window._idxCalM = 0; window._idxCalY++; }
+  renderIdxCal();
+};
+window.renderIdxCal = () => {
+  const title = document.getElementById('idxCalTitle');
+  const grid = document.getElementById('idxCalGrid');
+  if(!title || !grid) return;
+  const Y = window._idxCalY, M = window._idxCalM;
+  title.textContent = Y + '년 ' + (M+1) + '월';
+  const firstDay = new Date(Y, M, 1).getDay();
+  const lastDate = new Date(Y, M+1, 0).getDate();
+  const hist = (window.S && S.idxHist) || {};
+  const todayStr = new Date().toISOString().slice(0,10);
+  let html = '';
+  for(let i = 0; i < firstDay; i++) html += '<div></div>';
+  for(let d = 1; d <= lastDate; d++) {
+    const key = Y + '-' + String(M+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const v = hist[key];
+    const isToday = key === todayStr;
+    const border = isToday ? '1.5px solid var(--pr)' : '1px solid transparent';
+    if(v) {
+      const col = v.kpc >= 0 ? 'var(--up)' : 'var(--dn)';
+      html += '<div onclick="idxCalInfo(\'' + key + '\')" style="background:var(--sf2);border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center;cursor:pointer">'
+        + '<div style="font-size:9px;font-weight:700;color:' + (isToday ? 'var(--pr)' : 'var(--tx2)') + '">' + d + '</div>'
+        + '<div style="font-size:7px;font-weight:800;color:' + col + '">' + (v.kpc >= 0 ? '+' : '') + v.kpc.toFixed(1) + '%</div></div>';
+    } else {
+      html += '<div style="border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center"><div style="font-size:9px;color:var(--tx3)">' + d + '</div></div>';
+    }
+  }
+  grid.innerHTML = html;
+};
+window.idxCalInfo = (key) => {
+  const v = (window.S && S.idxHist) ? S.idxHist[key] : null;
+  if(!v) return;
+  const f = (n) => n.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const s = (n) => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+  alert('\ud83d\udcca ' + key.slice(5).replace('-','/') + ' \uc9c0\uc218\n\n\ucf54\uc2a4\ud53c ' + f(v.kp) + ' (' + s(v.kpc) + ')\n\ucf54\uc2a4\ub2e5 ' + f(v.kq) + ' (' + s(v.kqc) + ')');
 };
 
 // 홈 화면 전체 새로고침 (지수/시장온도/투자자현황/외국인동향)
