@@ -748,13 +748,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     <!-- 수급1등 자동투자 -->
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('star')">
-      <span class="sh-title">🤖 수급1등 자동투자 <span id="simStarToggle">▲</span></span>
+      <span class="sh-title">🤖 순매수1등 자동투자 <span id="simStarToggle">▲</span></span>
       <div style="display:flex;align-items:center;gap:6px">
         <span id="simStarSummary" style="font-size:10px;color:var(--tx3)"></span>
         <span style="font-size:10px;color:var(--tx3)" id="simStarCount"></span>
       </div>
     </div>
-    <div id="simStarList"><div class="empty" style="padding:16px"><p>15:30 이후 재실행 시 수급1등 종목이 자동 매수됩니다</p></div></div>
+    <div id="simStarList"><div class="empty" style="padding:16px"><p>15:30 이후 재실행 시 순매수 1등 종목이 자동 매수됩니다</p></div></div>
 
     <!-- 종봉투자 -->
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('manual')">
@@ -1606,23 +1606,30 @@ window.initSimStar = async () => {
     if(el) el.innerHTML = '<div class="empty" style="padding:16px"><p>⚠️ 불러오기 실패 - 새로고침 해주세요</p></div>';
     return;
   }
-  // 같은 날 + 같은 종목 자동매수를 한 카드로 합침 (완전 중복은 버림)
+  // 보유 중인 같은 종목 자동매수를 한 카드로 합침 (날짜 무관, 평균단가 재계산)
   if(window._simStar && window._simStar.length) {
-    const before = window._simStar.length;
+    let changed = false;
     const merged = [];
     for(const h of window._simStar) {
       if(!h.autoType || h.soldAt) { merged.push(h); continue; } // 수동매수·매도완료는 그대로
-      const base = merged.find(m => m.autoType && !m.soldAt && m.name === h.name && m.buyDate === h.buyDate);
+      if(!h.buys) { h.buys = [{ date: h.buyDate, price: h.buyPrice, qty: h.qty, type: h.autoType }]; changed = true; }
+      const base = merged.find(m => m.autoType && !m.soldAt && m.name === h.name);
       if(!base) { merged.push(h); continue; }
+      // 같은 날 같은 카테고리 완전 중복이면 버림 (옛 버그 잔재 방지)
+      if(h.buys.length === 1 && base.buys.some(b => b.date === h.buys[0].date && b.type === h.buys[0].type)) { changed = true; continue; }
+      base.buys = base.buys.concat(h.buys);
       const baseTypes = base.autoType.split(',');
       const newTypes = h.autoType.split(',').filter(t => !baseTypes.includes(t));
-      if(newTypes.length) { // 새 카테고리면 합산
-        base.autoType = baseTypes.concat(newTypes).join(',');
-        base.qty += h.qty;
-        base.buyAmount += h.buyAmount;
-      } // 같은 카테고리 완전 중복이면 그냥 버림
+      if(newTypes.length) base.autoType = baseTypes.concat(newTypes).join(',');
+      base.qty += h.qty;
+      base.buyAmount += h.buyAmount;
+      base.buyPrice = Math.round(base.buyAmount / base.qty); // 평균단가
+      base.buyDate = base.buyDate < h.buyDate ? base.buyDate : h.buyDate; // 첫 매수일
+      const hLast = h.lastBuyDate || h.buyDate;
+      base.lastBuyDate = (base.lastBuyDate || base.buyDate) > hLast ? (base.lastBuyDate || base.buyDate) : hLast;
+      changed = true;
     }
-    if(merged.length !== before) {
+    if(changed) {
       window._simStar = merged;
       if(window.saveSimStar) await saveSimStar();
     }
@@ -3404,7 +3411,11 @@ function renderSim() {
   });
   const totalProfit = totalCur - totalBuy;
   const totalRate = totalBuy > 0 ? (totalProfit / totalBuy * 100).toFixed(2) : '0.00';
-  if(histCountEl) histCountEl.textContent = history.length + '건';
+  if(histCountEl) {
+    const histWins = history.filter(h => (h.profit||0) > 0).length;
+    const histWinRate = history.length > 0 ? Math.round(histWins / history.length * 100) : 0;
+    histCountEl.textContent = history.length + '건' + (history.length > 0 ? ' · 승률 ' + histWinRate + '%' : '');
+  }
 
   const signalMap = {
     hold: { icon: '🟢', label: '수급유지' },
@@ -3507,12 +3518,14 @@ function renderSim() {
   const starProfit = starCur - starBuy;
   const starRate = starBuy > 0 ? (starProfit/starBuy*100).toFixed(2) : '0.00';
   const starSumEl = document.getElementById('simStarSummary');
+  const starWins = starItems.filter(h => ((h.currentPrice||h.buyPrice) * h.qty - (h.buyAmount||h.buyPrice*h.qty)) > 0).length;
+  const starWinRate = starItems.length > 0 ? Math.round(starWins / starItems.length * 100) : 0;
   if(starSumEl) starSumEl.innerHTML = starBuy > 0
-    ? `원금 <b>${(starBuy/10000).toFixed(0)}만</b> <span style="color:${starProfit>=0?'var(--up)':'var(--dn)'}">${starProfit>=0?'+':''}${starProfit.toLocaleString()}원(${starRate}%)</span>` : '';
+    ? `원금 <b>${(starBuy/10000).toFixed(0)}만</b> <span style="color:${starProfit>=0?'var(--up)':'var(--dn)'}">${starProfit>=0?'+':''}${starProfit.toLocaleString()}원(${starRate}%)</span> · 승률 <b>${starWinRate}%</b>` : '';
   if(starCountEl) starCountEl.textContent = starItems.length + '종목';
   if(starEl) {
     if(!starItems.length) {
-      starEl.innerHTML = '<div class="empty" style="padding:16px"><p>15:30 이후 재실행 시 수급1등 종목이 자동 매수됩니다</p></div>';
+      starEl.innerHTML = '<div class="empty" style="padding:16px"><p>15:30 이후 재실행 시 순매수 1등 종목이 자동 매수됩니다</p></div>';
     } else {
       starEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
         starItems.map(h => {
@@ -3535,7 +3548,7 @@ function renderSim() {
         return `<div style="background:var(--sf);border:1.5px solid ${isDeadCross ? 'rgba(255,80,80,0.5)' : 'rgba(245,197,66,0.4)'};border-radius:10px;padding:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
             <span style="font-size:9px;color:var(--tx3)">${typeLabel}</span>
-            <span style="font-size:8px;color:var(--tx3)">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
+            <span onclick="starBuyHist(${h.id})" style="font-size:8px;color:var(--tx3);cursor:pointer;text-decoration:underline dotted">${h.buyDate ? h.buyDate.slice(5).replace('-','/') + (h.lastBuyDate && h.lastBuyDate !== h.buyDate ? '~' + h.lastBuyDate.slice(5).replace('-','/') : '') : ''}</span>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
@@ -3710,7 +3723,7 @@ window.applySimToggleState = () => {
 // ── 수급1등 자동투자
 window._simStar = [];
 window.simStarAdd = async (name) => {
-  if((window._simStar||[]).find(h => h.name === name && !h.soldAt)) { alert(name + '은 이미 수급1등 자동투자에 있어요'); return; }
+  if((window._simStar||[]).find(h => h.name === name && !h.soldAt)) { alert(name + '은 이미 순매수1등 자동투자에 있어요'); return; }
   const row = window._kisRows && Object.values(window._kisRows).find(r => r.name === name);
   const code = row?.code || '';
   let price = 0;
@@ -3767,8 +3780,9 @@ window.autoInvestRun = async (fi, f, inst) => {
 
   const added = [], failed = [];
   for(const { stock: s, type } of tops) {
-    // 오늘 이 카테고리로 이미 매수됐으면 스킵 (합쳐진 카드 포함해서 확인)
-    if(window._simStar.find(h => h.buyDate === today && (h.autoType||'').split(',').includes(type))) continue;
+    // 오늘 이 카테고리로 이미 매수됐으면 스킵 (매수내역 기준으로 확인)
+    if(window._simStar.find(h => !h.soldAt && (h.buys||[]).some(b => b.date === today && (b.type||'').split(',').includes(type)))) continue;
+    if(window._simStar.find(h => !h.buys && h.buyDate === today && (h.autoType||'').split(',').includes(type))) continue;
     // 5) 가격 확보: 목록에 있으면 그걸 쓰고, 없으면 현재가 API로 보완
     let price = s.currentPrice || 0;
     if(!price && s.code) {
@@ -3781,13 +3795,18 @@ window.autoInvestRun = async (fi, f, inst) => {
     if(!price) { failed.push('❌ ' + type + ' ' + s.name + ' - 가격 조회 실패'); continue; }
     // 6) 300만원 기준 수량 계산 (1주가 300만원 넘으면 1주)
     const qty = price >= 3000000 ? 1 : Math.floor(3000000 / price);
-    // 7) 같은 날 같은 종목 카드가 이미 있으면 한 카드로 합침 (카테고리당 300만씩 추가)
-    const exist = window._simStar.find(h => h.buyDate === today && h.name === s.name && !h.soldAt && h.autoType);
+    // 7) 보유 중(미매도)인 같은 종목이면 날짜 상관없이 기존 카드에 추가매수 (평균단가 재계산)
+    const exist = window._simStar.find(h => h.name === s.name && !h.soldAt && h.autoType);
     if(exist) {
-      exist.autoType = exist.autoType + ',' + type;
+      if(!exist.buys) exist.buys = [{ date: exist.buyDate, price: exist.buyPrice, qty: exist.qty, type: exist.autoType }];
+      exist.buys.push({ date: today, price, qty, type });
+      const types = exist.autoType.split(',');
+      if(!types.includes(type)) exist.autoType = types.concat(type).join(',');
       exist.qty += qty;
       exist.buyAmount += price * qty;
-      added.push('✅ ' + type + ': ' + s.name + ' ' + qty + '주 추가 → 총 ' + exist.qty + '주');
+      exist.buyPrice = Math.round(exist.buyAmount / exist.qty); // 평균단가
+      exist.lastBuyDate = today;
+      added.push('✅ ' + type + ': ' + s.name + ' ' + qty + '주 추가매수 → 총 ' + exist.qty + '주 (평단 ' + exist.buyPrice.toLocaleString() + '원)');
     } else {
       window._simStar.push({
         id: Date.now() + Math.random(),
@@ -3796,6 +3815,8 @@ window.autoInvestRun = async (fi, f, inst) => {
         buyPrice: price, qty,
         buyAmount: price * qty,
         buyDate: today,
+        lastBuyDate: today,
+        buys: [{ date: today, price, qty, type }],
         ratio: s.ratio || 0,
         currentPrice: price,
         signal: 'hold',
@@ -3810,9 +3831,9 @@ window.autoInvestRun = async (fi, f, inst) => {
     const saved = window.saveSimStar ? await saveSimStar() : false;
     if(window.renderSim) renderSim();
     if(!saved) failed.push('⚠️ 저장 실패 - 새로고침하면 사라질 수 있어요. 다시 재실행 눌러주세요.');
-    alert('🤖 수급1등 자동매수 완료!\n\n' + added.join('\n') + (failed.length ? '\n\n' + failed.join('\n') : ''));
+    alert('🤖 순매수1등 자동매수 완료!\n\n' + added.join('\n') + (failed.length ? '\n\n' + failed.join('\n') : ''));
   } else if(failed.length) {
-    alert('🤖 수급1등 자동매수 문제 발생:\n\n' + failed.join('\n'));
+    alert('🤖 순매수1등 자동매수 문제 발생:\n\n' + failed.join('\n'));
   }
   // 매수 0건 + 실패 0건 = 오늘 이미 다 매수됨 → 알림 없이 조용히 넘어감
 };
@@ -6175,6 +6196,16 @@ window.renderBtList = () => {
 };
 window.btToggleMonth = (m) => { window._btOpen = window._btOpen || {}; window._btOpen[m] = !window._btOpen[m]; renderBtList(); };
 
+// 순매수1등 카드 날짜 클릭 → 매수 내역 팝업
+window.starBuyHist = (id) => {
+  const h = (window._simStar||[]).find(x => x.id === id);
+  if(!h) return;
+  const buys = h.buys || [{ date: h.buyDate, price: h.buyPrice, qty: h.qty, type: h.autoType }];
+  const typeShort = (t) => (t||'').split(',').map(x => x === '외국인+기관' ? '외+기' : x === '외국인순매수' ? '외인' : x === '기관순매수' ? '기관' : x).join(',');
+  const lines = buys.map(b => '· ' + (b.date||'').slice(5).replace('-','/') + '  ' + typeShort(b.type) + '  ' + b.qty + '주 × ' + (b.price||0).toLocaleString() + '원').join('\n');
+  alert('📅 ' + h.name + ' 매수 내역\n\n' + lines + '\n\n평균단가 ' + h.buyPrice.toLocaleString() + '원 · 총 ' + h.qty + '주 (' + Math.round((h.buyAmount||0)/10000).toLocaleString() + '만원)');
+};
+
 // 달력 백테스트: 달력의 수급1등을 그날 종가에 300만씩 샀다고 가정하고 수익률 계산
 window.runCalBacktest = async () => {
   const btn = document.getElementById('backtestBtn');
@@ -6201,22 +6232,29 @@ window.runCalBacktest = async () => {
     const priceCache = {};
     const getDaily = async (code) => {
       if(priceCache[code]) return priceCache[code];
-      const r = await fetch('/api/kis?action=daily_price&code=' + code + '&period=D&count=90');
-      const d = await r.json();
-      const rows = (d.output2 || d.output || []);
-      const map = {};
-      let latest = 0, latestDate = '';
-      rows.forEach(x => {
-        const dt = (x.stck_bsop_date||'');
-        const cl = parseFloat(x.stck_clpr||0);
-        if(dt && cl > 0) {
-          map[dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8)] = cl;
-          if(dt > latestDate) { latestDate = dt; latest = cl; }
-        }
-      });
-      priceCache[code] = { map, latest };
-      await new Promise(r2 => setTimeout(r2, 300)); // API 과부하 방지
-      return priceCache[code];
+      // 실패하면 2회까지 재시도 (KIS가 연속 호출을 가끔 거절함)
+      for(let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const r = await fetch('/api/kis?action=daily_price&code=' + code + '&period=D&count=90');
+          const d = await r.json();
+          const rows = (d.output2 || d.output || []);
+          const map = {};
+          let latest = 0, latestDate = '';
+          rows.forEach(x => {
+            const dt = (x.stck_bsop_date||'');
+            const cl = parseFloat(x.stck_clpr||0);
+            if(dt && cl > 0) {
+              map[dt.slice(0,4)+'-'+dt.slice(4,6)+'-'+dt.slice(6,8)] = cl;
+              if(dt > latestDate) { latestDate = dt; latest = cl; }
+            }
+          });
+          await new Promise(r2 => setTimeout(r2, 500)); // API 과부하 방지
+          if(latest > 0) { priceCache[code] = { map, latest }; return priceCache[code]; } // 성공만 기억
+          // 빈 결과면 잠깐 쉬고 재시도
+          await new Promise(r2 => setTimeout(r2, 800));
+        } catch(e) { await new Promise(r2 => setTimeout(r2, 800)); }
+      }
+      return { map: {}, latest: 0 }; // 3번 다 실패 (캐시 안 함 - 다음 실행 때 다시 시도)
     };
 
     const results = [];
