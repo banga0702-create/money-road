@@ -6147,6 +6147,33 @@ window.fetchMarketIndex = async () => {
   } catch(e) { console.warn('시장현황 로드 실패:', e); }
 };
 
+// 백테스트 결과를 월별로 렌더링 (이번 달은 펼침, 지난달은 버튼으로 접기/펼치기)
+window.renderBtList = () => {
+  const el = document.getElementById('btList');
+  if(!el || !window._btResults) return;
+  const curMonth = new Date().toISOString().slice(0,7);
+  const fmtR2 = (v) => '<span style="color:' + (v >= 0 ? 'var(--up)' : 'var(--dn)') + ';font-weight:800">' + (v >= 0 ? '+' : '') + v.toFixed(2) + '%</span>';
+  const rowHtml = (r) => {
+    if(r.skip) return '<div style="display:flex;justify-content:space-between;font-size:10px;padding:4px 6px;color:var(--tx3)"><span>' + r.date.slice(5) + ' ' + r.name + '</span><span>데이터 없음</span></div>';
+    const mint = (r.ratio||0) >= 30;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (mint ? 'background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25)' : 'background:var(--sf2)') + '">'
+      + '<span style="font-weight:700;color:var(--tx2)">' + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span></span>'
+      + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
+  };
+  // 월별 그룹 (최신 월부터)
+  const groups = {};
+  window._btResults.forEach(r => { const m = (r.date||'').slice(0,7); if(!groups[m]) groups[m] = []; groups[m].push(r); });
+  const months = Object.keys(groups).sort().reverse();
+  el.innerHTML = months.map(m => {
+    const rows = groups[m].map(rowHtml).join('');
+    if(m === curMonth) return rows; // 이번 달은 항상 펼침
+    const open = window._btOpen && window._btOpen[m];
+    const label = parseInt(m.slice(5,7)) + '월';
+    return '<button onclick="btToggleMonth(\'' + m + '\')" style="width:100%;margin:6px 0 4px;background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:7px 0;font-size:11px;font-weight:700;cursor:pointer">' + (open ? '▲ ' + label + ' 접기' : '▼ ' + label + ' 보기') + ' (' + groups[m].length + '건)</button>' + (open ? rows : '');
+  }).join('');
+};
+window.btToggleMonth = (m) => { window._btOpen = window._btOpen || {}; window._btOpen[m] = !window._btOpen[m]; renderBtList(); };
+
 // 달력 백테스트: 달력의 수급1등을 그날 종가에 300만씩 샀다고 가정하고 수익률 계산
 window.runCalBacktest = async () => {
   const btn = document.getElementById('backtestBtn');
@@ -6221,13 +6248,9 @@ window.runCalBacktest = async () => {
       + grpBox('🏆 수급 30%↑', s30, 'var(--ac)')
       + grpBox('⚪ 30% 미만', sLow, 'var(--bd)')
       + '</div>'
-      + results.map(r => {
-          if(r.skip) return '<div style="display:flex;justify-content:space-between;font-size:10px;padding:4px 6px;color:var(--tx3)"><span>' + r.date.slice(5) + ' ' + r.name + '</span><span>데이터 없음</span></div>';
-          const mint = (r.ratio||0) >= 30;
-          return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (mint ? 'background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25)' : 'background:var(--sf2)') + '">'
-            + '<span style="font-weight:700;color:var(--tx2)">' + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span></span>'
-            + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR(r.rate) + '</span></div>';
-        }).join('');
+      + '<div id="btList"></div>';
+    window._btResults = results;
+    if(window.renderBtList) renderBtList();
     if(btn) btn.textContent = '▶ 실행';
   } catch(e) {
     resEl.innerHTML = '<div class="empty" style="padding:16px"><p>⚠️ 계산 실패 - 다시 시도해주세요</p></div>';
