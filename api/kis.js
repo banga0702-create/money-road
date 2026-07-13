@@ -203,25 +203,36 @@ export default async function handler(req, res) {
 
       const codeList = codes.split(',').slice(0, 20); // 최대 20개
 
-      // 순차 호출 (토큰 제한 방지)
+      // 순차 호출 (토큰 제한 방지) + 초당 호출 제한 회피 딜레이 + 실패 시 재시도
       const results = [];
       for (const code of codeList) {
-        try {
-          const r = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code.trim()}`, {
-            headers: {
-              'content-type': 'application/json',
-              'authorization': `Bearer ${token}`,
-              'appkey': APP_KEY,
-              'appsecret': APP_SECRET,
-              'tr_id': 'FHKST01010100',
-              'custtype': 'P'
+        let ok = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const r = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code.trim()}`, {
+              headers: {
+                'content-type': 'application/json',
+                'authorization': `Bearer ${token}`,
+                'appkey': APP_KEY,
+                'appsecret': APP_SECRET,
+                'tr_id': 'FHKST01010100',
+                'custtype': 'P'
+              }
+            });
+            const d = await r.json();
+            // 초당 거래건수 초과(EGW00201) 등으로 output이 비면 잠깐 쉬고 재시도
+            if (d.output && d.output.stck_prpr) {
+              results.push({ code: code.trim(), ...d.output });
+              ok = true;
+              break;
             }
-          });
-          const d = await r.json();
-          results.push({ code: code.trim(), ...d.output });
-        } catch(e) {
-          results.push({ code: code.trim() });
+            await new Promise(rs => setTimeout(rs, 400));
+          } catch(e) {
+            await new Promise(rs => setTimeout(rs, 400));
+          }
         }
+        if (!ok) results.push({ code: code.trim() });
+        await new Promise(rs => setTimeout(rs, 70)); // 초당 호출 제한 회피
       }
 
       return res.status(200).json({ output: results });
