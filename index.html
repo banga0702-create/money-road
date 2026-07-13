@@ -6279,6 +6279,19 @@ window.runCalBacktest = async () => {
       return { map: {}, latest: 0 }; // 3번 다 실패 (캐시 안 함 - 다음 실행 때 다시 시도)
     };
 
+    // 실시간 현재가 일괄 조회 (일봉 API는 장중엔 전일 종가까지만 나와서 실시간 반영이 안 됨 - 별도 조회 필요)
+    const curPriceMap = {};
+    const uniqueCodes = [...new Set(entries.map(e => e.code))];
+    for(let i = 0; i < uniqueCodes.length; i += 20) {
+      const batch = uniqueCodes.slice(i, i+20).join(',');
+      try {
+        const pr = await fetch('/api/kis?action=stock_price&codes=' + batch);
+        const pd2 = await pr.json();
+        (pd2.output||[]).forEach(p => { if(p.code && p.stck_prpr) curPriceMap[p.code] = parseInt(p.stck_prpr) || 0; });
+        await new Promise(r => setTimeout(r, 300));
+      } catch(e) {}
+    }
+
     const results = [];
     if(btn) btn.textContent = '⏳ 0/' + entries.length;
     for(let i = 0; i < entries.length; i++) {
@@ -6287,7 +6300,7 @@ window.runCalBacktest = async () => {
       try {
         const pd = await getDaily(e.code);
         const buy = pd.map[e.date];
-        const cur = pd.latest;
+        const cur = curPriceMap[e.code] || pd.latest; // 실시간가 우선, 실패시 일봉 최근값으로 대체
         if(!buy || !cur) { results.push({ ...e, skip: true }); continue; }
         const rate = (cur - buy) / buy * 100;
         results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100) });
