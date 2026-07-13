@@ -6284,12 +6284,19 @@ window.runCalBacktest = async () => {
     const uniqueCodes = [...new Set(entries.map(e => e.code))];
     for(let i = 0; i < uniqueCodes.length; i += 20) {
       const batch = uniqueCodes.slice(i, i+20).join(',');
-      try {
-        const pr = await fetch('/api/kis?action=stock_price&codes=' + batch);
-        const pd2 = await pr.json();
-        (pd2.output||[]).forEach(p => { if(p.code && p.stck_prpr) curPriceMap[p.code] = parseInt(p.stck_prpr) || 0; });
-        await new Promise(r => setTimeout(r, 300));
-      } catch(e) {}
+      for(let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const pr = await fetch('/api/kis?action=stock_price&codes=' + batch);
+          if(!pr.ok) throw new Error('status ' + pr.status);
+          const pd2 = await pr.json();
+          (pd2.output||[]).forEach(p => { if(p.code && p.stck_prpr) curPriceMap[p.code] = parseInt(p.stck_prpr) || 0; });
+          break; // 성공하면 재시도 루프 탈출
+        } catch(e) {
+          if(attempt === 2) break; // 3번 다 실패하면 이 배치는 포기 (해당 종목들은 fallback으로 일봉값 사용)
+          await new Promise(r => setTimeout(r, 1500)); // 잠깐 쉬고 재시도 (토큰 발급 제한 회피)
+        }
+      }
+      await new Promise(r => setTimeout(r, 300));
     }
 
     const results = [];
