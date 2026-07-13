@@ -6298,6 +6298,17 @@ window.runCalBacktest = async () => {
       }
       await new Promise(r => setTimeout(r, 300));
     }
+    // 배치에서 빠진 종목이 있으면 개별로 한 번 더 조회 (조용한 실패 방지)
+    const missedCodes = uniqueCodes.filter(c => !curPriceMap[c]);
+    for(const c of missedCodes) {
+      try {
+        const pr = await fetch('/api/kis?action=stock_price&codes=' + c);
+        const pd2 = await pr.json();
+        const p = (pd2.output||[])[0];
+        if(p && p.stck_prpr) curPriceMap[c] = parseInt(p.stck_prpr) || 0;
+        await new Promise(r => setTimeout(r, 300));
+      } catch(e) {}
+    }
 
     const results = [];
     if(btn) btn.textContent = '⏳ 0/' + entries.length;
