@@ -3375,19 +3375,29 @@ window.refreshSimPrices = async () => {
     const weeklyStreakMap = {};
     const wkCodes = [...new Set([...stars, ...manuals].map(h => h.code).filter(Boolean))];
     for(const code of wkCodes) {
-      try {
-        const rw = await fetch(`/api/kis?action=daily_price&code=${code}&period=W&count=15`);
-        const dw = await rw.json();
-        const wk = (dw.output2 || dw.output || []); // 최신순: [0]=이번주(진행중), [1]=지난주(확정)...
-        const isBearish = (row) => parseFloat(row.stck_clpr||0) < parseFloat(row.stck_oprc||0);
-        let streak = 0;
-        for(const row of wk) { if(isBearish(row)) streak++; else break; }
-        weeklyStreakMap[code] = streak;
-      } catch(e) {}
+      for(let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const rw = await fetch(`/api/kis?action=daily_price&code=${code}&period=W&count=15`);
+          const dw = await rw.json();
+          const wk = (dw.output2 || dw.output || []); // 최신순: [0]=이번주(진행중), [1]=지난주(확정)...
+          if(wk.length === 0) throw new Error('empty');
+          // 종가지수 기준: 이전주 종가보다 이번주 종가가 낮으면 음봉으로 판단
+          let streak = 0;
+          for(let i = 0; i < wk.length - 1; i++) {
+            const cur = parseFloat(wk[i].stck_clpr||0);
+            const prev = parseFloat(wk[i+1].stck_clpr||0);
+            if(cur > 0 && prev > 0 && cur < prev) streak++; else break;
+          }
+          weeklyStreakMap[code] = streak;
+          break; // 성공하면 재시도 탈출
+        } catch(e) {
+          if(attempt < 2) await new Promise(r => setTimeout(r, 800)); // 실패시 잠깐 쉬고 재시도
+        }
+      }
       await new Promise(r => setTimeout(r, 300));
     }
-    stars.forEach(h => { if(h.code) h.weeklyBearStreak = weeklyStreakMap[h.code] || 0; });
-    manuals.forEach(h => { if(h.code) h.weeklyBearStreak = weeklyStreakMap[h.code] || 0; });
+    stars.forEach(h => { if(h.code && weeklyStreakMap[h.code] != null) h.weeklyBearStreak = weeklyStreakMap[h.code]; });
+    manuals.forEach(h => { if(h.code && weeklyStreakMap[h.code] != null) h.weeklyBearStreak = weeklyStreakMap[h.code]; });
 
     await saveSim();
     await saveSimManual();
@@ -6571,10 +6581,14 @@ window.fetchEtf52Week = async () => {
       const wkEl = document.getElementById(wkId);
       const cardEl = document.getElementById(cardId);
       if(!wkEl) return;
-      if(!wk || wk.length < 1) { wkEl.innerHTML = ''; return; }
-      const isBearish = (row) => parseFloat(row.stck_clpr||0) < parseFloat(row.stck_oprc||0);
+      if(!wk || wk.length < 2) { wkEl.innerHTML = ''; return; }
+      // 종가지수 기준: 이전주 종가보다 이번주 종가가 낮으면 음봉으로 판단
       let streak = 0;
-      for(const row of wk) { if(isBearish(row)) streak++; else break; }
+      for(let i = 0; i < wk.length - 1; i++) {
+        const cur = parseFloat(wk[i].stck_clpr||0);
+        const prev = parseFloat(wk[i+1].stck_clpr||0);
+        if(cur > 0 && prev > 0 && cur < prev) streak++; else break;
+      }
       if(streak >= 2) {
         wkEl.innerHTML = `<span style="font-size:9px;font-weight:900;color:#fff;background:var(--dn);border-radius:5px;padding:2px 6px">🚨 주봉 ${streak}주 연속 음봉</span>`;
         if(cardEl) cardEl.style.border = '1.5px solid var(--dn)';
