@@ -6387,11 +6387,12 @@ window.runCalBacktest = async () => {
       + '<div style="font-size:9px;color:var(--tx3);margin-top:3px">승률 ' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
 
     // 수급 임계값별 비교 (30/35/40%) - 컴팩트 박스
-    const smBox = (label, s) =>
-      '<div style="flex:1;min-width:0;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:6px 2px;text-align:center">'
+    const smBox = (label, s, isBest) =>
+      '<div style="flex:1;min-width:0;background:var(--sf);border:1px solid ' + (isBest ? '#ec4899' : 'var(--bd)') + ';border-radius:10px;padding:6px 2px;text-align:center">'
       + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg) + '</div>'
       + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
     const thresholds = [30, 35, 40].map(t => ({ t, s: stat(ok.filter(r => (r.ratio||0) >= t)) }));
+    const bestAvg = Math.max(...thresholds.filter(x => x.s.n > 0).map(x => x.s.avg));
 
     resEl.innerHTML =
       '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">달력의 수급1등 + 30%↑ 종목을 그날 종가에 300만원씩 매수했다면? · 6월부터 (총 ' + sAll.n + '건 · 평균 ' + (sAll.avg>=0?'+':'') + sAll.avg.toFixed(2) + '% · 합계 ' + (sAll.gain>=0?'+':'') + sAll.gain.toLocaleString() + '원)</div>'
@@ -6401,7 +6402,7 @@ window.runCalBacktest = async () => {
       + '</div>'
       + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:6px">📊 수급 임계값별 비교</div>'
       + '<div style="display:flex;gap:4px;margin-bottom:10px">'
-      + thresholds.map(x => smBox(x.t + '%↑', x.s)).join('')
+      + thresholds.map(x => smBox(x.t + '%↑', x.s, x.s.n > 0 && x.s.avg === bestAvg)).join('')
       + '</div>'
       + '<div id="btList"></div>';
     window._btResults = results;
