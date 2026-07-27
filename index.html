@@ -6393,7 +6393,7 @@ window.runCalBacktest = async () => {
       + '<div style="font-size:8px;color:var(--tx3);margin-bottom:2px">(' + s.n + '건)</div>'
       + '<div style="font-size:12px">' + fmtR(s.avg) + '</div>'
       + '<div style="font-size:8px;color:var(--tx3);margin-top:1px">승률' + s.win.toFixed(0) + '%</div></div>';
-    const thresholds = [30, 35, 40, 45].map(t => ({ t, s: stat(ok.filter(r => (r.ratio||0) >= t)) }));
+    const thresholds = [30, 35, 40].map(t => ({ t, s: stat(ok.filter(r => (r.ratio||0) >= t)) }));
 
     resEl.innerHTML =
       '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">달력의 수급1등 + 30%↑ 종목을 그날 종가에 300만원씩 매수했다면? · 6월부터 (총 ' + sAll.n + '건 · 평균 ' + (sAll.avg>=0?'+':'') + sAll.avg.toFixed(2) + '% · 합계 ' + (sAll.gain>=0?'+':'') + sAll.gain.toLocaleString() + '원)</div>'
