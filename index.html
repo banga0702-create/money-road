@@ -453,11 +453,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div id="mktHighInfo" style="display:none;align-items:center;margin-top:10px;padding:8px 12px;background:var(--sf2);border-radius:10px;border:1px solid var(--bd)"></div>
       <!-- ETF 52주 현황 -->
       <div id="mktEtf52" style="display:none;margin-top:8px;grid-template-columns:1fr 1fr;gap:6px">
-        <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
+        <div id="etf52KpCard" style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
           <div style="display:flex;align-items:center;justify-content:space-between"><div><span style="font-size:9px;font-weight:700;color:var(--tx3)">KODEX 200 (52주) </span><span id="etf52Kp" style="font-size:10px;font-weight:800">—</span></div><div id="etf52KpRec" style="text-align:right;line-height:1.2"></div></div>
+          <div id="etf52KpWk" style="margin-top:4px"></div>
         </div>
-        <div style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
+        <div id="etf52KqCard" style="background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px">
           <div style="display:flex;align-items:center;justify-content:space-between"><div><span style="font-size:9px;font-weight:700;color:var(--tx3)">KODEX 코스닥150 (52주) </span><span id="etf52Kq" style="font-size:10px;font-weight:800">—</span></div><div id="etf52KqRec" style="text-align:right;line-height:1.2"></div></div>
+          <div id="etf52KqWk" style="margin-top:4px"></div>
         </div>
       </div>
     </div>
@@ -3369,6 +3371,24 @@ window.refreshSimPrices = async () => {
         } catch(e) {}
       }
     }
+    // 주봉 2주 연속 음봉 체크 (모의투자 보유 종목 - 종봉투자 + 순매수1등 자동투자)
+    const weeklyBearishMap = {};
+    const wkCodes = [...new Set([...stars, ...manuals].map(h => h.code).filter(Boolean))];
+    for(const code of wkCodes) {
+      try {
+        const rw = await fetch(`/api/kis?action=daily_price&code=${code}&period=W&count=3`);
+        const dw = await rw.json();
+        const wk = (dw.output2 || dw.output || []); // 최신순: [0]=이번주(진행중), [1]=지난주(확정), [2]=지지난주
+        if(wk.length >= 2) {
+          const isBearish = (row) => parseFloat(row.stck_clpr||0) < parseFloat(row.stck_oprc||0);
+          weeklyBearishMap[code] = isBearish(wk[0]) && isBearish(wk[1]);
+        }
+      } catch(e) {}
+      await new Promise(r => setTimeout(r, 300));
+    }
+    stars.forEach(h => { if(h.code) h.weeklyBearish2 = !!weeklyBearishMap[h.code]; });
+    manuals.forEach(h => { if(h.code) h.weeklyBearish2 = !!weeklyBearishMap[h.code]; });
+
     await saveSim();
     await saveSimManual();
     if(window.saveSimStar) await saveSimStar();
@@ -3502,6 +3522,7 @@ function renderSim() {
               <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
+              ${h.weeklyBearish2 ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px;flex-shrink:0;white-space:nowrap">⚠️주봉2주음봉</span>` : ''}
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
@@ -3556,6 +3577,9 @@ function renderSim() {
           : isJungbae
             ? `<span style="font-size:8px;background:rgba(80,200,120,0.15);color:var(--up);border-radius:4px;padding:1px 4px;flex-shrink:0">정배열</span>`
             : '';
+        const wkTag = h.weeklyBearish2
+          ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px;flex-shrink:0;white-space:nowrap">⚠️주봉2주음봉</span>`
+          : '';
         const typeLabel = (h.autoType||'').split(',').map(t => t === '외국인+기관' ? '🔵외+기' : t === '외국인순매수' ? '🟢외인' : t === '기관순매수' ? '🟠기관' : '').filter(Boolean).join('/');
         return `<div style="background:var(--sf);border:1.5px solid ${isDeadCross ? 'rgba(255,80,80,0.5)' : 'rgba(245,197,66,0.4)'};border-radius:10px;padding:8px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
@@ -3567,6 +3591,7 @@ function renderSim() {
               <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
               ${maTag}
+              ${wkTag}
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
@@ -6531,6 +6556,38 @@ window.fetchEtf52Week = async () => {
     await new Promise(r => setTimeout(r, 3000));
     const kqEtf = await fetchOne('229200');
 
+    // 주봉 3개 조회: [0]=이번주(진행중), [1]=지난주(확정), [2]=지지난주
+    const fetchWeekly = async (code) => {
+      try {
+        const r = await fetch(`/api/kis?action=daily_price&code=${code}&period=W&count=3`);
+        const d = await r.json();
+        return (d.output2 || d.output || []);
+      } catch(e) { return []; }
+    };
+    const kpWk = await fetchWeekly('069500');
+    await new Promise(r => setTimeout(r, 300));
+    const kqWk = await fetchWeekly('229200');
+
+    const renderWeekly = (wk, wkId, cardId) => {
+      const wkEl = document.getElementById(wkId);
+      const cardEl = document.getElementById(cardId);
+      if(!wkEl) return;
+      if(!wk || wk.length < 2) { wkEl.innerHTML = ''; return; }
+      const isBearish = (row) => parseFloat(row.stck_clpr||0) < parseFloat(row.stck_oprc||0);
+      const thisWeekBearish = isBearish(wk[0]);
+      const lastWeekBearish = isBearish(wk[1]);
+      const streak2 = thisWeekBearish && lastWeekBearish;
+      if(streak2) {
+        wkEl.innerHTML = '<span style="font-size:9px;font-weight:900;color:#fff;background:var(--dn);border-radius:5px;padding:2px 6px">🚨 주봉 2주 연속 음봉</span>';
+        if(cardEl) cardEl.style.border = '1.5px solid var(--dn)';
+      } else {
+        wkEl.innerHTML = thisWeekBearish
+          ? '<span style="font-size:8px;font-weight:700;color:var(--dn);background:rgba(255,80,80,0.12);border-radius:5px;padding:2px 6px">🕯️ 이번주 음봉</span>'
+          : '<span style="font-size:8px;font-weight:700;color:var(--up);background:rgba(80,200,120,0.12);border-radius:5px;padding:2px 6px">🕯️ 이번주 양봉</span>';
+        if(cardEl) cardEl.style.border = '1px solid var(--bd)';
+      }
+    };
+
     const render = (etf, valId, rangeId) => {
       if(!etf) return;
       const cur  = parseInt(etf.stck_prpr) || 0;
@@ -6558,6 +6615,8 @@ window.fetchEtf52Week = async () => {
 
     render(kpEtf, 'etf52Kp', 'etf52KpRange');
     render(kqEtf, 'etf52Kq', 'etf52KqRange');
+    renderWeekly(kpWk, 'etf52KpWk', 'etf52KpCard');
+    renderWeekly(kqWk, 'etf52KqWk', 'etf52KqCard');
     document.getElementById('mktEtf52').style.display = 'grid';
   } catch(e) { console.warn('ETF 52주 조회 실패:', e); }
 };
