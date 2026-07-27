@@ -3460,7 +3460,7 @@ function renderSim() {
   else if(!holdings.length) {
     holdEl.innerHTML = '<div class="empty" style="padding:24px"><div class="ico">💰</div><p>특징주 재실행 시 수급 30%↑ 종목이<br>자동으로 매수 기록됩니다</p></div>';
   } else {
-    holdEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
+    holdEl.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 16px 8px">' +
       holdings.map(h => {
       const cur = h.currentPrice || h.buyPrice;
       const profit = (cur - h.buyPrice) * h.qty;
@@ -3509,23 +3509,23 @@ function renderSim() {
     if(!manuals.length) {
       manualEl.innerHTML = '<div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div>';
     } else {
-      manualEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
+      manualEl.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 16px 8px">' +
         manuals.map(h => {
         const cur = h.currentPrice || h.buyPrice;
         const profit = (cur - h.buyPrice) * h.qty;
         const rate = ((cur - h.buyPrice) / h.buyPrice * 100).toFixed(2);
         const profitColor = profit >= 0 ? 'var(--up)' : 'var(--dn)';
         const sig = signalMap[h.signal || 'hold'];
-        return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:8px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        return `<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:8px;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
             <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
               <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.buyDate ? h.buyDate.slice(5).replace('-','/') : ''}</span>
-              ${h.weeklyBearish2 ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px;flex-shrink:0;white-space:nowrap">⚠️주봉2주음봉</span>` : ''}
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
+          ${h.weeklyBearish2 ? `<div style="margin-bottom:4px"><span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px">🚨2주음봉</span></div>` : ''}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:4px;text-align:center">
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
@@ -3560,7 +3560,7 @@ function renderSim() {
     if(!starItems.length) {
       starEl.innerHTML = '<div class="empty" style="padding:16px"><p>15:30 이후 재실행 시 순매수 1등 종목이 자동 매수됩니다</p></div>';
     } else {
-      starEl.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 16px 8px">' +
+      starEl.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 16px 8px">' +
         starItems.map(h => {
         const cur = h.currentPrice || h.buyPrice;
         const totalBuyAmt = h.buyAmount || (h.buyPrice * h.qty);
@@ -3573,28 +3573,27 @@ function renderSim() {
         const isJungbae = ma5 > 0 && ma20 > 0 && ma60 > 0 && ma5 > ma20 && ma20 > ma60;
         const isDeadCross = ma5 > 0 && ma20 > 0 && ma5 < ma20;
         const maTag = isDeadCross
-          ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px;flex-shrink:0">⚠️데드</span>`
+          ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px">⚠️데드</span>`
           : isJungbae
-            ? `<span style="font-size:8px;background:rgba(80,200,120,0.15);color:var(--up);border-radius:4px;padding:1px 4px;flex-shrink:0">정배열</span>`
+            ? `<span style="font-size:8px;background:rgba(80,200,120,0.15);color:var(--up);border-radius:4px;padding:1px 4px">정배열</span>`
             : '';
         const wkTag = h.weeklyBearish2
-          ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px;flex-shrink:0;white-space:nowrap">⚠️주봉2주음봉</span>`
+          ? `<span style="font-size:8px;background:rgba(255,80,80,0.15);color:var(--dn);border-radius:4px;padding:1px 4px">🚨2주음봉</span>`
           : '';
         const typeLabel = (h.autoType||'').split(',').map(t => t === '외국인+기관' ? '🔵외+기' : t === '외국인순매수' ? '🟢외인' : t === '기관순매수' ? '🟠기관' : '').filter(Boolean).join('/');
-        return `<div style="background:var(--sf);border:1.5px solid ${isDeadCross ? 'rgba(255,80,80,0.5)' : 'rgba(245,197,66,0.4)'};border-radius:10px;padding:8px">
+        return `<div style="background:var(--sf);border:1.5px solid ${isDeadCross ? 'rgba(255,80,80,0.5)' : 'rgba(245,197,66,0.4)'};border-radius:10px;padding:8px;min-width:0">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
             <span style="font-size:9px;color:var(--tx3)">${typeLabel}</span>
             <span onclick="starBuyHist(${h.id})" style="font-size:8px;color:var(--tx3);cursor:pointer;text-decoration:underline dotted">${h.buyDate ? h.buyDate.slice(5).replace('-','/') + (h.lastBuyDate && h.lastBuyDate !== h.buyDate ? '~' + h.lastBuyDate.slice(5).replace('-','/') : '') : ''}</span>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
             <div style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;overflow:hidden">
               <span style="font-size:11px;font-weight:800;white-space:nowrap">${h.name}</span>
               <span style="font-size:8px;color:var(--tx3);white-space:nowrap">${h.sector||''}</span>
-              ${maTag}
-              ${wkTag}
             </div>
             <span style="font-size:9px;flex-shrink:0">${sig ? sig.icon : ''}</span>
           </div>
+          ${(maTag || wkTag) ? `<div style="display:flex;gap:3px;margin-bottom:4px">${maTag}${wkTag}</div>` : ''}
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;font-size:8px;margin-bottom:2px;text-align:center">
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
