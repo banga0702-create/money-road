@@ -376,10 +376,11 @@ export default async function handler(req, res) {
     // 일봉 데이터 단건 조회
     if (action === 'daily_price') {
       const token = await getToken();
-      const { code } = req.query;
+      const { code, period } = req.query;
       if (!code) return res.status(400).json({ error: 'code 파라미터 필요' });
+      const periodCode = (period === 'W' || period === 'M') ? period : 'D'; // D:일봉 W:주봉 M:월봉
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`,
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=${periodCode}&FID_ORG_ADJ_PRC=0`,
         { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010100', 'custtype': 'P' } }
       );
       const data = await r.json();
