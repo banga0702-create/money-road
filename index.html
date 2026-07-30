@@ -7057,6 +7057,17 @@ onAuthStateChanged(auth, async (user) => {
       fetchMarketIndex();
       setTimeout(fetchEtf52Week, 3000); // 토큰 충돌 방지 딜레이
       setTimeout(fetchInvestorDaily, 6000); // 외국인 일별 매매동향
+      // 15:30 이후 앱을 열면 (탭 상관없이) 오늘 데이터가 없을 때만 자동으로 수급1등 계산 + 자동투자 체크
+      setTimeout(async () => {
+        const _n = new Date();
+        const isAfter1530 = _n.getHours() > 15 || (_n.getHours() === 15 && _n.getMinutes() >= 30);
+        if(!isAfter1530) return;
+        try {
+          const today = new Date().toISOString().slice(0,10);
+          const result = await loadKisHistory(today, user.uid);
+          if(result === false && window.kisTopFetch) kisTopFetch();
+        } catch(e) { if(window.kisTopFetch) kisTopFetch(); }
+      }, 9000);
       // 7일 히스토리 미리 로드 (수급지속 계산용)
       try {
         const snap = await getDocs(collection(db, 'users', user.uid, 'kisHistory'));
