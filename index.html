@@ -6239,25 +6239,23 @@ window.renderBtCards = () => {
   const f = window._btFilter;
   const selBg = (key) => f === key ? 'background:rgba(59,130,246,0.12);box-shadow:0 0 0 2px rgba(59,130,246,0.4) inset;' : '';
 
-  const grpBox = (title, s, bd, key) =>
-    '<div onclick="btSetFilter(\'' + key + '\')" style="flex:1;cursor:pointer;background:var(--sf);border:1.5px solid ' + bd + ';border-radius:12px;padding:10px;text-align:center;' + selBg(key) + '">'
-    + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:4px">' + title + ' (' + s.n + '건)</div>'
-    + '<div style="font-size:16px">' + fmtR(s.avg) + '</div>'
-    + '<div style="font-size:9px;color:var(--tx3);margin-top:3px">승률 ' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
-
-  const smBox = (label, s, isBest, key) =>
-    '<div onclick="btSetFilter(\'' + key + '\')" style="flex:1;min-width:0;cursor:pointer;background:var(--sf);border:1px solid ' + (isBest ? '#ec4899' : 'var(--bd)') + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
+  const smBox = (label, s, isBest, key, bd) =>
+    '<div onclick="btSetFilter(\'' + key + '\')" style="flex:1;min-width:0;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
     + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg) + '</div>'
     + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
 
+  // 재등장 + 30/35/40% 임계값, 총 4개를 수익률(평균%) 높은 순으로 정렬
+  const allCards = [
+    { label: '🔁재등장', s: d.re.s, key: 're' },
+    ...d.thresholds.map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
+  ].sort((a, b) => b.s.avg - a.s.avg);
+  const bestAvg = Math.max(...allCards.filter(x => x.s.n > 0).map(x => x.s.avg));
+
   el.innerHTML =
     '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">달력의 수급1등 + 30%↑ 종목을 그날 종가에 300만원씩 매수했다면? · 6월부터 (총 ' + d.sAll.n + '건 · 평균 ' + (d.sAll.avg>=0?'+':'') + d.sAll.avg.toFixed(2) + '% · 합계 ' + (d.sAll.gain>=0?'+':'') + d.sAll.gain.toLocaleString() + '원)</div>'
-    + '<div style="display:flex;gap:8px;margin-bottom:10px">'
-    + grpBox('🔁 재등장(2회↑)', d.re.s, 'var(--gd)', 're')
-    + '</div>'
-    + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:6px">📊 수급 임계값별 비교</div>'
+    + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:6px">📊 수익률 좋은 순</div>'
     + '<div style="display:flex;gap:4px;margin-bottom:6px">'
-    + d.thresholds.map(x => smBox(x.t + '%↑', x.s, x.isBest, 't' + x.t)).join('')
+    + allCards.map(x => smBox(x.label, x.s, x.s.n > 0 && x.s.avg === bestAvg, x.key)).join('')
     + '</div>'
     + (f ? '<div onclick="btSetFilter(null)" style="text-align:center;font-size:10px;color:var(--ac);font-weight:700;cursor:pointer;margin-bottom:8px">✕ 필터 해제하고 전체 보기</div>' : '<div style="text-align:center;font-size:9px;color:var(--tx3);margin-bottom:8px">카드를 누르면 해당 종목만 볼 수 있어요</div>');
 };
