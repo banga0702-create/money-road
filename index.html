@@ -6240,13 +6240,14 @@ window.renderBtCards = () => {
   const selBg = (key) => f === key ? 'background:rgba(59,130,246,0.12);box-shadow:0 0 0 2px rgba(59,130,246,0.4) inset;' : '';
 
   const smBox = (label, s, isBest, key, bd) =>
-    '<div onclick="btSetFilter(\'' + key + '\')" style="flex:1;min-width:0;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
+    '<div onclick="btSetFilter(\'' + key + '\')" style="flex:1 1 100px;min-width:100px;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
     + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg) + '</div>'
     + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
 
-  // 재등장 + 30/35/40% 임계값, 총 4개를 수익률(평균%) 높은 순으로 정렬
+  // 재등장 + 30/35/40% + 재등장×35%↑ 교집합, 총 5개를 수익률(평균%) 높은 순으로 정렬
   const allCards = [
     { label: '🔁재등장', s: d.re.s, key: 're' },
+    { label: '🔁재등장+35%↑', s: d.inter35.s, key: 'inter35' },
     ...d.thresholds.map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
   ].sort((a, b) => b.s.avg - a.s.avg);
   const bestAvg = Math.max(...allCards.filter(x => x.s.n > 0).map(x => x.s.avg));
@@ -6254,7 +6255,7 @@ window.renderBtCards = () => {
   el.innerHTML =
     '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">조건별 종목 당일 300만원 종가매수 수익성 분석</div>'
     + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:6px">📊 수익률 좋은 순</div>'
-    + '<div style="display:flex;gap:4px;margin-bottom:6px">'
+    + '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">'
     + allCards.map(x => smBox(x.label, x.s, x.s.n > 0 && x.s.avg === bestAvg, x.key)).join('')
     + '</div>'
     + (f ? '<div onclick="btSetFilter(null)" style="text-align:center;font-size:10px;color:var(--ac);font-weight:700;cursor:pointer;margin-bottom:8px">✕ 필터 해제하고 전체 보기</div>' : '<div style="text-align:center;font-size:9px;color:var(--tx3);margin-bottom:8px">카드를 누르면 해당 종목만 볼 수 있어요</div>');
@@ -6270,6 +6271,7 @@ window.renderBtList = () => {
   if(f && d) {
     if(f === 're') list = d.re.arr;
     else if(f === 'top1') list = d.top1.arr;
+    else if(f === 'inter35') list = d.inter35.arr;
     else if(f[0] === 't') {
       const t = parseInt(f.slice(1));
       const th = d.thresholds.find(x => x.t === t);
@@ -6418,6 +6420,7 @@ window.runCalBacktest = async () => {
     const ok = results.filter(r => !r.skip);
     const gTop1 = ok.filter(r => r.top1);
     const gRe = ok.filter(r => r.seq >= 2);
+    const gInter35 = ok.filter(r => r.seq >= 2 && (r.ratio||0) >= 35);
     const stat = (arr) => {
       if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
@@ -6434,6 +6437,7 @@ window.runCalBacktest = async () => {
       sAll,
       re: { arr: gRe, s: stat(gRe) },
       top1: { arr: gTop1, s: stat(gTop1) },
+      inter35: { arr: gInter35, s: stat(gInter35) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
     window._btResults = results;
