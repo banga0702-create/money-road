@@ -1518,8 +1518,9 @@ window.cleanWeekendData = async () => {
     }
 
     // 3) 홈 화면 기록 (appState 안) - 시장온도 달력 / 지수 달력 / 주간 막대
+    // 주의: S는 let 선언이라 window.S로는 접근 불가 - 스코프 변수로 직접 접근해야 함
     const removedState = [];
-    if(window.S) {
+    if(typeof S !== 'undefined' && S) {
       let touched = false;
       if(S.monthHist) {
         Object.keys(S.monthHist).forEach(k => {
@@ -1536,7 +1537,7 @@ window.cleanWeekendData = async () => {
         S.weekHist = S.weekHist.filter(h => !(h.date && isWeekend(h.date)));
         if(S.weekHist.length !== before) { removedState.push('주간막대 ' + (before - S.weekHist.length) + '칸'); touched = true; }
       }
-      if(touched && typeof save === 'function') { save(); if(window.renderHome) renderHome(); }
+      if(touched && typeof save === 'function') { save(); if(typeof renderHome === 'function') renderHome(); }
     }
 
     // 화면 갱신 (지워진 날짜 탭이 남아있지 않도록)
