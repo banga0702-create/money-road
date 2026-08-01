@@ -1338,7 +1338,7 @@ window.renderTodayStar = async () => {
 
   // Firestore에 오늘 데이터 저장
   const uid = window._curUser?.uid;
-  if(uid) {
+  if(uid && !window.isClosedDay(today)) {
     try {
       const saveData = ranked.map(([name, data]) => ({ name, score: data.score, reasons: data.reasons.filter((v,i,a)=>a.indexOf(v)===i), chg: data.chg, sector: data.sector || '' }));
       await setDoc(doc(db, 'users', uid, 'starHistory', today), { date: today, list: saveData, savedAt: Date.now() });
@@ -1452,6 +1452,19 @@ window.saveSudTop1 = async () => {
   } catch(e) {}
 };
 
+// 🏖️ 휴장일(토/일) 판정 - 날짜별 저장 지점에서 공통으로 사용
+// KIS는 주말에도 직전 거래일 데이터를 내려주므로, 오늘 날짜로 저장하면 안 됨
+window.isClosedDay = (dateStr) => {
+  let dow;
+  if(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    dow = new Date(y, m-1, d).getDay();
+  } else {
+    dow = new Date().getDay();
+  }
+  return dow === 0 || dow === 6;
+};
+
 // 🏖️ 주말(토/일)에 잘못 저장된 기록 정리
 // KIS는 주말에도 직전 거래일 데이터를 내려주는데, 예전 코드가 요일 확인 없이 오늘 날짜로 저장했음
 window.cleanWeekendData = async () => {
@@ -1471,13 +1484,25 @@ window.cleanWeekendData = async () => {
 
   const removed = { kis: [], cal: [] };
   try {
-    // 1) kisHistory - 주말 날짜 문서 삭제
-    const snap = await getDocs(collection(db, 'users', uid, 'kisHistory'));
-    for(const d of snap.docs) {
-      if(isWeekend(d.id)) {
-        await deleteDoc(doc(db, 'users', uid, 'kisHistory', d.id));
-        removed.kis.push(d.id);
-      }
+    // 1) 날짜별 히스토리 컬렉션 전체 - 주말 날짜 문서 삭제
+    const COLS = [
+      ['kisHistory', '순매수 TOP'],
+      ['upSudHistory', '상승수급'],
+      ['jungBaeHistory', '정배열'],
+      ['reverseHistory', '역발상'],
+      ['candleHistory', '종봉 PICK'],
+      ['starHistory', '수급점수']
+    ];
+    for(const [col, label] of COLS) {
+      try {
+        const snap = await getDocs(collection(db, 'users', uid, col));
+        for(const d of snap.docs) {
+          if(isWeekend(d.id)) {
+            await deleteDoc(doc(db, 'users', uid, col, d.id));
+            removed.kis.push(label + ' ' + d.id);
+          }
+        }
+      } catch(e) { console.warn(col + ' 정리 실패:', e); }
     }
 
     // 2) 수급1등 달력 - 주말 항목 제거 후 저장
@@ -1508,7 +1533,7 @@ window.cleanWeekendData = async () => {
       } else {
         msg.style.color = 'var(--ac)';
         msg.innerHTML = '✓ ' + total + '건 정리했어요<br>'
-          + (removed.kis.length ? '· 순매수 TOP: ' + removed.kis.join(', ') + '<br>' : '')
+          + (removed.kis.length ? '· ' + removed.kis.join('<br>· ') + '<br>' : '')
           + (removed.cal.length ? '· 수급1등 달력: ' + removed.cal.join(', ') + '<br>' : '')
           + '<b>새로고침하면 반영돼요</b>';
       }
@@ -4654,6 +4679,7 @@ function isJungBae(prices) {
 
 // 정배열 Firestore 저장
 window.saveJungBaeHistory = async (uid, results, targetDate) => {
+  if(window.isClosedDay(targetDate)) return; // 휴장일엔 저장 안 함
   try {
     await setDoc(doc(db, 'users', uid, 'jungBaeHistory', targetDate), {
       date: targetDate, results, savedAt: new Date().toISOString()
@@ -5355,7 +5381,7 @@ window.upSudFetch = async () => {
     // Firestore에 오늘 상승수급 저장
     try {
       const user = window._curUser;
-      if(user && result.length > 0) {
+      if(user && result.length > 0 && !window.isClosedDay()) {
         const today = new Date().toISOString().slice(0,10);
         const saveData = result.map(s => ({
           name: s.hts_kor_isnm,
@@ -5513,8 +5539,9 @@ window.reverseFetch = async () => {
     // Firestore에 역발상 히스토리 저장
     try {
       const user = window._curUser;
-      if(user) {  // 종목 없어도 오늘 탭 생성을 위해 항상 저장
-        const today = new Date().toISOString().slice(0,10);
+      const _todayRv = new Date().toISOString().slice(0,10);
+      if(user && !window.isClosedDay(_todayRv)) {  // 종목 없어도 오늘 탭 생성을 위해 항상 저장 (휴장일 제외)
+        const today = _todayRv;
         await setDoc(doc(db, 'users', user.uid, 'reverseHistory', today), {
           date: today,
           fResult: fResult.map(s=>({name:s.name,chg:s.chg,trPbmn:s.trPbmn,fBuy:fBuyMap[s.name]||0,iBuy:iBuyMap[s.name]||0,code:codeMap[s.name]||''})),
@@ -5773,6 +5800,7 @@ window.openDatePicker = (dates, type, uid) => {
 window.saveCandleToFirestore = async (uid, candles, targetDate) => {
   try {
     const saveDate = targetDate || new Date().toISOString().slice(0,10);
+    if(window.isClosedDay(saveDate)) return; // 휴장일엔 저장 안 함
     await setDoc(doc(db, 'users', uid, 'candleHistory', saveDate), {
       date: saveDate, candles, savedAt: Date.now()
     });
