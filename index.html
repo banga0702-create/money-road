@@ -2466,7 +2466,7 @@ function renderMarketComment(score, prevScore) {
   // 7일 막대그래프
   const weekBarEl = document.getElementById('mktWeekBar');
   if(weekBarEl && S.weekHist && S.weekHist.length) {
-    const validHist = S.weekHist.filter(d => d.date); // date 없는 이전 데이터 제외
+    const validHist = S.weekHist.filter(d => d.date && !(window.isClosedDay && window.isClosedDay(d.date))); // date 없는 이전 데이터 + 휴장일 제외
     weekBarEl.innerHTML = validHist.map(d => {
       const isToday = d.isToday;
       const h = isToday ? Math.max(Math.round(d.score * 0.48), 6) : Math.max(Math.round(d.score * 0.24), 2);
@@ -2674,10 +2674,10 @@ function renderMonthHist(){
 
   for(let d=1; d<=lastDate; d++){
     const key = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const sc  = mh[key];
     const isToday = key === todayStr;
     const dow = (firstDay + d - 1) % 7;
     const isWeekend = dow===0||dow===6;
+    const sc  = isWeekend ? undefined : mh[key]; // 휴장일엔 점수 표시 안 함
     let cellStyle='background:var(--sf2)';
     let scoreTxt='—';
     let scoreColor='var(--tx3)';
@@ -6683,7 +6683,8 @@ window.renderIdxCal = () => {
   for(let i = 0; i < firstDay; i++) html += '<div></div>';
   for(let d = 1; d <= lastDate; d++) {
     const key = Y + '-' + String(M+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    const v = hist[key];
+    const _dowI = (firstDay + d - 1) % 7;
+    const v = (_dowI===0||_dowI===6) ? null : hist[key]; // 휴장일엔 등락률 표시 안 함
     const isToday = key === todayStr;
     const border = isToday ? '1.5px solid var(--pr)' : '1px solid transparent';
     if(v) {
@@ -7078,7 +7079,8 @@ function renderMktCal() {
 
   for(let d = 1; d <= lastDate; d++) {
     const key = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const score = mh[key];
+    const _dowC = (firstDay + d - 1) % 7;
+    const score = (_dowC===0||_dowC===6) ? undefined : mh[key]; // 휴장일엔 점수 표시 안 함
     const isToday = key === todayStr;
     let bg = 'transparent', color = 'var(--tx3)', fontW = '500';
 
