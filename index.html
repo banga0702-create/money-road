@@ -642,6 +642,8 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <div id="kisClosedSub" style="font-size:11px;color:var(--tx3);margin-top:6px;line-height:1.6"></div>
       </div>
 
+      <div id="kisClosedBadge" style="display:none;margin:0 16px 8px;padding:7px 10px;text-align:center;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.35);border-radius:8px;font-size:10px;color:var(--gd);font-weight:700"></div>
+
       <!-- 3열 가로 레이아웃 -->
       <div id="kisTopGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:8px 8px 12px">
 
@@ -4286,6 +4288,8 @@ window.kisTopFetch = async () => {
 
     const _grid = document.getElementById('kisTopGrid');
     const _notice = document.getElementById('kisClosedNotice');
+    const _badge = document.getElementById('kisClosedBadge');
+    if(_badge) _badge.style.display = 'none';
     if(_isClosed) {
       if(_grid) _grid.style.display = 'none';
       if(_notice) {
@@ -4405,11 +4409,25 @@ window.renderKisDateTabs = async (uid) => {
 
 // 과거 날짜 데이터 불러오기
 window.loadKisHistory = async (date, uid) => {
-  // 휴장일 안내가 떠 있을 수 있으므로 목록 복구 (과거 날짜는 정상 데이터)
+  // 휴장일 안내(전체 화면)는 걷어내고 목록을 보여줌 - 과거 날짜는 정상 데이터
   const _g = document.getElementById('kisTopGrid');
   const _n = document.getElementById('kisClosedNotice');
   if(_g) _g.style.display = 'grid';
   if(_n) _n.style.display = 'none';
+  // 오늘이 주말이면 "지금 보는 게 언제 데이터인지" 배지로 알려줌
+  const _bd = document.getElementById('kisClosedBadge');
+  if(_bd) {
+    const _dw = new Date().getDay();
+    if(_dw === 0 || _dw === 6) {
+      const _dn = ['일','월','화','수','목','금','토'];
+      const [_y,_m,_d2] = date.split('-').map(Number);
+      const _lbl = _m + '/' + _d2 + '(' + _dn[new Date(_y,_m-1,_d2).getDay()] + ')';
+      _bd.innerHTML = '🏖️ 오늘은 휴장일이에요 · 지금 보는 건 <b>' + _lbl + '</b> 데이터예요';
+      _bd.style.display = 'block';
+    } else {
+      _bd.style.display = 'none';
+    }
+  }
   // 탭 활성화 표시
   document.querySelectorAll('[id^="kisDateBtn-"]').forEach(b => {
     b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
