@@ -636,8 +636,14 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <!-- 날짜 탭 -->
       <div id="kisDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
 
+      <div id="kisClosedNotice" style="display:none;margin:8px 16px 16px;padding:20px 12px;text-align:center;background:var(--sf2);border:1px dashed var(--bd);border-radius:12px">
+        <div style="font-size:28px;margin-bottom:6px">🏖️</div>
+        <div style="font-size:13px;font-weight:800;color:var(--tx2)">오늘은 휴장일이에요</div>
+        <div id="kisClosedSub" style="font-size:11px;color:var(--tx3);margin-top:6px;line-height:1.6"></div>
+      </div>
+
       <!-- 3열 가로 레이아웃 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:8px 8px 12px">
+      <div id="kisTopGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:8px 8px 12px">
 
         <!-- 외국인(+기관) -->
         <div style="min-width:0">
@@ -1794,6 +1800,7 @@ window.getYesterdayOrLastTrading = function(dates) {
   const [y, m, day] = last.split('-').map(Number);
   const dow = new Date(y, m-1, day).getDay();
   const label = last === yesterday ? '어제' : `마지막장(${last.slice(5).replace('-','/')} ${dayNames[dow]})`;
+  window._kisYstLabel = label; // 휴장 안내에서 실제 탭 이름을 그대로 쓰기 위해 저장
   return { date: last, label };
 }
 
@@ -4200,12 +4207,22 @@ window.kisTopFetch = async () => {
     const _isClosed = (_dow === 0 || _dow === 6);
     const _lastTd = new Date();
     _lastTd.setDate(_lastTd.getDate() - (_dow === 0 ? 2 : 1));
-    const _lastLabel = (_lastTd.getMonth() + 1) + '/' + _lastTd.getDate() + '(금)';
+    const _lastLabel = (_lastTd.getMonth() + 1) + '/' + _lastTd.getDate() + '(' + ['일','월','화','수','목','금','토'][_lastTd.getDay()] + ')';
 
+    const _grid = document.getElementById('kisTopGrid');
+    const _notice = document.getElementById('kisClosedNotice');
     if(_isClosed) {
-      msg.style.color = 'var(--gd)';
-      msg.textContent = '🏖️ 오늘은 휴장일이에요 · ' + _lastLabel + ' 데이터를 보고 있어요 (저장 안 함)';
+      if(_grid) _grid.style.display = 'none';
+      if(_notice) {
+        _notice.style.display = 'block';
+        const _sub = document.getElementById('kisClosedSub');
+        const _tabName = window._kisYstLabel || '마지막장';
+        if(_sub) _sub.innerHTML = _lastLabel + ' 데이터는 <b>\'' + _tabName + '\'</b> 탭에서 볼 수 있어요';
+      }
+      msg.style.display = 'none';
     } else {
+      if(_grid) _grid.style.display = 'grid';
+      if(_notice) _notice.style.display = 'none';
       msg.style.color = 'var(--ac)';
       msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
       setTimeout(() => { msg.style.display='none'; }, 4000);
@@ -4313,6 +4330,11 @@ window.renderKisDateTabs = async (uid) => {
 
 // 과거 날짜 데이터 불러오기
 window.loadKisHistory = async (date, uid) => {
+  // 휴장일 안내가 떠 있을 수 있으므로 목록 복구 (과거 날짜는 정상 데이터)
+  const _g = document.getElementById('kisTopGrid');
+  const _n = document.getElementById('kisClosedNotice');
+  if(_g) _g.style.display = 'grid';
+  if(_n) _n.style.display = 'none';
   // 탭 활성화 표시
   document.querySelectorAll('[id^="kisDateBtn-"]').forEach(b => {
     b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
