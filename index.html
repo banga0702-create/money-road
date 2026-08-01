@@ -1022,6 +1022,12 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div style="margin-bottom:16px">
       <div class="tog-row"><span class="tog-lbl">🔔 장마감 알림 (예정)</span><div class="tog" id="cfgNoti" onclick="this.classList.toggle('on')"></div></div>
     </div>
+    <div style="margin-bottom:16px;padding:10px;background:var(--sf2);border-radius:10px">
+      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:4px">🏖️ 휴장일 기록 정리</div>
+      <div style="font-size:9px;color:var(--tx3);line-height:1.6;margin-bottom:8px">토요일·일요일에 잘못 저장된 기록을 찾아서 지워요. 평일 기록은 건드리지 않아요.</div>
+      <button class="btn btn-sc" style="width:100%" onclick="cleanWeekendData()" id="cleanWkBtn">🧹 주말 기록 찾아서 지우기</button>
+      <div id="cleanWkMsg" style="font-size:10px;margin-top:8px;line-height:1.6;display:none"></div>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button class="btn btn-sc" onclick="clearAll()">🗑️ 전체 초기화</button>
       <button class="btn btn-pr" onclick="saveSettings();closeMo('moSettings')">저장</button>
@@ -1442,6 +1448,74 @@ window.saveSudTop1 = async () => {
       list: window._sudTop1History, updatedAt: Date.now()
     });
   } catch(e) {}
+};
+
+// 🏖️ 주말(토/일)에 잘못 저장된 기록 정리
+// KIS는 주말에도 직전 거래일 데이터를 내려주는데, 예전 코드가 요일 확인 없이 오늘 날짜로 저장했음
+window.cleanWeekendData = async () => {
+  const btn = document.getElementById('cleanWkBtn');
+  const msg = document.getElementById('cleanWkMsg');
+  const uid = window._curUser?.uid;
+  if(!uid) { alert('로그인 후 이용해주세요'); return; }
+
+  const isWeekend = (d) => {
+    const [y, m, day] = d.split('-').map(Number);
+    const dow = new Date(y, m-1, day).getDay(); // 로컬(한국) 기준
+    return dow === 0 || dow === 6;
+  };
+
+  if(btn) { btn.disabled = true; btn.textContent = '⏳ 찾는 중...'; }
+  if(msg) { msg.style.display = 'block'; msg.style.color = 'var(--tx3)'; msg.textContent = '기록을 확인하고 있어요...'; }
+
+  const removed = { kis: [], cal: [] };
+  try {
+    // 1) kisHistory - 주말 날짜 문서 삭제
+    const snap = await getDocs(collection(db, 'users', uid, 'kisHistory'));
+    for(const d of snap.docs) {
+      if(isWeekend(d.id)) {
+        await deleteDoc(doc(db, 'users', uid, 'kisHistory', d.id));
+        removed.kis.push(d.id);
+      }
+    }
+
+    // 2) 수급1등 달력 - 주말 항목 제거 후 저장
+    if(Array.isArray(window._sudTop1History)) {
+      const before = window._sudTop1History.length;
+      removed.cal = window._sudTop1History.filter(e => e.date && isWeekend(e.date)).map(e => e.date + ' ' + (e.name||''));
+      if(removed.cal.length) {
+        window._sudTop1History = window._sudTop1History.filter(e => !(e.date && isWeekend(e.date)));
+        if(window.saveSudTop1) await saveSudTop1();
+        if(window.renderSudTop1Cal) renderSudTop1Cal();
+        console.log('수급1등 달력 정리:', before, '→', window._sudTop1History.length);
+      }
+    }
+
+    // 화면 갱신 (지워진 날짜 탭이 남아있지 않도록)
+    try {
+      const s2 = await getDocs(collection(db, 'users', uid, 'kisHistory'));
+      window._kisHistory7 = s2.docs.sort((a,b)=>b.id.localeCompare(a.id)).slice(0,7).map(x=>x.data());
+      window._kisLatestDate = null;
+      if(window.renderKisDateTabs) await renderKisDateTabs(uid);
+    } catch(e) {}
+
+    const total = removed.kis.length + removed.cal.length;
+    if(msg) {
+      if(total === 0) {
+        msg.style.color = 'var(--tx3)';
+        msg.textContent = '✓ 지울 주말 기록이 없어요. 이미 깨끗해요!';
+      } else {
+        msg.style.color = 'var(--ac)';
+        msg.innerHTML = '✓ ' + total + '건 정리했어요<br>'
+          + (removed.kis.length ? '· 순매수 TOP: ' + removed.kis.join(', ') + '<br>' : '')
+          + (removed.cal.length ? '· 수급1등 달력: ' + removed.cal.join(', ') + '<br>' : '')
+          + '<b>새로고침하면 반영돼요</b>';
+      }
+    }
+  } catch(e) {
+    console.warn('주말 기록 정리 실패:', e);
+    if(msg) { msg.style.color = 'var(--dn)'; msg.textContent = '⚠️ 실패했어요: ' + (e.message || e); }
+  }
+  if(btn) { btn.disabled = false; btn.textContent = '🧹 주말 기록 찾아서 지우기'; }
 };
 
 window.loadSudTop1 = async (uid) => {
@@ -3897,7 +3971,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
          signInWithRedirect, getRedirectResult, deleteUser, updateProfile }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot }
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot, deleteDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -3921,6 +3995,7 @@ window.getDoc = getDoc;
 window.getDocs = getDocs;
 window.doc = doc;
 window.collection = collection;
+window.deleteDoc = deleteDoc;
 
 getRedirectResult(auth).catch(e => {
   if(e && e.code !== 'auth/credential-already-in-use') {
