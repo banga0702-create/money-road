@@ -1517,6 +1517,28 @@ window.cleanWeekendData = async () => {
       }
     }
 
+    // 3) 홈 화면 기록 (appState 안) - 시장온도 달력 / 지수 달력 / 주간 막대
+    const removedState = [];
+    if(window.S) {
+      let touched = false;
+      if(S.monthHist) {
+        Object.keys(S.monthHist).forEach(k => {
+          if(isWeekend(k)) { delete S.monthHist[k]; removedState.push('시장온도 ' + k); touched = true; }
+        });
+      }
+      if(S.idxHist) {
+        Object.keys(S.idxHist).forEach(k => {
+          if(isWeekend(k)) { delete S.idxHist[k]; removedState.push('지수 ' + k); touched = true; }
+        });
+      }
+      if(Array.isArray(S.weekHist)) {
+        const before = S.weekHist.length;
+        S.weekHist = S.weekHist.filter(h => !(h.date && isWeekend(h.date)));
+        if(S.weekHist.length !== before) { removedState.push('주간막대 ' + (before - S.weekHist.length) + '칸'); touched = true; }
+      }
+      if(touched && typeof save === 'function') { save(); if(window.renderHome) renderHome(); }
+    }
+
     // 화면 갱신 (지워진 날짜 탭이 남아있지 않도록)
     try {
       const s2 = await getDocs(collection(db, 'users', uid, 'kisHistory'));
@@ -1525,7 +1547,7 @@ window.cleanWeekendData = async () => {
       if(window.renderKisDateTabs) await renderKisDateTabs(uid);
     } catch(e) {}
 
-    const total = removed.kis.length + removed.cal.length;
+    const total = removed.kis.length + removed.cal.length + removedState.length;
     if(msg) {
       if(total === 0) {
         msg.style.color = 'var(--tx3)';
@@ -1535,6 +1557,7 @@ window.cleanWeekendData = async () => {
         msg.innerHTML = '✓ ' + total + '건 정리했어요<br>'
           + (removed.kis.length ? '· ' + removed.kis.join('<br>· ') + '<br>' : '')
           + (removed.cal.length ? '· 수급1등 달력: ' + removed.cal.join(', ') + '<br>' : '')
+          + (removedState.length ? '· ' + removedState.join('<br>· ') + '<br>' : '')
           + '<b>새로고침하면 반영돼요</b>';
       }
     }
@@ -2025,11 +2048,12 @@ window.calcMktAuto = function() {
     up: upCnt, total: totCnt
   };
 
-  // weekHist + monthHist 자동 저장
+  // weekHist + monthHist 자동 저장 (휴장일 제외 - 주말엔 직전 거래일 값이 그대로 와서 달력이 오염됨)
   const now = new Date();
   const dayNames = ['일','월','화','수','목','금','토'];
   const dn = dayNames[now.getDay()];
   const dateKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(window.isClosedDay && window.isClosedDay(dateKey)) { renderHome(); return; }
   if(!S.weekHist) S.weekHist = [];
   const idx = S.weekHist.findIndex(h => h.date === dateKey);
   if(idx >= 0) {
@@ -2097,6 +2121,10 @@ function saveMkt(){
   }
   // 월간 히스토리 업데이트 (key: YYYY-MM-DD)
   const dateKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  if(window.isClosedDay && window.isClosedDay(dateKey)) {
+    alert('오늘은 휴장일이라 시장온도를 기록하지 않아요.');
+    return;
+  }
   if(!S.monthHist) S.monthHist = {};
   S.monthHist[dateKey] = d.score;
   save(); renderHome();
@@ -6317,6 +6345,7 @@ window.fetchMarketIndex = async () => {
     // 일별 지수 기록 저장 (지수 달력용 - 하루 중 마지막 조회값이 남음)
     try {
       const idxKey = new Date().toISOString().slice(0,10);
+      if(window.isClosedDay && window.isClosedDay(idxKey)) throw new Error('휴장일 - 지수 기록 건너뜀');
       if(!S.idxHist) S.idxHist = {};
       S.idxHist[idxKey] = {
         kp: parseFloat(kp?.bstp_nmix_prpr)||0, kpc: parseFloat(kp?.bstp_nmix_prdy_ctrt)||0,
