@@ -6677,7 +6677,7 @@ window.renderIdxCal = () => {
   title.textContent = Y + '년 ' + (M+1) + '월';
   const firstDay = new Date(Y, M, 1).getDay();
   const lastDate = new Date(Y, M+1, 0).getDate();
-  const hist = (window.S && S.idxHist) || {};
+  const hist = (typeof S !== 'undefined' && S.idxHist) || {}; // S는 let 선언이라 window.S로 접근 불가
   const todayStr = new Date().toISOString().slice(0,10);
   let html = '';
   for(let i = 0; i < firstDay; i++) html += '<div></div>';
@@ -6698,7 +6698,7 @@ window.renderIdxCal = () => {
   grid.innerHTML = html;
 };
 window.idxCalInfo = (key) => {
-  const v = (window.S && S.idxHist) ? S.idxHist[key] : null;
+  const v = (typeof S !== 'undefined' && S.idxHist) ? S.idxHist[key] : null;
   if(!v) return;
   const f = (n) => n.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const s = (n) => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
