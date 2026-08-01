@@ -611,7 +611,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <button class="btn btn-ac btn-sm" id="backtestBtn" onclick="runCalBacktest()">▶ 실행</button>
     </div>
     <div id="backtestResult" style="padding:0 16px 16px">
-      <div class="empty" style="padding:16px"><div class="ico">📊</div><p>실행을 누르면 달력의 수급1등을<br>그날 종가에 300만원씩 샀다고 가정하고<br>30%↑ 그룹 vs 미만 그룹 수익률을 비교해요</p></div>
+      <div class="empty" style="padding:16px"><div class="ico">📊</div><p>실행을 누르면 달력에 기록된 종목을<br>그날 종가에 300만원씩 샀다고 가정하고<br>조건별로 수익률을 비교해요</p></div>
     </div>
 
   </div>
@@ -4195,14 +4195,26 @@ window.kisTopFetch = async () => {
       return base;
     }).join('') : '<div class="empty" style="padding:16px"><p>데이터 없음</p></div>';
 
-    msg.style.color = 'var(--ac)';
-    msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
-    setTimeout(() => { msg.style.display='none'; }, 4000);
+    // 주말(토/일)엔 KIS가 직전 거래일 데이터를 내려줌 - 오늘 날짜로 저장하면 안 됨
+    const _dow = new Date().getDay(); // 0:일 6:토
+    const _isClosed = (_dow === 0 || _dow === 6);
+    const _lastTd = new Date();
+    _lastTd.setDate(_lastTd.getDate() - (_dow === 0 ? 2 : 1));
+    const _lastLabel = (_lastTd.getMonth() + 1) + '/' + _lastTd.getDate() + '(금)';
 
-    // Firestore에 오늘 데이터 저장
+    if(_isClosed) {
+      msg.style.color = 'var(--gd)';
+      msg.textContent = '🏖️ 오늘은 휴장일이에요 · ' + _lastLabel + ' 데이터를 보고 있어요 (저장 안 함)';
+    } else {
+      msg.style.color = 'var(--ac)';
+      msg.textContent = '✓ 불러오기 완료! 종목 클릭 시 상세 정보 및 추가 가능';
+      setTimeout(() => { msg.style.display='none'; }, 4000);
+    }
+
+    // Firestore에 오늘 데이터 저장 (휴장일엔 저장/자동투자 모두 건너뜀)
     try {
       const user = window._curUser;
-      if(user) {
+      if(user && !_isClosed) {
         const today = new Date().toISOString().slice(0,10);
         await setDoc(doc(db, 'users', user.uid, 'kisHistory', today), {
           date: today,
@@ -4255,8 +4267,10 @@ window.kisTopFetch = async () => {
       }
     } catch(e2) { console.warn('KIS 히스토리 저장 실패:', e2); }
 
-    // 🤖 수급1등 자동투자 - 달력/히스토리 저장과 완전히 독립 실행
-    try { await autoInvestRun(fi, f, inst); } catch(eA) { console.warn('자동투자 실패:', eA); }
+    // 🤖 수급1등 자동투자 - 달력/히스토리 저장과 완전히 독립 실행 (휴장일 제외)
+    if(!_isClosed) {
+      try { await autoInvestRun(fi, f, inst); } catch(eA) { console.warn('자동투자 실패:', eA); }
+    }
 
   } catch(e) {
     msg.style.color = 'var(--up)';
