@@ -379,8 +379,15 @@ export default async function handler(req, res) {
       const { code, period } = req.query;
       if (!code) return res.status(400).json({ error: 'code 파라미터 필요' });
       const periodCode = (period === 'W' || period === 'M') ? period : 'D'; // D:일봉 W:주봉 M:월봉
+      // 조회 날짜 범위를 비워서 보내면 KIS가 30개만 줌 - 범위를 채워야 최대 100개까지 옴
+      // 봉 종류별로 100개를 채우는 데 필요한 기간이 달라서 다르게 잡음
+      const backDays = periodCode === 'M' ? 3650 : (periodCode === 'W' ? 800 : 180);
+      const nowKST = new Date(Date.now() + 9*60*60*1000);
+      const fromKST = new Date(nowKST.getTime() - backDays*24*60*60*1000);
+      const dTo = nowKST.toISOString().slice(0,10).replace(/-/g,'');
+      const dFrom = fromKST.toISOString().slice(0,10).replace(/-/g,'');
       const r = await fetch(
-        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=${periodCode}&FID_ORG_ADJ_PRC=0`,
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${code}&FID_INPUT_DATE_1=${dFrom}&FID_INPUT_DATE_2=${dTo}&FID_PERIOD_DIV_CODE=${periodCode}&FID_ORG_ADJ_PRC=0`,
         { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKST03010100', 'custtype': 'P' } }
       );
       const data = await r.json();
