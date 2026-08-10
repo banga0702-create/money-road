@@ -6630,7 +6630,7 @@ window.runCalBacktest = async () => {
       return { n: arr.length, avg, win, gain };
     };
     const sAll = stat(ok);
-    const thresholds = [30, 35, 40].map(t => { const arr = ok.filter(r => (r.ratio||0) >= t); return { t, arr, s: stat(arr) }; });
+    const thresholds = [30, 35].map(t => { const arr = ok.filter(r => (r.ratio||0) >= t); return { t, arr, s: stat(arr) }; });
     const bestAvg = Math.max(...thresholds.filter(x => x.s.n > 0).map(x => x.s.avg));
 
     // 카드/리스트 재렌더링에 필요한 데이터 저장 (카드 클릭 시 재계산 없이 필터만 바꿔서 다시 그림)
