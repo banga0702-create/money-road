@@ -614,6 +614,14 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       <div class="empty" style="padding:16px"><div class="ico">📊</div><p>실행을 누르면 달력에 기록된 종목을<br>그날 종가에 300만원씩 샀다고 가정하고<br>조건별로 수익률을 비교해요</p></div>
     </div>
 
+    <!-- 언제 팔까? (매도 백테스트) -->
+    <div class="sh" style="margin-top:16px">
+      <span class="sh-title">✂️ 언제 팔까? <span style="font-size:10px;font-weight:600;color:var(--tx3)">(매도 백테스트)</span></span>
+    </div>
+    <div id="btSellResult" style="padding:0 16px 16px">
+      <div class="empty" style="padding:16px"><div class="ico">✂️</div><p>위 백테스트를 실행하면<br>규칙대로 팔았을 때 결과가 여기 나와요</p></div>
+    </div>
+
   </div>
 
   <!-- ══ 탭3: 특징주 ══ -->
@@ -6458,6 +6466,56 @@ window.renderBtCards = () => {
 };
 
 
+// ✂️ 매도 백테스트 결과 렌더링
+window.renderBtSell = () => {
+  const el = document.getElementById('btSellResult');
+  const d = window._btSellData;
+  if(!el || !d) return;
+  if(!d.base.n) { el.innerHTML = '<div class="empty" style="padding:16px"><p>계산할 데이터가 없어요</p></div>'; return; }
+
+  const fmtR = (v) => (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+  const col  = (v) => v >= 0 ? 'var(--up)' : 'var(--dn)';
+  const fmtG = (v) => (v >= 0 ? '+' : '') + v.toLocaleString() + '원';
+
+  // 기준선(안 팔기) + 규칙들을 수익률 높은 순으로
+  const rows = d.rules.map(r => ({ label: r.label, desc: r.desc, s: r.s }))
+    .filter(r => r.s.n > 0).sort((a,b) => b.s.avg - a.s.avg);
+  const bestAvg = rows.length ? rows[0].s.avg : -Infinity;
+
+  let html = '<div style="font-size:9px;color:var(--tx3);margin-bottom:8px;line-height:1.6">'
+    + '30%↑ 기준 ' + d.base.n + '건을 규칙대로 팔았다면 어땠을까<br>신호가 안 뜬 종목은 안 판 것으로 계산해요</div>';
+
+  // 기준선 카드
+  html += '<div style="background:var(--sf2);border:1.5px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px;text-align:center">'
+    + '<div style="font-size:10px;font-weight:700;color:var(--tx3)">🤲 안 팔고 계속 보유 <span style="font-weight:800;color:' + col(d.base.avg) + '">' + fmtR(d.base.avg) + '</span></div>'
+    + '<div style="font-size:9px;color:var(--tx3);margin-top:3px">승률 ' + Math.round(d.base.win) + '% · ' + fmtG(d.base.gain) + '</div>'
+    + '</div>';
+
+  html += rows.map(r => {
+    const isBest = r.s.avg === bestAvg;
+    const better = r.s.avg > d.base.avg;
+    return '<div style="background:var(--sf);border:1.5px solid ' + (isBest ? 'var(--ac)' : 'var(--bd)') + ';border-radius:10px;padding:10px;margin-bottom:6px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
+        + '<div style="min-width:0">'
+          + '<div style="font-size:11px;font-weight:800;color:var(--tx1)">' + (isBest ? '🏆 ' : '') + r.label + '</div>'
+          + '<div style="font-size:8px;color:var(--tx3);margin-top:2px">' + r.desc + '</div>'
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0">'
+          + '<div style="font-size:13px;font-weight:800;color:' + col(r.s.avg) + '">' + fmtR(r.s.avg) + '</div>'
+          + '<div style="font-size:8px;font-weight:700;color:' + (better ? 'var(--up)' : 'var(--tx3)') + '">'
+            + (better ? '▲ 보유보다 나음' : '▼ 보유가 나음') + '</div>'
+        + '</div>'
+      + '</div>'
+      + '<div style="font-size:9px;color:var(--tx3);margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)">'
+        + '승률 ' + Math.round(r.s.win) + '% · ' + fmtG(r.s.gain) + '<br>'
+        + '매도신호 ' + r.s.sold + '/' + r.s.n + '건 · 평균 ' + r.s.days + '일 보유'
+      + '</div>'
+    + '</div>';
+  }).join('');
+
+  el.innerHTML = html;
+};
+
 window.renderBtList = () => {
   const el = document.getElementById('btList');
   if(!el || !window._btResults) return;
@@ -6557,12 +6615,14 @@ window.runCalBacktest = async () => {
             }
           });
           await new Promise(r2 => setTimeout(r2, 500)); // API 과부하 방지
-          if(latest > 0) { priceCache[code] = { map, latest }; return priceCache[code]; } // 성공만 기억
+          // 매도 규칙 판정용: 날짜 오름차순 배열 (map은 조회용, series는 순회용)
+          const series = Object.keys(map).sort().map(dt => ({ date: dt, close: map[dt] }));
+          if(latest > 0) { priceCache[code] = { map, latest, series }; return priceCache[code]; } // 성공만 기억
           // 빈 결과면 잠깐 쉬고 재시도
           await new Promise(r2 => setTimeout(r2, 800));
         } catch(e) { await new Promise(r2 => setTimeout(r2, 800)); }
       }
-      return { map: {}, latest: 0 }; // 3번 다 실패 (캐시 안 함 - 다음 실행 때 다시 시도)
+      return { map: {}, latest: 0, series: [] }; // 3번 다 실패 (캐시 안 함 - 다음 실행 때 다시 시도)
     };
 
     // 실시간 현재가 일괄 조회 (일봉 API는 장중엔 전일 종가까지만 나와서 실시간 반영이 안 됨 - 별도 조회 필요)
@@ -6596,6 +6656,60 @@ window.runCalBacktest = async () => {
       } catch(e) {}
     }
 
+    // ── ✂️ 매도 규칙 판정용 계산기 ──────────────────────────
+    // series: [{date, close}] 날짜 오름차순. 매수일 다음날부터 하루씩 보며 신호가 뜬 날 종가에 판다고 가정.
+    const smaAt = (ser, i, n) => { // i번째 날 기준 n일 이동평균
+      if(i < n - 1) return 0;
+      let sum = 0;
+      for(let k = i - n + 1; k <= i; k++) sum += ser[k].close;
+      return sum / n;
+    };
+    const rsiSeries = (ser, period) => { // Wilder RSI - 인덱스별 값 (계산 불가 구간은 null)
+      const out = new Array(ser.length).fill(null);
+      if(ser.length <= period) return out;
+      let ag = 0, al = 0;
+      for(let i = 1; i <= period; i++) {
+        const ch = ser[i].close - ser[i-1].close;
+        if(ch >= 0) ag += ch; else al -= ch;
+      }
+      ag /= period; al /= period;
+      out[period] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+      for(let i = period + 1; i < ser.length; i++) {
+        const ch = ser[i].close - ser[i-1].close;
+        const g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
+        ag = (ag * (period - 1) + g) / period;
+        al = (al * (period - 1) + l) / period;
+        out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+      }
+      return out;
+    };
+    // 규칙별로 "언제 팔았는지" 찾기 - 못 찾으면 null (= 안 판 것)
+    const findSell = (ser, buyIdx, buyPrice, rule, rsiArr) => {
+      let wasOver = false; // RSI 70을 넘은 적이 있는지 (나 방식용)
+      for(let i = buyIdx + 1; i < ser.length; i++) {
+        const px = ser[i].close;
+        if(rule === 'dead') {
+          const m5 = smaAt(ser, i, 5), m20 = smaAt(ser, i, 20);
+          if(m5 > 0 && m20 > 0 && m5 < m20) return { date: ser[i].date, price: px, days: i - buyIdx };
+        } else if(rule === 'cut10') {
+          if((px - buyPrice) / buyPrice * 100 <= -10) return { date: ser[i].date, price: px, days: i - buyIdx };
+        } else if(rule === 'rsiA') {
+          if(rsiArr[i] != null && rsiArr[i] >= 70) return { date: ser[i].date, price: px, days: i - buyIdx };
+        } else if(rule === 'rsiB') {
+          if(rsiArr[i] == null) continue;
+          if(rsiArr[i] >= 70) { wasOver = true; continue; }
+          if(wasOver && rsiArr[i] < 70) return { date: ser[i].date, price: px, days: i - buyIdx };
+        }
+      }
+      return null;
+    };
+    const SELL_RULES = [
+      { key: 'dead',  label: '데드크로스', desc: '5일선이 20일선 아래로' },
+      { key: 'cut10', label: '-10% 손절',  desc: '매수가 대비 -10%' },
+      { key: 'rsiA',  label: 'RSI 70 돌파', desc: '70을 넘은 날 바로' },
+      { key: 'rsiB',  label: 'RSI 70 이탈', desc: '70 넘었다가 내려온 날' }
+    ];
+
     const results = [];
     if(btn) btn.textContent = '⏳ 0/' + entries.length;
     for(let i = 0; i < entries.length; i++) {
@@ -6607,7 +6721,20 @@ window.runCalBacktest = async () => {
         const cur = curPriceMap[e.code] || pd.latest; // 실시간가 우선, 실패시 일봉 최근값으로 대체
         if(!buy || !cur) { results.push({ ...e, skip: true }); continue; }
         const rate = (cur - buy) / buy * 100;
-        results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100) });
+        // ✂️ 매도 규칙별 결과 계산 (신호 없으면 안 판 것 = 현재가 기준)
+        const ser = pd.series || [];
+        const buyIdx = ser.findIndex(x => x.date === e.date);
+        const sells = {};
+        if(buyIdx >= 0) {
+          const rsiArr = rsiSeries(ser, 14);
+          SELL_RULES.forEach(rl => {
+            const hit = findSell(ser, buyIdx, buy, rl.key, rsiArr);
+            const exitPx = hit ? hit.price : cur;
+            const r2 = (exitPx - buy) / buy * 100;
+            sells[rl.key] = { sold: !!hit, date: hit ? hit.date : '', rate: r2, gain: Math.round(3000000 * r2 / 100), days: hit ? hit.days : (ser.length - 1 - buyIdx) };
+          });
+        }
+        results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100), sells });
       } catch(err) { results.push({ ...e, skip: true }); }
     }
 
@@ -6641,9 +6768,30 @@ window.runCalBacktest = async () => {
       inter35: { arr: gInter35, s: stat(gInter35) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
+    // ✂️ 매도 규칙별 집계 (기준선 = 안 팔고 계속 보유)
+    const okS = ok.filter(r => r.sells && Object.keys(r.sells).length);
+    const sellStat = (key) => {
+      const arr = okS.map(r => r.sells[key]).filter(Boolean);
+      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, sold: 0, days: 0 };
+      return {
+        n: arr.length,
+        avg: arr.reduce((a,b) => a + b.rate, 0) / arr.length,
+        win: arr.filter(x => x.rate > 0).length / arr.length * 100,
+        gain: arr.reduce((a,b) => a + b.gain, 0),
+        sold: arr.filter(x => x.sold).length,                       // 실제 매도 신호가 뜬 건수
+        days: Math.round(arr.reduce((a,b) => a + b.days, 0) / arr.length) // 평균 보유일
+      };
+    };
+    window._btSellData = {
+      base: { n: okS.length, avg: okS.length ? okS.reduce((a,b) => a + b.rate, 0) / okS.length : 0,
+              win: okS.length ? okS.filter(r => r.rate > 0).length / okS.length * 100 : 0,
+              gain: okS.reduce((a,b) => a + b.gain, 0) },
+      rules: SELL_RULES.map(rl => ({ ...rl, s: sellStat(rl.key) }))
+    };
     window._btResults = results;
     resEl.innerHTML = '<div id="btCards"></div><div id="btList"></div>';
     if(window.renderBtCards) renderBtCards();
+    if(window.renderBtSell) renderBtSell();
     if(window.renderBtList) renderBtList();
     if(btn) btn.textContent = '▶ 실행';
   } catch(e) {
