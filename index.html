@@ -6451,6 +6451,7 @@ window.renderBtCards = () => {
   const compareCards = [
     { label: '🔁재등장', s: d.re.s, key: 're' },
     { label: '🔁재등장+35%↑', s: d.inter35.s, key: 'inter35' },
+    { label: '📈정배열 매수', s: d.aligned.s, key: 'aligned' },
     ...d.thresholds.filter(x => x.t !== 30).map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
   ].sort((a, b) => b.s.avg - a.s.avg);
   const bestAvg = Math.max(...compareCards.filter(x => x.s.n > 0).map(x => x.s.avg));
@@ -6551,6 +6552,7 @@ window.renderBtList = () => {
     if(f === 're') list = d.re.arr;
     else if(f === 'top1') list = d.top1.arr;
     else if(f === 'inter35') list = d.inter35.arr;
+    else if(f === 'aligned') list = d.aligned.arr;
     else if(f[0] === 't') {
       const t = parseInt(f.slice(1));
       const th = d.thresholds.find(x => x.t === t);
@@ -6568,7 +6570,7 @@ window.renderBtList = () => {
       + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
   };
   // 지금 목록이 어떤 집단인지 표시 (카드 조건과 목록이 달라서 생기던 오해 방지)
-  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
+  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
   const headHtml = f
     ? '<div style="font-size:9px;font-weight:700;color:var(--ac);margin-bottom:6px">' + fLabel + ' 조건 ' + list.filter(r => !r.skip).length + '건만 보는 중</div>'
     : '<div style="font-size:9px;color:var(--tx3);margin-bottom:6px">전체 기록 ' + list.length + '건 · <span style="background:rgba(0,212,170,0.15);border-radius:4px;padding:1px 4px">민트</span> = 수급 30%↑</div>';
@@ -6714,8 +6716,11 @@ window.runCalBacktest = async () => {
       for(let i = buyIdx + 1; i < ser.length; i++) {
         const px = ser[i].close;
         if(rule === 'dead') {
+          // 진짜 '교차'만 인정: 어제까지 ma5>=ma20 이던 것이 오늘 ma5<ma20 으로 뒤집힌 날
+          // (이미 데드 상태로 산 종목이 다음날 바로 팔리는 문제 방지)
           const m5 = smaAt(ser, i, 5), m20 = smaAt(ser, i, 20);
-          if(m5 > 0 && m20 > 0 && m5 < m20) return { date: ser[i].date, price: px, days: i - buyIdx };
+          const p5 = smaAt(ser, i-1, 5), p20 = smaAt(ser, i-1, 20);
+          if(m5 > 0 && m20 > 0 && p5 > 0 && p20 > 0 && p5 >= p20 && m5 < m20) return { date: ser[i].date, price: px, days: i - buyIdx };
         } else if(rule === 'cut10') {
           if((px - buyPrice) / buyPrice * 100 <= -10) return { date: ser[i].date, price: px, days: i - buyIdx };
         } else if(rule === 'rsiA') {
@@ -6729,7 +6734,7 @@ window.runCalBacktest = async () => {
       return null;
     };
     const SELL_RULES = [
-      { key: 'dead',  label: '데드크로스', desc: '5일선이 20일선 아래로' },
+      { key: 'dead',  label: '데드크로스', desc: '정배열이던 게 아래로 교차한 날' },
       { key: 'cut10', label: '-10% 손절',  desc: '매수가 대비 -10%' },
       { key: 'rsiA',  label: 'RSI 70 돌파', desc: '70을 넘은 날 바로' },
       { key: 'rsiB',  label: 'RSI 70 이탈', desc: '70 넘었다가 내려온 날' }
@@ -6750,6 +6755,12 @@ window.runCalBacktest = async () => {
         const ser = pd.series || [];
         const buyIdx = ser.findIndex(x => x.date === e.date);
         const sells = {};
+        // 매수일 기준 이평선 배열 상태 (정배열 = ma5 > ma20)
+        let buyAligned = null; // null이면 데이터 부족으로 판정 불가
+        if(buyIdx >= 19) {
+          const b5 = smaAt(ser, buyIdx, 5), b20 = smaAt(ser, buyIdx, 20);
+          if(b5 > 0 && b20 > 0) buyAligned = b5 > b20;
+        }
         if(buyIdx >= 0) {
           const rsiArr = rsiSeries(ser, 14);
           SELL_RULES.forEach(rl => {
@@ -6759,7 +6770,7 @@ window.runCalBacktest = async () => {
             sells[rl.key] = { sold: !!hit, date: hit ? hit.date : '', rate: r2, gain: Math.round(3000000 * r2 / 100), days: hit ? hit.days : (ser.length - 1 - buyIdx) };
           });
         }
-        results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100), sells });
+        results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100), sells, buyAligned });
       } catch(err) { results.push({ ...e, skip: true }); }
     }
 
@@ -6774,6 +6785,7 @@ window.runCalBacktest = async () => {
     const gTop1 = ok.filter(r => r.top1);
     const gRe = ok.filter(r => r.seq >= 2);
     const gInter35 = ok.filter(r => r.seq >= 2 && (r.ratio||0) >= 35);
+    const gAligned = ok.filter(r => r.buyAligned === true); // 매수일에 정배열(5일선>20일선)이던 종목
     const stat = (arr) => {
       if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
@@ -6791,6 +6803,7 @@ window.runCalBacktest = async () => {
       re: { arr: gRe, s: stat(gRe) },
       top1: { arr: gTop1, s: stat(gTop1) },
       inter35: { arr: gInter35, s: stat(gInter35) },
+      aligned: { arr: gAligned, s: stat(gAligned) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
     // ✂️ 매도 규칙별 집계 (기준선 = 안 팔고 계속 보유)
