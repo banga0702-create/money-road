@@ -6435,7 +6435,7 @@ window.renderBtCards = () => {
   const selBg = (key) => f === key ? 'background:rgba(59,130,246,0.12);box-shadow:0 0 0 2px rgba(59,130,246,0.4) inset;' : '';
 
   const smBox = (label, s, isBest, key, bd) =>
-    '<div onclick="btSetFilter(\'' + key + '\')" style="flex:1 1 100px;min-width:100px;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
+    '<div onclick="btSetFilter(\'' + key + '\')" style="min-width:0;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
     + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg) + '</div>'
     + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
 
@@ -6452,6 +6452,8 @@ window.renderBtCards = () => {
     { label: '🔁재등장', s: d.re.s, key: 're' },
     { label: '🔁재등장+35%↑', s: d.inter35.s, key: 'inter35' },
     { label: '📈정배열 매수', s: d.aligned.s, key: 'aligned' },
+    { label: '📉역배열 매수', s: d.inverse.s, key: 'inverse' },
+    { label: '📈정배열+재등장', s: d.alignRe.s, key: 'alignRe' },
     ...d.thresholds.filter(x => x.t !== 30).map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
   ].sort((a, b) => b.s.avg - a.s.avg);
   const bestAvg = Math.max(...compareCards.filter(x => x.s.n > 0).map(x => x.s.avg));
@@ -6460,7 +6462,7 @@ window.renderBtCards = () => {
     '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">조건별 종목 당일 300만원 종가매수 수익성 분석</div>'
     + baseBox
     + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:6px">📊 수익률 좋은 순</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px">'
     + compareCards.map(x => smBox(x.label, x.s, x.s.n > 0 && x.s.avg === bestAvg, x.key)).join('')
     + '</div>'
     + (f ? '<div onclick="btSetFilter(null)" style="text-align:center;font-size:10px;color:var(--ac);font-weight:700;cursor:pointer;margin-bottom:8px">✕ 필터 해제하고 전체 보기</div>' : '<div style="text-align:center;font-size:9px;color:var(--tx3);margin-bottom:8px">카드를 누르면 해당 종목만 볼 수 있어요</div>');
@@ -6500,8 +6502,15 @@ window.renderBtSell = () => {
     // 펼쳤을 때 보여줄 종목 목록 (실제 매도된 건만)
     let listHtml = '';
     if(isOpen) {
+      // 실제로 팔린 건만의 평균/승률 (카드 상단 수치는 88건 전체 기준이라 따로 보여줌)
+      const sold = r.rows;
+      const soldAvg = sold.length ? sold.reduce((a,b) => a + b.rate, 0) / sold.length : 0;
+      const soldWin = sold.length ? sold.filter(x => x.rate > 0).length / sold.length * 100 : 0;
       listHtml = '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd)">'
-        + '<div style="font-size:9px;color:var(--tx3);margin-bottom:5px">실제로 팔린 ' + r.rows.length + '건 (매수가→매도가)</div>'
+        + '<div style="font-size:9px;color:var(--tx3);margin-bottom:5px">실제로 팔린 ' + sold.length + '건 (매수가→매도가)</div>'
+        + (sold.length ? '<div style="font-size:10px;font-weight:800;color:var(--tx2);background:var(--sf2);border-radius:6px;padding:5px 6px;margin-bottom:5px;text-align:center">'
+            + '이 ' + sold.length + '건만의 평균 <span style="color:' + col(soldAvg) + '">' + fmtR(soldAvg) + '</span>'
+            + ' · 승률 ' + Math.round(soldWin) + '%</div>' : '')
         + (r.rows.length ? r.rows.map(x =>
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;background:var(--sf2)">'
             + '<span style="font-weight:700;color:var(--tx2);min-width:0">' + x.date.slice(5) + ' ' + x.name
@@ -6553,6 +6562,8 @@ window.renderBtList = () => {
     else if(f === 'top1') list = d.top1.arr;
     else if(f === 'inter35') list = d.inter35.arr;
     else if(f === 'aligned') list = d.aligned.arr;
+    else if(f === 'inverse') list = d.inverse.arr;
+    else if(f === 'alignRe') list = d.alignRe.arr;
     else if(f[0] === 't') {
       const t = parseInt(f.slice(1));
       const th = d.thresholds.find(x => x.t === t);
@@ -6570,7 +6581,7 @@ window.renderBtList = () => {
       + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
   };
   // 지금 목록이 어떤 집단인지 표시 (카드 조건과 목록이 달라서 생기던 오해 방지)
-  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
+  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
   const headHtml = f
     ? '<div style="font-size:9px;font-weight:700;color:var(--ac);margin-bottom:6px">' + fLabel + ' 조건 ' + list.filter(r => !r.skip).length + '건만 보는 중</div>'
     : '<div style="font-size:9px;color:var(--tx3);margin-bottom:6px">전체 기록 ' + list.length + '건 · <span style="background:rgba(0,212,170,0.15);border-radius:4px;padding:1px 4px">민트</span> = 수급 30%↑</div>';
@@ -6785,7 +6796,9 @@ window.runCalBacktest = async () => {
     const gTop1 = ok.filter(r => r.top1);
     const gRe = ok.filter(r => r.seq >= 2);
     const gInter35 = ok.filter(r => r.seq >= 2 && (r.ratio||0) >= 35);
-    const gAligned = ok.filter(r => r.buyAligned === true); // 매수일에 정배열(5일선>20일선)이던 종목
+    const gAligned = ok.filter(r => r.buyAligned === true);  // 매수일에 정배열(5일선>20일선)
+    const gInverse = ok.filter(r => r.buyAligned === false); // 매수일에 역배열(5일선<20일선)
+    const gAlignRe = ok.filter(r => r.buyAligned === true && r.seq >= 2); // 정배열 + 재등장
     const stat = (arr) => {
       if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
@@ -6804,6 +6817,8 @@ window.runCalBacktest = async () => {
       top1: { arr: gTop1, s: stat(gTop1) },
       inter35: { arr: gInter35, s: stat(gInter35) },
       aligned: { arr: gAligned, s: stat(gAligned) },
+      inverse: { arr: gInverse, s: stat(gInverse) },
+      alignRe: { arr: gAlignRe, s: stat(gAlignRe) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
     // ✂️ 매도 규칙별 집계 (기준선 = 안 팔고 계속 보유)
