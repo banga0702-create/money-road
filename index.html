@@ -6457,6 +6457,8 @@ window.renderBtCards = () => {
     { label: '📉역배열+재등장', s: d.invRe.s, key: 'invRe' },
     { label: '🔵RSI 50↓ 매수', s: d.rsiLow.s, key: 'rsiLow' },
     { label: '🔴RSI 70↑ 매수', s: d.rsiHigh.s, key: 'rsiHigh' },
+    { label: '🔁재등장 RSI↓', s: d.reRsiDn.s, key: 'reRsiDn' },
+    { label: '🔁재등장 RSI↑', s: d.reRsiUp.s, key: 'reRsiUp' },
     ...d.thresholds.filter(x => x.t !== 30).map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
   ].sort((a, b) => b.s.avg - a.s.avg);
   const bestAvg = Math.max(...compareCards.filter(x => x.s.n > 0).map(x => x.s.avg));
@@ -6570,6 +6572,8 @@ window.renderBtList = () => {
     else if(f === 'invRe') list = d.invRe.arr;
     else if(f === 'rsiLow') list = d.rsiLow.arr;
     else if(f === 'rsiHigh') list = d.rsiHigh.arr;
+    else if(f === 'reRsiDn') list = d.reRsiDn.arr;
+    else if(f === 'reRsiUp') list = d.reRsiUp.arr;
     else if(f[0] === 't') {
       const t = parseInt(f.slice(1));
       const th = d.thresholds.find(x => x.t === t);
@@ -6586,13 +6590,15 @@ window.renderBtList = () => {
     const rsiBadge = (r.buyRsi == null) ? ''
       : ' <span style="background:' + (r.buyRsi <= 50 ? 'rgba(59,130,246,0.15)' : r.buyRsi >= 70 ? 'rgba(255,80,80,0.15)' : 'rgba(148,163,184,0.15)')
         + ';color:' + (r.buyRsi <= 50 ? 'var(--dn)' : r.buyRsi >= 70 ? 'var(--up)' : 'var(--tx3)')
-        + ';border-radius:8px;padding:1px 5px;font-size:8px;font-weight:800">RSI' + r.buyRsi + '</span>';
+        + ';border-radius:8px;padding:1px 5px;font-size:8px;font-weight:800">RSI' + r.buyRsi
+        + (r.rsiDiff != null ? '<span style="font-weight:600;opacity:0.75"> ' + (r.rsiDiff < 0 ? '▼' : '▲') + Math.abs(r.rsiDiff) + '</span>' : '')
+        + '</span>';
     return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (mint ? 'background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25)' : 'background:var(--sf2)') + '">'
       + '<span style="font-weight:700;color:var(--tx2)">' + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span>' + seqBadge + rsiBadge + '</span>'
       + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
   };
   // 지금 목록이 어떤 집단인지 표시 (카드 조건과 목록이 달라서 생기던 오해 방지)
-  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : f === 'invRe' ? '📉역배열+재등장' : f === 'rsiLow' ? '🔵RSI 50↓ 매수' : f === 'rsiHigh' ? '🔴RSI 70↑ 매수' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
+  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : f === 'invRe' ? '📉역배열+재등장' : f === 'rsiLow' ? '🔵RSI 50↓ 매수' : f === 'rsiHigh' ? '🔴RSI 70↑ 매수' : f === 'reRsiDn' ? '🔁재등장 RSI↓' : f === 'reRsiUp' ? '🔁재등장 RSI↑' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
   const headHtml = f
     ? '<div style="font-size:9px;font-weight:700;color:var(--ac);margin-bottom:6px">' + fLabel + ' 조건 ' + list.filter(r => !r.skip).length + '건만 보는 중</div>'
     : '<div style="font-size:9px;color:var(--tx3);margin-bottom:6px">전체 기록 ' + list.length + '건 · <span style="background:rgba(0,212,170,0.15);border-radius:4px;padding:1px 4px">민트</span> = 수급 30%↑</div>';
@@ -6804,9 +6810,16 @@ window.runCalBacktest = async () => {
 
     // 종목별 등장 회차 계산 (날짜 오름차순으로 1회째, 2회째...)
     const seqCount = {};
+    const prevRsiMap = {}; // 직전 등장 때의 RSI (재등장 시 비교용)
     [...results].sort((a,b) => (a.date||'').localeCompare(b.date||'')).forEach(r => {
       seqCount[r.name] = (seqCount[r.name] || 0) + 1;
       r.seq = seqCount[r.name];
+      // 직전 회차 RSI와 비교 - 눌린 뒤 다시 온 건지, 더 달아오른 채로 온 건지
+      if(prevRsiMap[r.name] != null && r.buyRsi != null) {
+        r.prevRsi = prevRsiMap[r.name];
+        r.rsiDiff = r.buyRsi - r.prevRsi;
+      }
+      if(r.buyRsi != null) prevRsiMap[r.name] = r.buyRsi;
     });
 
     const ok = results.filter(r => !r.skip);
@@ -6819,6 +6832,8 @@ window.runCalBacktest = async () => {
     const gInvRe   = ok.filter(r => r.buyAligned === false && r.seq >= 2); // 역배열 + 재등장
     const gRsiLow  = ok.filter(r => r.buyRsi != null && r.buyRsi <= 50); // 매수 시점 RSI 50 이하
     const gRsiHigh = ok.filter(r => r.buyRsi != null && r.buyRsi >= 70); // 매수 시점 RSI 70 이상
+    const gReRsiDn = ok.filter(r => r.seq >= 2 && r.rsiDiff != null && r.rsiDiff < 0); // 재등장 + RSI 하락
+    const gReRsiUp = ok.filter(r => r.seq >= 2 && r.rsiDiff != null && r.rsiDiff > 0); // 재등장 + RSI 상승
     const stat = (arr) => {
       if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
@@ -6842,6 +6857,8 @@ window.runCalBacktest = async () => {
       invRe: { arr: gInvRe, s: stat(gInvRe) },
       rsiLow: { arr: gRsiLow, s: stat(gRsiLow) },
       rsiHigh: { arr: gRsiHigh, s: stat(gRsiHigh) },
+      reRsiDn: { arr: gReRsiDn, s: stat(gReRsiDn) },
+      reRsiUp: { arr: gReRsiUp, s: stat(gReRsiUp) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
     // ✂️ 매도 규칙별 집계 (기준선 = 안 팔고 계속 보유)
