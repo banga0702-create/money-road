@@ -6455,6 +6455,8 @@ window.renderBtCards = () => {
     { label: '📉역배열 매수', s: d.inverse.s, key: 'inverse' },
     { label: '📈정배열+재등장', s: d.alignRe.s, key: 'alignRe' },
     { label: '📉역배열+재등장', s: d.invRe.s, key: 'invRe' },
+    { label: '🔵RSI 50↓ 매수', s: d.rsiLow.s, key: 'rsiLow' },
+    { label: '🔴RSI 70↑ 매수', s: d.rsiHigh.s, key: 'rsiHigh' },
     ...d.thresholds.filter(x => x.t !== 30).map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
   ].sort((a, b) => b.s.avg - a.s.avg);
   const bestAvg = Math.max(...compareCards.filter(x => x.s.n > 0).map(x => x.s.avg));
@@ -6566,6 +6568,8 @@ window.renderBtList = () => {
     else if(f === 'inverse') list = d.inverse.arr;
     else if(f === 'alignRe') list = d.alignRe.arr;
     else if(f === 'invRe') list = d.invRe.arr;
+    else if(f === 'rsiLow') list = d.rsiLow.arr;
+    else if(f === 'rsiHigh') list = d.rsiHigh.arr;
     else if(f[0] === 't') {
       const t = parseInt(f.slice(1));
       const th = d.thresholds.find(x => x.t === t);
@@ -6578,12 +6582,17 @@ window.renderBtList = () => {
     if(r.skip) return '<div style="display:flex;justify-content:space-between;font-size:10px;padding:4px 6px;color:var(--tx3)"><span>' + r.date.slice(5) + ' ' + r.name + '</span><span>데이터 없음</span></div>';
     const mint = (r.ratio||0) >= 30;
     const seqBadge = (r.seq||1) >= 2 ? ' <span style="background:rgba(240,180,41,0.18);color:var(--gd);border-radius:8px;padding:1px 5px;font-size:8px;font-weight:800">🔁' + r.seq + '회째</span>' : '';
+    // 매수 시점 RSI - 50 이하 파랑(눌림) / 70 이상 빨강(과열) / 그 사이는 회색
+    const rsiBadge = (r.buyRsi == null) ? ''
+      : ' <span style="background:' + (r.buyRsi <= 50 ? 'rgba(59,130,246,0.15)' : r.buyRsi >= 70 ? 'rgba(255,80,80,0.15)' : 'rgba(148,163,184,0.15)')
+        + ';color:' + (r.buyRsi <= 50 ? 'var(--dn)' : r.buyRsi >= 70 ? 'var(--up)' : 'var(--tx3)')
+        + ';border-radius:8px;padding:1px 5px;font-size:8px;font-weight:800">RSI' + r.buyRsi + '</span>';
     return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (mint ? 'background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25)' : 'background:var(--sf2)') + '">'
-      + '<span style="font-weight:700;color:var(--tx2)">' + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span>' + seqBadge + '</span>'
+      + '<span style="font-weight:700;color:var(--tx2)">' + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span>' + seqBadge + rsiBadge + '</span>'
       + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
   };
   // 지금 목록이 어떤 집단인지 표시 (카드 조건과 목록이 달라서 생기던 오해 방지)
-  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : f === 'invRe' ? '📉역배열+재등장' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
+  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : f === 'invRe' ? '📉역배열+재등장' : f === 'rsiLow' ? '🔵RSI 50↓ 매수' : f === 'rsiHigh' ? '🔴RSI 70↑ 매수' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
   const headHtml = f
     ? '<div style="font-size:9px;font-weight:700;color:var(--ac);margin-bottom:6px">' + fLabel + ' 조건 ' + list.filter(r => !r.skip).length + '건만 보는 중</div>'
     : '<div style="font-size:9px;color:var(--tx3);margin-bottom:6px">전체 기록 ' + list.length + '건 · <span style="background:rgba(0,212,170,0.15);border-radius:4px;padding:1px 4px">민트</span> = 수급 30%↑</div>';
@@ -6774,6 +6783,12 @@ window.runCalBacktest = async () => {
           const b5 = smaAt(ser, buyIdx, 5), b20 = smaAt(ser, buyIdx, 20);
           if(b5 > 0 && b20 > 0) buyAligned = b5 > b20;
         }
+        // 매수 시점 RSI(14) - 과열 상태에서 샀는지 보기 위함
+        let buyRsi = null;
+        if(buyIdx >= 14) {
+          const ra = rsiSeries(ser, 14);
+          if(ra[buyIdx] != null) buyRsi = Math.round(ra[buyIdx]);
+        }
         if(buyIdx >= 0) {
           const rsiArr = rsiSeries(ser, 14);
           SELL_RULES.forEach(rl => {
@@ -6783,7 +6798,7 @@ window.runCalBacktest = async () => {
             sells[rl.key] = { sold: !!hit, date: hit ? hit.date : '', rate: r2, gain: Math.round(3000000 * r2 / 100), days: hit ? hit.days : (ser.length - 1 - buyIdx) };
           });
         }
-        results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100), sells, buyAligned });
+        results.push({ ...e, buy, cur, rate, gain: Math.round(3000000 * rate / 100), sells, buyAligned, buyRsi });
       } catch(err) { results.push({ ...e, skip: true }); }
     }
 
@@ -6802,6 +6817,8 @@ window.runCalBacktest = async () => {
     const gInverse = ok.filter(r => r.buyAligned === false); // 매수일에 역배열(5일선<20일선)
     const gAlignRe = ok.filter(r => r.buyAligned === true && r.seq >= 2);  // 정배열 + 재등장
     const gInvRe   = ok.filter(r => r.buyAligned === false && r.seq >= 2); // 역배열 + 재등장
+    const gRsiLow  = ok.filter(r => r.buyRsi != null && r.buyRsi <= 50); // 매수 시점 RSI 50 이하
+    const gRsiHigh = ok.filter(r => r.buyRsi != null && r.buyRsi >= 70); // 매수 시점 RSI 70 이상
     const stat = (arr) => {
       if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
@@ -6823,6 +6840,8 @@ window.runCalBacktest = async () => {
       inverse: { arr: gInverse, s: stat(gInverse) },
       alignRe: { arr: gAlignRe, s: stat(gAlignRe) },
       invRe: { arr: gInvRe, s: stat(gInvRe) },
+      rsiLow: { arr: gRsiLow, s: stat(gRsiLow) },
+      rsiHigh: { arr: gRsiHigh, s: stat(gRsiHigh) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
     // ✂️ 매도 규칙별 집계 (기준선 = 안 팔고 계속 보유)
