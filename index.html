@@ -6500,7 +6500,8 @@ window.renderBtSell = () => {
   // 기준선 카드
   html += '<div style="background:var(--sf2);border:1.5px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px;text-align:center">'
     + '<div style="font-size:10px;font-weight:700;color:var(--tx3)">🤲 안 팔고 계속 보유 <span style="font-weight:800;color:' + col(d.base.avg) + '">' + fmtR(d.base.avg) + '</span></div>'
-    + '<div style="font-size:9px;color:var(--tx3);margin-top:3px">승률 ' + Math.round(d.base.win) + '% · ' + fmtG(d.base.gain) + '</div>'
+    + '<div style="font-size:9px;color:var(--tx3);margin-top:3px">승률 ' + Math.round(d.base.win) + '% · ' + fmtG(d.base.gain)
+      + (d.base.uniq && d.base.uniq !== d.base.n ? ' · <span style="color:var(--gd);font-weight:700">' + d.base.uniq + '종목</span>' : '') + '</div>'
     + '</div>';
 
   const openKey = window._btSellOpen;
@@ -6519,7 +6520,8 @@ window.renderBtSell = () => {
         + '<div style="font-size:9px;color:var(--tx3);margin-bottom:5px">실제로 팔린 ' + sold.length + '건 (매수가→매도가)</div>'
         + (sold.length ? '<div style="font-size:10px;font-weight:800;color:var(--tx2);background:var(--sf2);border-radius:6px;padding:5px 6px;margin-bottom:5px;text-align:center">'
             + '이 ' + sold.length + '건만의 평균 <span style="color:' + col(soldAvg) + '">' + fmtR(soldAvg) + '</span>'
-            + ' · 승률 ' + Math.round(soldWin) + '%</div>' : '')
+            + ' · 승률 ' + Math.round(soldWin) + '%'
+            + (new Set(sold.map(x => x.name)).size !== sold.length ? ' · <span style="color:var(--gd)">' + new Set(sold.map(x => x.name)).size + '종목</span>' : '') + '</div>' : '')
         + (r.rows.length ? r.rows.map(x =>
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;background:var(--sf2)">'
             + '<span style="font-weight:700;color:var(--tx2);min-width:0">' + x.date.slice(5) + ' ' + x.name
@@ -6544,7 +6546,9 @@ window.renderBtSell = () => {
       + '</div>'
       + '<div style="font-size:9px;color:var(--tx3);margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)">'
         + '승률 ' + Math.round(r.s.win) + '% · ' + fmtG(r.s.gain) + '<br>'
-        + '매도신호 ' + r.s.sold + '/' + r.s.n + '건 · 평균 ' + r.s.days + '일 보유'
+        + '매도신호 ' + r.s.sold + '/' + r.s.n + '건'
+        + (r.s.soldUniq && r.s.soldUniq !== r.s.sold ? ' <span style="color:var(--gd);font-weight:700">(' + r.s.soldUniq + '종목)</span>' : '')
+        + ' · 평균 ' + r.s.days + '일 보유'
       + '</div>'
       + listHtml
     + '</div>';
@@ -6883,20 +6887,22 @@ window.runCalBacktest = async () => {
       .sort((a,b) => (b.date||'').localeCompare(a.date||''));
     const sellStat = (key) => {
       const arr = okS.map(r => r.sells[key]).filter(Boolean);
-      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, sold: 0, days: 0 };
+      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, sold: 0, soldUniq: 0, days: 0 };
       return {
         n: arr.length,
         avg: arr.reduce((a,b) => a + b.rate, 0) / arr.length,
         win: arr.filter(x => x.rate > 0).length / arr.length * 100,
         gain: arr.reduce((a,b) => a + b.gain, 0),
         sold: arr.filter(x => x.sold).length,                       // 실제 매도 신호가 뜬 건수
+        soldUniq: new Set(okS.filter(r => r.sells[key] && r.sells[key].sold).map(r => r.name)).size, // 매도된 고유 종목 수
         days: Math.round(arr.reduce((a,b) => a + b.days, 0) / arr.length) // 평균 보유일
       };
     };
     window._btSellData = {
       base: { n: okS.length, avg: okS.length ? okS.reduce((a,b) => a + b.rate, 0) / okS.length : 0,
               win: okS.length ? okS.filter(r => r.rate > 0).length / okS.length * 100 : 0,
-              gain: okS.reduce((a,b) => a + b.gain, 0) },
+              gain: okS.reduce((a,b) => a + b.gain, 0),
+              uniq: new Set(okS.map(r => r.name)).size },
       rules: SELL_RULES.map(rl => ({ ...rl, s: sellStat(rl.key), rows: sellRows(rl.key) }))
     };
     window._btResults = results;
