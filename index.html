@@ -6436,15 +6436,19 @@ window.renderBtCards = () => {
 
   const smBox = (label, s, isBest, key, bd) =>
     '<div onclick="btSetFilter(\'' + key + '\')" style="min-width:0;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
-    + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg) + '</div>'
+    + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg)
+      + (s.today ? ' <span style="background:var(--dn);color:#fff;border-radius:8px;padding:0 4px;font-size:8px;font-weight:800">🔴' + s.today + '</span>' : '') + '</div>'
     + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain)
       + (s.uniq && s.uniq !== s.n ? ' · <span style="color:var(--gd);font-weight:700">' + s.uniq + '종목</span>' : '') + '</div></div>';
 
+  const latestNote = window._btLatestDate
+    ? '<div style="font-size:9px;color:var(--tx3);margin-bottom:6px">🔴 = ' + window._btLatestDate.slice(5).replace('-','/') + ' 신규 종목</div>' : '';
   // 30%↑는 전체 표본 기준선으로 항상 첫 줄 고정 (무채색 톤)
   const t30 = d.thresholds.find(x => x.t === 30);
   const baseBox = t30 ?
     '<div onclick="btSetFilter(\'t30\')" style="cursor:pointer;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px;text-align:center;margin-bottom:6px;' + selBg('t30') + '">'
-    + '<div style="font-size:10px;font-weight:700;color:var(--tx3)">30%↑ 기준 (' + t30.s.n + '건) <span style="font-weight:800;color:var(--tx2)">' + fmtR(t30.s.avg) + '</span></div>'
+    + '<div style="font-size:10px;font-weight:700;color:var(--tx3)">30%↑ 기준 (' + t30.s.n + '건) <span style="font-weight:800;color:var(--tx2)">' + fmtR(t30.s.avg) + '</span>'
+      + (t30.s.today ? ' <span style="background:var(--dn);color:#fff;border-radius:8px;padding:0 4px;font-size:8px;font-weight:800">🔴' + t30.s.today + '</span>' : '') + '</div>'
     + '<div style="font-size:9px;color:var(--tx3);margin-top:2px">승률' + t30.s.win.toFixed(0) + '% · ' + fmtG(t30.s.gain)
       + (t30.s.uniq && t30.s.uniq !== t30.s.n ? ' · <span style="color:var(--gd);font-weight:700">' + t30.s.uniq + '종목</span>' : '') + '</div></div>'
     : '';
@@ -6471,6 +6475,7 @@ window.renderBtCards = () => {
     '<div style="font-size:10px;color:var(--tx3);margin-bottom:8px">조건별 종목 당일 300만원 종가매수 수익성 분석</div>'
     + baseBox
     + '<div style="font-size:10px;font-weight:800;color:var(--tx2);margin-bottom:6px">📊 수익률 좋은 순</div>'
+    + latestNote
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px">'
     + compareCards.map(x => smBox(x.label, x.s, x.s.n > 0 && x.s.avg === bestAvg, x.key)).join('')
     + '</div>'
@@ -6603,8 +6608,9 @@ window.renderBtList = () => {
         + ';border-radius:8px;padding:1px 5px;font-size:8px;font-weight:800">RSI' + r.buyRsi
         + (r.rsiDiff != null ? '<span style="font-weight:600;opacity:0.75"> ' + (r.rsiDiff < 0 ? '▼' : '▲') + Math.abs(r.rsiDiff) + '</span>' : '')
         + '</span>';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (mint ? 'background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25)' : 'background:var(--sf2)') + '">'
-      + '<span style="font-weight:700;color:var(--tx2)">' + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span>' + seqBadge + rsiBadge + '</span>'
+    const isNew = r.isLatest; // 최근 거래일 신규 종목 강조
+    return '<div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (isNew ? 'background:rgba(255,80,80,0.08);border:1.5px solid var(--dn)' : (mint ? 'background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.25)' : 'background:var(--sf2)')) + '">'
+      + '<span style="font-weight:700;color:var(--tx2)">' + (isNew ? '🔴 ' : '') + r.date.slice(5) + ' ' + r.name + ' <span style="color:var(--tx3);font-weight:600">수급' + (r.ratio||0) + '%</span>' + seqBadge + rsiBadge + '</span>'
       + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
   };
   // 지금 목록이 어떤 집단인지 표시 (카드 조건과 목록이 달라서 생기던 오해 방지)
@@ -6832,6 +6838,10 @@ window.runCalBacktest = async () => {
       if(r.buyRsi != null) prevRsiMap[r.name] = r.buyRsi;
     });
 
+    // 가장 최근 거래일 - 그날 신규로 걸린 종목을 카드에 표시하기 위함 (주말엔 금요일 것이 그대로 보임)
+    const latestDate = results.reduce((m, r) => (r.date && r.date > m) ? r.date : m, '');
+    results.forEach(r => { r.isLatest = !!(latestDate && r.date === latestDate); });
+
     const ok = results.filter(r => !r.skip);
     const gTop1 = ok.filter(r => r.top1);
     const gRe = ok.filter(r => r.seq >= 2);
@@ -6848,12 +6858,13 @@ window.runCalBacktest = async () => {
     const gReRsiDnInv = ok.filter(r => r.seq >= 2 && r.rsiDiff != null && r.rsiDiff < 0 && r.buyAligned === false); // 재등장RSI↓ ∩ 역배열
     const gRsiLowInv  = ok.filter(r => r.buyRsi != null && r.buyRsi <= 50 && r.buyAligned === false);              // RSI50↓ ∩ 역배열
     const stat = (arr) => {
-      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, uniq: 0 };
+      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, uniq: 0, today: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
       const win = arr.filter(r => r.rate > 0).length / arr.length * 100;
       const gain = arr.reduce((a,b) => a + b.gain, 0);
       const uniq = new Set(arr.map(r => r.name)).size; // 같은 종목이 여러 회차로 중복 집계되는 착시 방지
-      return { n: arr.length, avg, win, gain, uniq };
+      const today = arr.filter(r => r.isLatest).length; // 최근 거래일에 이 조건에 걸린 종목 수
+      return { n: arr.length, avg, win, gain, uniq, today };
     };
     const sAll = stat(ok);
     const thresholds = [30, 35].map(t => { const arr = ok.filter(r => (r.ratio||0) >= t); return { t, arr, s: stat(arr) }; });
@@ -6905,6 +6916,7 @@ window.runCalBacktest = async () => {
               uniq: new Set(okS.map(r => r.name)).size },
       rules: SELL_RULES.map(rl => ({ ...rl, s: sellStat(rl.key), rows: sellRows(rl.key) }))
     };
+    window._btLatestDate = latestDate;
     window._btResults = results;
     resEl.innerHTML = '<div id="btCards"></div><div id="btList"></div>';
     if(window.renderBtCards) renderBtCards();
