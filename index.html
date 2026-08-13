@@ -6437,14 +6437,16 @@ window.renderBtCards = () => {
   const smBox = (label, s, isBest, key, bd) =>
     '<div onclick="btSetFilter(\'' + key + '\')" style="min-width:0;cursor:pointer;background:var(--sf);border:1.5px solid ' + (isBest ? '#ec4899' : (bd || 'var(--bd)')) + ';border-radius:10px;padding:6px 2px;text-align:center;' + selBg(key) + '">'
     + '<div style="font-size:9px;font-weight:800;color:var(--tx2)">' + label + ' <span style="font-weight:600;color:var(--tx3)">(' + s.n + '건)</span> ' + fmtR(s.avg) + '</div>'
-    + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain) + '</div></div>';
+    + '<div style="font-size:8px;color:var(--tx3);margin-top:3px">승률' + s.win.toFixed(0) + '% · ' + fmtG(s.gain)
+      + (s.uniq && s.uniq !== s.n ? ' · <span style="color:var(--gd);font-weight:700">' + s.uniq + '종목</span>' : '') + '</div></div>';
 
   // 30%↑는 전체 표본 기준선으로 항상 첫 줄 고정 (무채색 톤)
   const t30 = d.thresholds.find(x => x.t === 30);
   const baseBox = t30 ?
     '<div onclick="btSetFilter(\'t30\')" style="cursor:pointer;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:8px;text-align:center;margin-bottom:6px;' + selBg('t30') + '">'
     + '<div style="font-size:10px;font-weight:700;color:var(--tx3)">30%↑ 기준 (' + t30.s.n + '건) <span style="font-weight:800;color:var(--tx2)">' + fmtR(t30.s.avg) + '</span></div>'
-    + '<div style="font-size:9px;color:var(--tx3);margin-top:2px">승률' + t30.s.win.toFixed(0) + '% · ' + fmtG(t30.s.gain) + '</div></div>'
+    + '<div style="font-size:9px;color:var(--tx3);margin-top:2px">승률' + t30.s.win.toFixed(0) + '% · ' + fmtG(t30.s.gain)
+      + (t30.s.uniq && t30.s.uniq !== t30.s.n ? ' · <span style="color:var(--gd);font-weight:700">' + t30.s.uniq + '종목</span>' : '') + '</div></div>'
     : '';
 
   // 나머지 4개(재등장/재등장+35%↑/35%/40%)는 비교군 - 수익률(평균%) 좋은 순 자동 정렬
@@ -6459,6 +6461,8 @@ window.renderBtCards = () => {
     { label: '🔴RSI 70↑ 매수', s: d.rsiHigh.s, key: 'rsiHigh' },
     { label: '🔁재등장 RSI↓', s: d.reRsiDn.s, key: 'reRsiDn' },
     { label: '🔁재등장 RSI↑', s: d.reRsiUp.s, key: 'reRsiUp' },
+    { label: '🔗재등장RSI↓+역배열', s: d.reRsiDnInv.s, key: 'reRsiDnInv' },
+    { label: '🔗RSI50↓+역배열', s: d.rsiLowInv.s, key: 'rsiLowInv' },
     ...d.thresholds.filter(x => x.t !== 30).map(x => ({ label: x.t + '%↑', s: x.s, key: 't' + x.t }))
   ].sort((a, b) => b.s.avg - a.s.avg);
   const bestAvg = Math.max(...compareCards.filter(x => x.s.n > 0).map(x => x.s.avg));
@@ -6574,6 +6578,8 @@ window.renderBtList = () => {
     else if(f === 'rsiHigh') list = d.rsiHigh.arr;
     else if(f === 'reRsiDn') list = d.reRsiDn.arr;
     else if(f === 'reRsiUp') list = d.reRsiUp.arr;
+    else if(f === 'reRsiDnInv') list = d.reRsiDnInv.arr;
+    else if(f === 'rsiLowInv') list = d.rsiLowInv.arr;
     else if(f[0] === 't') {
       const t = parseInt(f.slice(1));
       const th = d.thresholds.find(x => x.t === t);
@@ -6598,7 +6604,7 @@ window.renderBtList = () => {
       + '<span>' + r.buy.toLocaleString() + '→' + r.cur.toLocaleString() + ' ' + fmtR2(r.rate) + '</span></div>';
   };
   // 지금 목록이 어떤 집단인지 표시 (카드 조건과 목록이 달라서 생기던 오해 방지)
-  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : f === 'invRe' ? '📉역배열+재등장' : f === 'rsiLow' ? '🔵RSI 50↓ 매수' : f === 'rsiHigh' ? '🔴RSI 70↑ 매수' : f === 'reRsiDn' ? '🔁재등장 RSI↓' : f === 'reRsiUp' ? '🔁재등장 RSI↑' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
+  const fLabel = !f ? '' : (f === 're' ? '🔁재등장' : f === 'top1' ? '👑1일 1등' : f === 'inter35' ? '🔁재등장+35%↑' : f === 'aligned' ? '📈정배열 매수' : f === 'inverse' ? '📉역배열 매수' : f === 'alignRe' ? '📈정배열+재등장' : f === 'invRe' ? '📉역배열+재등장' : f === 'rsiLow' ? '🔵RSI 50↓ 매수' : f === 'rsiHigh' ? '🔴RSI 70↑ 매수' : f === 'reRsiDn' ? '🔁재등장 RSI↓' : f === 'reRsiUp' ? '🔁재등장 RSI↑' : f === 'reRsiDnInv' ? '🔗재등장RSI↓+역배열' : f === 'rsiLowInv' ? '🔗RSI50↓+역배열' : (f[0] === 't' ? f.slice(1) + '%↑' : ''));
   const headHtml = f
     ? '<div style="font-size:9px;font-weight:700;color:var(--ac);margin-bottom:6px">' + fLabel + ' 조건 ' + list.filter(r => !r.skip).length + '건만 보는 중</div>'
     : '<div style="font-size:9px;color:var(--tx3);margin-bottom:6px">전체 기록 ' + list.length + '건 · <span style="background:rgba(0,212,170,0.15);border-radius:4px;padding:1px 4px">민트</span> = 수급 30%↑</div>';
@@ -6834,12 +6840,16 @@ window.runCalBacktest = async () => {
     const gRsiHigh = ok.filter(r => r.buyRsi != null && r.buyRsi >= 70); // 매수 시점 RSI 70 이상
     const gReRsiDn = ok.filter(r => r.seq >= 2 && r.rsiDiff != null && r.rsiDiff < 0); // 재등장 + RSI 하락
     const gReRsiUp = ok.filter(r => r.seq >= 2 && r.rsiDiff != null && r.rsiDiff > 0); // 재등장 + RSI 상승
+    // 겹침 검증용 - 두 조건을 동시에 만족하는 건만
+    const gReRsiDnInv = ok.filter(r => r.seq >= 2 && r.rsiDiff != null && r.rsiDiff < 0 && r.buyAligned === false); // 재등장RSI↓ ∩ 역배열
+    const gRsiLowInv  = ok.filter(r => r.buyRsi != null && r.buyRsi <= 50 && r.buyAligned === false);              // RSI50↓ ∩ 역배열
     const stat = (arr) => {
-      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0 };
+      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, uniq: 0 };
       const avg = arr.reduce((a,b) => a + b.rate, 0) / arr.length;
       const win = arr.filter(r => r.rate > 0).length / arr.length * 100;
       const gain = arr.reduce((a,b) => a + b.gain, 0);
-      return { n: arr.length, avg, win, gain };
+      const uniq = new Set(arr.map(r => r.name)).size; // 같은 종목이 여러 회차로 중복 집계되는 착시 방지
+      return { n: arr.length, avg, win, gain, uniq };
     };
     const sAll = stat(ok);
     const thresholds = [30, 35].map(t => { const arr = ok.filter(r => (r.ratio||0) >= t); return { t, arr, s: stat(arr) }; });
@@ -6859,6 +6869,8 @@ window.runCalBacktest = async () => {
       rsiHigh: { arr: gRsiHigh, s: stat(gRsiHigh) },
       reRsiDn: { arr: gReRsiDn, s: stat(gReRsiDn) },
       reRsiUp: { arr: gReRsiUp, s: stat(gReRsiUp) },
+      reRsiDnInv: { arr: gReRsiDnInv, s: stat(gReRsiDnInv) },
+      rsiLowInv: { arr: gRsiLowInv, s: stat(gRsiLowInv) },
       thresholds: thresholds.map(x => ({ t: x.t, arr: x.arr, s: x.s, isBest: x.s.n > 0 && x.s.avg === bestAvg }))
     };
     // ✂️ 매도 규칙별 집계 (기준선 = 안 팔고 계속 보유)
