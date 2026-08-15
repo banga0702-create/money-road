@@ -787,13 +787,13 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
     <!-- 종봉투자 -->
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimSection('manual')">
-      <span class="sh-title">🕯️ 종봉투자 <span id="simManualToggle">▲</span></span>
+      <span class="sh-title">✋ 나의 수급 pick <span id="simManualToggle">▲</span></span>
       <div style="display:flex;align-items:center;gap:6px">
         <span id="simManualSummary" style="font-size:10px;color:var(--tx3)"></span>
         <span style="font-size:10px;color:var(--tx3)" id="simManualCount"></span>
       </div>
     </div>
-    <div id="simManualList"><div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div></div>
+    <div id="simManualList"><div class="empty" style="padding:16px"><p>수급1등 달력에서 날짜를 누르고<br>종목 옆 💰 버튼으로 담아보세요</p></div></div>
 
     <div class="sh" style="margin-top:8px;cursor:pointer" onclick="toggleSimHist()">
       <span class="sh-title">📋 매매 기록 <span id="simHistToggleIcon">▼</span></span>
@@ -1408,6 +1408,58 @@ window.openStarDatePicker = async (uid) => {
 // ── 수동 모의투자
 window._simManual = []; // 수동 보유 종목
 
+// 💰 수급1등 달력에서 종목 담기 - 현재가 조회 후 수량 직접 입력
+window.pickBuy = async (name, code, pickDate) => {
+  if(!name) return;
+  if(window._simManual.find(h => h.name === name && !h.soldAt)) {
+    alert(name + '은 이미 담겨 있어요');
+    return;
+  }
+  // 과거 날짜 종목이면 오늘 가격으로 산다는 걸 확인
+  const today = new Date().toISOString().slice(0,10);
+  if(pickDate && pickDate !== today) {
+    const lbl = pickDate.slice(5).replace('-','/');
+    if(!confirm(lbl + ' 종목이에요.\n오늘 현재가로 매수됩니다. 계속할까요?')) return;
+  }
+
+  let price = 0;
+  if(code) {
+    try {
+      const r = await fetch('/api/kis?action=stock_price&codes=' + code);
+      const d = await r.json();
+      price = parseInt((d.output||[])[0]?.stck_prpr || 0);
+    } catch(e) {}
+  }
+  if(!price) {
+    const pin = prompt(name + ' 현재가를 불러오지 못했어요.\n매수가를 직접 입력해주세요');
+    if(!pin) return;
+    price = parseInt(String(pin).replace(/[^0-9]/g,''));
+    if(!price) { alert('올바른 가격을 입력해주세요'); return; }
+  }
+
+  const qin = prompt(name + '\n현재가 ' + price.toLocaleString() + '원\n\n몇 주 살까요?', '10');
+  if(qin === null) return;
+  const qty = parseInt(String(qin).replace(/[^0-9]/g,''));
+  if(!qty) { alert('수량을 올바르게 입력해주세요'); return; }
+
+  window._simManual.push({
+    id: Date.now() + Math.random(),
+    name, code: code||'',
+    sector: (window._stockThemeMap && window._stockThemeMap[name]) || '',
+    buyPrice: price, qty,
+    buyAmount: price * qty,
+    buyDate: today,
+    pickDate: pickDate || today, // 달력상 수급1등으로 뜬 날
+    currentPrice: price,
+    signal: 'hold'
+  });
+  await saveSimManual();
+  renderSim();
+  const pop = document.getElementById('sudTop1Popup');
+  if(pop) pop.remove();
+  alert(name + ' ' + qty + '주 담았어요! 💰\n총 ' + (price*qty).toLocaleString() + '원');
+};
+
 window.simManualAdd = async (name, code, curPrice) => {
   if(!name) return;
   if(window._simManual.find(h => h.name === name && !h.soldAt)) {
@@ -1615,14 +1667,17 @@ window.showSudTop1Popup = (dateStr) => {
   popup.onclick = (e) => { if(e.target === popup) popup.remove(); };
   const dateLabel = dateStr.slice(5).replace('-','/');
   const rows = list30.length > 0
-    ? list30.map(s => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd)">
-        <div>
+    ? list30.map(s => `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 0;border-bottom:1px solid var(--bd)">
+        <div style="min-width:0">
           <span style="font-size:13px;font-weight:800">${s.name}</span>
           <span style="font-size:10px;color:var(--tx3);margin-left:6px">${s.sector||''}</span>
         </div>
-        <div style="text-align:right">
-          <span style="font-size:12px;font-weight:800;color:${(s.ratio||0)>=30?'var(--ac)':'var(--wa)'}">${s.ratio}%</span>
-          <span style="font-size:10px;color:${(s.chg||0)>=0?'var(--up)':'var(--dn)'};margin-left:6px">${(s.chg||0)>=0?'+':''}${s.chg}%</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div style="text-align:right">
+            <span style="font-size:12px;font-weight:800;color:${(s.ratio||0)>=30?'var(--ac)':'var(--wa)'}">${s.ratio}%</span>
+            <span style="font-size:10px;color:${(s.chg||0)>=0?'var(--up)':'var(--dn)'};margin-left:6px">${(s.chg||0)>=0?'+':''}${s.chg}%</span>
+          </div>
+          <button onclick="pickBuy('${s.name}','${s.code||''}','${dateStr}')" style="background:rgba(79,99,232,0.12);color:var(--pr);border:1px solid rgba(79,99,232,0.3);border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer">💰</button>
         </div>
       </div>`).join('')
     : `<div style="padding:16px;text-align:center;color:var(--tx3)">
@@ -6500,7 +6555,8 @@ window.renderBtSell = () => {
   const bestAvg = rows.length ? rows[0].s.avg : -Infinity;
 
   let html = '<div style="font-size:9px;color:var(--tx3);margin-bottom:8px;line-height:1.6">'
-    + '30%↑ 기준 ' + d.base.n + '건을 규칙대로 팔았다면 어땠을까<br>신호가 안 뜬 종목은 안 판 것으로 계산해요</div>';
+    + '30%↑ 기준 ' + d.base.n + '건을 규칙대로 팔았다면 어땠을까<br>신호가 안 뜬 종목은 안 판 것으로 계산해요'
+    + (window._btLatestDate ? '<br>🔴 = ' + window._btLatestDate.slice(5).replace('-','/') + ' 매도 신호' : '') + '</div>';
 
   // 기준선 카드
   html += '<div style="background:var(--sf2);border:1.5px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px;text-align:center">'
@@ -6528,8 +6584,8 @@ window.renderBtSell = () => {
             + ' · 승률 ' + Math.round(soldWin) + '%'
             + (new Set(sold.map(x => x.name)).size !== sold.length ? ' · <span style="color:var(--gd)">' + new Set(sold.map(x => x.name)).size + '종목</span>' : '') + '</div>' : '')
         + (r.rows.length ? r.rows.map(x =>
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;background:var(--sf2)">'
-            + '<span style="font-weight:700;color:var(--tx2);min-width:0">' + x.date.slice(5) + ' ' + x.name
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10px;padding:5px 6px;border-radius:6px;margin-bottom:2px;' + (x.sellIsLatest ? 'background:rgba(255,80,80,0.08);border:1.5px solid var(--dn)' : 'background:var(--sf2)') + '">'
+            + '<span style="font-weight:700;color:var(--tx2);min-width:0">' + (x.sellIsLatest ? '🔴 ' : '') + x.date.slice(5) + ' ' + x.name
               + ' <span style="color:var(--tx3);font-weight:600;font-size:9px">' + x.sellDate.slice(5) + ' 매도·' + x.days + '일</span></span>'
             + '<span style="flex-shrink:0">' + x.buy.toLocaleString() + '→' + x.sellPrice.toLocaleString() + ' '
               + '<span style="color:' + col(x.rate) + ';font-weight:800">' + fmtR(x.rate) + '</span></span>'
@@ -6540,7 +6596,9 @@ window.renderBtSell = () => {
     return '<div onclick="btSellToggle(\'' + r.key + '\')" style="cursor:pointer;background:var(--sf);border:1.5px solid ' + (isOpen ? 'var(--pr)' : (isBest ? 'var(--ac)' : 'var(--bd)')) + ';border-radius:10px;padding:10px;margin-bottom:6px">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
         + '<div style="min-width:0">'
-          + '<div style="font-size:11px;font-weight:800;color:var(--tx1)">' + (isBest ? '🏆 ' : '') + r.label + ' <span style="font-size:9px;color:var(--tx3)">' + (isOpen ? '▲' : '▼') + '</span></div>'
+          + '<div style="font-size:11px;font-weight:800;color:var(--tx1)">' + (isBest ? '🏆 ' : '') + r.label
+            + (r.s.todaySell ? ' <span style="background:var(--dn);color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:800">🔴' + r.s.todaySell + '</span>' : '')
+            + ' <span style="font-size:9px;color:var(--tx3)">' + (isOpen ? '▲' : '▼') + '</span></div>'
           + '<div style="font-size:8px;color:var(--tx3);margin-top:2px">' + r.desc + '</div>'
         + '</div>'
         + '<div style="text-align:right;flex-shrink:0">'
@@ -6909,11 +6967,12 @@ window.runCalBacktest = async () => {
       .filter(r => r.sells[key] && r.sells[key].sold)
       .map(r => ({ date: r.date, name: r.name, ratio: r.ratio, seq: r.seq, buy: r.buy,
                    sellDate: r.sells[key].date, sellPrice: Math.round(r.buy * (1 + r.sells[key].rate/100)),
-                   rate: r.sells[key].rate, days: r.sells[key].days }))
+                   rate: r.sells[key].rate, days: r.sells[key].days,
+                   sellIsLatest: !!(latestDate && r.sells[key].date === latestDate) })) // 최근 거래일에 매도 신호가 뜬 건
       .sort((a,b) => (b.date||'').localeCompare(a.date||''));
     const sellStat = (key) => {
       const arr = okS.map(r => r.sells[key]).filter(Boolean);
-      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, sold: 0, soldUniq: 0, days: 0 };
+      if(!arr.length) return { n: 0, avg: 0, win: 0, gain: 0, sold: 0, soldUniq: 0, todaySell: 0, days: 0 };
       return {
         n: arr.length,
         avg: arr.reduce((a,b) => a + b.rate, 0) / arr.length,
@@ -6921,6 +6980,7 @@ window.runCalBacktest = async () => {
         gain: arr.reduce((a,b) => a + b.gain, 0),
         sold: arr.filter(x => x.sold).length,                       // 실제 매도 신호가 뜬 건수
         soldUniq: new Set(okS.filter(r => r.sells[key] && r.sells[key].sold).map(r => r.name)).size, // 매도된 고유 종목 수
+        todaySell: okS.filter(r => r.sells[key] && r.sells[key].sold && r.sells[key].date === latestDate).length, // 최근 거래일 매도 신호
         days: Math.round(arr.reduce((a,b) => a + b.days, 0) / arr.length) // 평균 보유일
       };
     };
