@@ -3705,7 +3705,7 @@ function renderSim() {
   const manualEl = document.getElementById('simManualList');
   const manualCountEl = document.getElementById('simManualCount');
   const manuals = (window._simManual||[]).filter(h => !h.soldAt);
-  // 종봉투자 손익 계산
+  // 나의 수급 pick 손익 계산
   let manBuy = 0, manCur = 0;
   manuals.forEach(h => { manBuy += h.buyAmount||0; manCur += (h.currentPrice||h.buyPrice)*h.qty; });
   const manProfit = manCur - manBuy;
@@ -3716,7 +3716,7 @@ function renderSim() {
   if(manualCountEl) manualCountEl.textContent = manuals.length + '종목';
   if(manualEl) {
     if(!manuals.length) {
-      manualEl.innerHTML = '<div class="empty" style="padding:16px"><p>종봉픽 카드에서 💰 버튼으로 추가하세요</p></div>';
+      manualEl.innerHTML = '<div class="empty" style="padding:16px"><p>수급1등 달력에서 날짜를 누르고<br>종목 옆 💰 버튼으로 담아보세요</p></div>';
     } else {
       manualEl.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 16px 8px">' +
         manuals.map(h => {
@@ -3739,6 +3739,7 @@ function renderSim() {
             <div><div style="color:var(--tx3)">매수가</div><div style="font-weight:700">${h.buyPrice.toLocaleString()}</div></div>
             <div><div style="color:var(--tx3)">현재가</div><div style="font-weight:700;color:${profitColor}">${cur.toLocaleString()}</div></div>
           </div>
+          <div style="font-size:8px;color:var(--tx2);font-weight:700;text-align:center;margin-bottom:4px;background:var(--sf2);border-radius:5px;padding:2px 0">${h.qty}주 · 총 ${(h.buyAmount||h.buyPrice*h.qty).toLocaleString()}원</div>
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span style="font-size:9px;font-weight:800;color:${profitColor}">${profit>=0?'+':''}${profit.toLocaleString()}원(${rate}%)</span>
             <div style="display:flex;gap:4px">
