@@ -6773,11 +6773,26 @@ window.runCalBacktest = async () => {
           if(rsiArr[i] == null) continue;
           if(rsiArr[i] >= 70) { wasOver = true; continue; }
           if(wasOver && rsiArr[i] < 70) return { date: ser[i].date, price: px, days: i - buyIdx };
+        } else if(rule === 'ma5') {
+          // 종가가 5일선 아래로 마감한 날 (단순형)
+          const m5 = smaAt(ser, i, 5);
+          if(m5 > 0 && px < m5) return { date: ser[i].date, price: px, days: i - buyIdx };
+        } else if(rule === 'ma5x2') {
+          // 2일 연속 종가가 5일선 아래 - 하루 흔들림은 넘김
+          const m5 = smaAt(ser, i, 5), q5 = smaAt(ser, i-1, 5);
+          if(m5 > 0 && q5 > 0 && px < m5 && ser[i-1].close < q5) return { date: ser[i].date, price: px, days: i - buyIdx };
+        } else if(rule === 'ma25') {
+          // 종가가 25일선(5주선 대용) 아래로 마감한 날
+          const m25 = smaAt(ser, i, 25);
+          if(m25 > 0 && px < m25) return { date: ser[i].date, price: px, days: i - buyIdx };
         }
       }
       return null;
     };
     const SELL_RULES = [
+      { key: 'ma5',   label: '5일선 이탈',   desc: '종가가 5일선 아래로' },
+      { key: 'ma5x2', label: '5일선 이탈 2일', desc: '2일 연속 5일선 아래' },
+      { key: 'ma25',  label: '25일선 이탈',  desc: '종가가 25일선(≒5주선) 아래로' },
       { key: 'dead',  label: '데드크로스', desc: '정배열이던 게 아래로 교차한 날' },
       { key: 'cut10', label: '-10% 손절',  desc: '매수가 대비 -10%' },
       { key: 'rsiA',  label: 'RSI 70 돌파', desc: '70을 넘은 날 바로' },
