@@ -701,6 +701,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="upSudFetch()" id="upSudBtn">⚡ 재실행</button>
       </div>
       <div id="upSudMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div id="upSudClosedBadge" style="display:none;margin:0 16px 8px;padding:7px 10px;text-align:center;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.35);border-radius:8px;font-size:10px;color:var(--gd);font-weight:700"></div>
       <div id="upSudDateTabs" style="display:flex;gap:6px;padding:0 16px 6px;overflow-x:auto"></div>
       <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">📈 거래대금 2000억↑ 상승종목 (거래대금 순)</div>
       <div style="display:flex;flex-direction:column;gap:4px;margin:0 16px 12px" id="upSudList"></div>
@@ -5702,6 +5703,21 @@ window.loadUpSudHistory = async (date, uid) => {
   });
   const activeBtn = document.getElementById('upSudDateBtn-' + date);
   if(activeBtn) { activeBtn.style.background = 'var(--pr)'; activeBtn.style.color = '#fff'; activeBtn.style.borderColor = 'var(--pr)'; }
+
+  // 오늘이 휴장일(주말)이면 "지금 보는 게 언제 데이터인지" 배지로 알려줌
+  const _ubd = document.getElementById('upSudClosedBadge');
+  if(_ubd) {
+    const _udw = new Date().getDay();
+    if(_udw === 0 || _udw === 6) {
+      const _udn = ['일','월','화','수','목','금','토'];
+      const [_uy,_um,_ud] = date.split('-').map(Number);
+      const _ulbl = _um + '/' + _ud + '(' + _udn[new Date(_uy,_um-1,_ud).getDay()] + ')';
+      _ubd.innerHTML = '🏖️ 오늘은 휴장일이에요 · 지금 보는 건 <b>' + _ulbl + '</b> 데이터예요';
+      _ubd.style.display = 'block';
+    } else {
+      _ubd.style.display = 'none';
+    }
+  }
 
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'upSudHistory', date));
