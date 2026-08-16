@@ -5408,7 +5408,13 @@ window.upSudFetch = async () => {
     let upSudStreakMap = {};
     try {
       const today = new Date().toISOString().slice(0,10);
-      const pastDocs = (window._upSudHistory7 || []).filter(d => d.date !== today);
+      // 휴장일에 재실행하면 KIS가 마지막 거래일 데이터를 주므로,
+      // 기준일도 마지막 거래일로 잡아야 그날 문서를 자기 자신으로 중복 계산하지 않음
+      const _closed = !!(window.isClosedDay && window.isClosedDay());
+      const _baseDate = _closed
+        ? (window._upSudLatestDate || ((window._upSudHistory7 || [])[0] || {}).date || today)
+        : today;
+      const pastDocs = (window._upSudHistory7 || []).filter(d => d.date < _baseDate);
       const todayNames = new Set(result.map(s => s.hts_kor_isnm));
       todayNames.forEach(name => {
         let streak = 0;
