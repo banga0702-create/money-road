@@ -6412,9 +6412,20 @@ window.fetchMarketIndex = async () => {
       const idxKey = new Date().toISOString().slice(0,10);
       if(window.isClosedDay && window.isClosedDay(idxKey)) throw new Error('휴장일 - 지수 기록 건너뜀');
       if(!S.idxHist) S.idxHist = {};
+      const _prevIdx = S.idxHist[idxKey] || {};
+      // 거래대금 (누적) - 백만원 → 억원. 15:30 이후 조회분만 amtFinal:true
+      const _nowK = new Date();
+      const _isFinal = _nowK.getHours() > 15 || (_nowK.getHours() === 15 && _nowK.getMinutes() >= 30);
+      const _kpAmt = Math.round((parseFloat(kp?.acml_tr_pbmn)||0) / 100);
+      const _kqAmt = Math.round((parseFloat(kq?.acml_tr_pbmn)||0) / 100);
       S.idxHist[idxKey] = {
         kp: parseFloat(kp?.bstp_nmix_prpr)||0, kpc: parseFloat(kp?.bstp_nmix_prdy_ctrt)||0,
-        kq: parseFloat(kq?.bstp_nmix_prpr)||0, kqc: parseFloat(kq?.bstp_nmix_prdy_ctrt)||0
+        kq: parseFloat(kq?.bstp_nmix_prpr)||0, kqc: parseFloat(kq?.bstp_nmix_prdy_ctrt)||0,
+        // 값이 0으로 오면 기존 값 유지 (덮어쓰기 사고 방지)
+        kpAmt: _kpAmt > 0 ? _kpAmt : (_prevIdx.kpAmt || 0),
+        kqAmt: _kqAmt > 0 ? _kqAmt : (_prevIdx.kqAmt || 0),
+        // 한 번 true가 되면 계속 true
+        amtFinal: (_isFinal && _kpAmt > 0) || _prevIdx.amtFinal === true
       };
       if(typeof save === 'function') save();
     } catch(eI) {}
