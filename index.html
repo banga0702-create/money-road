@@ -1377,9 +1377,26 @@ window.renderStarDateTabs = async (uid) => {
     html += `<button onclick="openStarDatePicker('${uid}')" style="flex-shrink:0;padding:3px 8px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:12px;cursor:pointer">📅</button>`;
     tabEl.innerHTML = html;
     // 휴장일이면 마지막 거래일 기록을 자동으로 띄움
+    // 캐시(_kisHistory7)는 앱 시작 직후 비어 있을 수 있어 starHistory를 직접 조회
     if(_closed) {
-      const _d = (ystInfo && ystInfo.date) || (window.lastTradingDate && window.lastTradingDate());
-      if(_d && window.loadStarHistory) await window.loadStarHistory(_d, uid);
+      let _d = null;
+      try {
+        const _snap = await getDocs(collection(db, 'users', uid, 'starHistory'));
+        const _dates = _snap.docs.map(x => x.id)
+          .filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x) && !window.isClosedDay(x))
+          .sort();
+        _d = _dates.length ? _dates[_dates.length - 1] : null;
+      } catch(e) { console.warn('starHistory 날짜 조회 실패:', e); }
+      if(!_d) _d = (ystInfo && ystInfo.date) || (window.lastTradingDate && window.lastTradingDate());
+      if(_d) {
+        // 조회로 찾은 날짜 탭이 없으면 직접 만들어 활성화
+        if(!document.getElementById('starDateBtn-' + _d)) {
+          const _lbl = _d.slice(5).replace('-','/');
+          tabEl.insertAdjacentHTML('afterbegin',
+            `<button id="starDateBtn-${_d}" onclick="loadStarHistory('${_d}','${uid}')" style="${btnStyle(true)}">마지막장(${_lbl})</button>`);
+        }
+        if(window.loadStarHistory) await window.loadStarHistory(_d, uid);
+      }
     }
   } catch(e) {}
 };
