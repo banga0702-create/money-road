@@ -1365,15 +1365,22 @@ window.renderStarDateTabs = async (uid) => {
   if(!tabEl || !uid) return;
   try {
     const today = new Date().toISOString().slice(0,10);
+    const _closed = !!(window.isClosedDay && window.isClosedDay());
     const btnStyle = (isActive) => `flex-shrink:0;padding:3px 10px;border-radius:20px;border:1px solid ${isActive?'var(--pr)':'var(--bd)'};background:${isActive?'var(--pr)':'transparent'};color:${isActive?'#fff':'var(--tx2)'};font-size:10px;font-weight:700;cursor:pointer`;
     let html = '';
-    html += `<button id="starDateBtn-${today}" onclick="loadStarHistory('${today}','${uid}')" style="${btnStyle(true)}">오늘</button>`;
+    // 휴장일엔 '오늘' 탭을 만들지 않음 (저장된 데이터가 없어 빈 화면이 됨)
+    if(!_closed) html += `<button id="starDateBtn-${today}" onclick="loadStarHistory('${today}','${uid}')" style="${btnStyle(true)}">오늘</button>`;
     // kisHistory 날짜 기준으로 어제 탭 생성 (starHistory 없어도)
     const refDates = (window._kisHistory7||[]).map(d => d.date||'').filter(Boolean);
     const ystInfo = window.getYesterdayOrLastTrading && refDates.length ? getYesterdayOrLastTrading(refDates) : null;
-    if(ystInfo) html += `<button id="starDateBtn-${ystInfo.date}" onclick="loadStarHistory('${ystInfo.date}','${uid}')" style="${btnStyle(false)}">${ystInfo.label}</button>`;
+    if(ystInfo) html += `<button id="starDateBtn-${ystInfo.date}" onclick="loadStarHistory('${ystInfo.date}','${uid}')" style="${btnStyle(_closed)}">${ystInfo.label}</button>`;
     html += `<button onclick="openStarDatePicker('${uid}')" style="flex-shrink:0;padding:3px 8px;border-radius:20px;border:1px solid var(--bd);background:transparent;font-size:12px;cursor:pointer">📅</button>`;
     tabEl.innerHTML = html;
+    // 휴장일이면 마지막 거래일 기록을 자동으로 띄움
+    if(_closed) {
+      const _d = (ystInfo && ystInfo.date) || (window.lastTradingDate && window.lastTradingDate());
+      if(_d && window.loadStarHistory) await window.loadStarHistory(_d, uid);
+    }
   } catch(e) {}
 };
 
