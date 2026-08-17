@@ -1556,6 +1556,34 @@ window.isClosedDay = (dateStr) => {
   return dow === 0 || dow === 6;
 };
 
+// 🏖️ 마지막 거래일 구하기 - 저장된 히스토리 날짜 중 휴장일이 아닌 최신 날짜
+window.lastTradingDate = () => {
+  const cands = []
+    .concat((window._kisHistory7 || []).map(d => d && d.date))
+    .concat((window._upSudHistory7 || []).map(d => d && d.date))
+    .concat([window._kisLatestDate, window._upSudLatestDate, window._cdLatestDate])
+    .filter(Boolean)
+    .filter(d => !window.isClosedDay(d))
+    .sort();
+  return cands.length ? cands[cands.length - 1] : null;
+};
+
+// 🏖️ 휴장일 재실행 가드
+// KIS는 휴장일에도 직전 거래일 데이터를 주는데, 그걸 오늘 날짜로 저장하면 데이터가 오염됨
+// 라이브 조회 대신 마지막 거래일 기록을 불러오고 true를 반환(= 재실행 중단)
+window.closedDayGuard = async (loader) => {
+  if(!window.isClosedDay()) return false;
+  const d = window.lastTradingDate();
+  const uid = window._curUser?.uid;
+  if(d && uid && typeof loader === 'function') {
+    try { await loader(d, uid); } catch(e) { console.warn('휴장일 기록 로드 실패:', e); }
+    alert('🏖️ 오늘은 휴장일이에요\n마지막 거래일(' + d.slice(5).replace('-','/') + ') 기록을 보여드릴게요');
+  } else {
+    alert('🏖️ 오늘은 휴장일이라 재실행할 수 없어요');
+  }
+  return true;
+};
+
 // 🏖️ 휴장일(주말 + 공휴일)에 잘못 저장된 기록 정리
 // KIS는 휴장일에도 직전 거래일 데이터를 내려주는데, 예전 코드가 휴장일 확인 없이 오늘 날짜로 저장했음
 window.cleanWeekendData = async () => {
@@ -1930,6 +1958,7 @@ window.simManualSell = async (id) => {
 
 // ── 오늘의 주인공 재실행 (KIS API 새로 호출)
 window.refreshTodayStar = async () => {
+  if(await window.closedDayGuard(window.loadStarHistory)) return;
   const btn = document.getElementById('todayStarRefreshBtn');
   if(btn) { btn.textContent = '⏳'; btn.disabled = true; }
   try {
@@ -4288,6 +4317,7 @@ window.selectEmoji = (emoji) => {
 // ── 종목코드로 현재가 불러오기
 // ── KIS 외국인(+기관) 순매수 상위 종목 자동불러오기
 window.kisTopFetch = async () => {
+  if(await window.closedDayGuard(window.loadKisHistory)) return;
   const btn = document.getElementById('kisTopBtn');
   const msg = document.getElementById('kisTopMsg');
   btn.textContent = '⏳ 불러오는 중...';
@@ -5213,6 +5243,7 @@ function renderJungBae(results, date) {
 
 // 정배열 자동 조회
 window.jungBaeFetch = async () => {
+  if(await window.closedDayGuard(window.loadJungBaeHistory)) return;
   const btn = document.getElementById('jungBaeBtn');
   const msg = document.getElementById('jungBaeMsg');
   btn.textContent = '⏳ 분석 중...';
@@ -5589,6 +5620,7 @@ window.upSudFetch = async () => {
 };
 
 window.reverseFetch = async () => {
+  if(await window.closedDayGuard(window.loadReverseHistory)) return;
   const btn = document.getElementById('reverseBtn');
   const msg = document.getElementById('reverseMsg');
   btn.textContent = '⏳ 불러오는 중...';
