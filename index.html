@@ -1837,7 +1837,9 @@ window.renderSudTop1Cal = () => {
       } else {
         const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(date).padStart(2,'0');
         const isToday = dateStr === today;
-        const data = dataMap[dateStr];
+        // 공휴일(주말 제외) - 날짜 빨강 + 🏖️ 표시
+        const _isHoli = !isWe && !!(window.isClosedDay && window.isClosedDay(dateStr));
+        const data = _isHoli ? null : dataMap[dateStr];
         const ratioColor = data && (data.ratio||0) >= 30 ? 'var(--ac)' : 'var(--wa)';
         const has30 = data && data.list30 && data.list30.some(s => (s.ratio||0) >= 30);
         const borderColor = isToday ? 'var(--pr)' : has30 ? 'var(--ac)' : 'var(--bd)';
@@ -1852,7 +1854,7 @@ window.renderSudTop1Cal = () => {
         } else {
           html += `<td style="padding:2px;height:52px">
             <div onclick="${data ? `showSudTop1Popup('${dateStr}')` : ''}" style="background:${bgColor};border:1px solid ${borderColor};border-radius:6px;padding:3px 4px;height:100%;box-sizing:border-box;${data?'cursor:pointer':''}">
-              <div style="font-size:9px;font-weight:700;color:${isToday?'var(--pr)':'var(--tx)'}">${date}${hasMore?`<span style="font-size:7px;color:var(--ac);margin-left:2px">+${data.list30.length-1}</span>`:''}</div>
+              <div style="font-size:9px;font-weight:700;color:${isToday?'var(--pr)':(_isHoli?'#e53935':'var(--tx)')}">${date}${_isHoli?'<span style="font-size:8px;margin-left:2px">🏖️</span>':''}${hasMore?`<span style="font-size:7px;color:var(--ac);margin-left:2px">+${data.list30.length-1}</span>`:''}</div>
               ${data ? `<div style="font-size:8px;font-weight:800;color:var(--tx);line-height:1.2;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${data.name}</div>
               <div style="font-size:8px;font-weight:800;color:${ratioColor}">${data.ratio}%</div>` : ''}
             </div>
@@ -7208,16 +7210,20 @@ window.renderIdxCal = () => {
   for(let d = 1; d <= lastDate; d++) {
     const key = Y + '-' + String(M+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
     const _dowI = (firstDay + d - 1) % 7;
-    const v = (_dowI===0||_dowI===6) ? null : hist[key]; // 휴장일엔 등락률 표시 안 함
+    // 주말 + 공휴일 모두 휴장 처리 (MARKET_HOLIDAYS 반영)
+    const _closedK = !!(window.isClosedDay && window.isClosedDay(key));
+    const v = _closedK ? null : hist[key]; // 휴장일엔 등락률 표시 안 함
     const isToday = key === todayStr;
     const border = isToday ? '1.5px solid var(--pr)' : '1px solid transparent';
+    // 공휴일(주말 제외)은 날짜를 빨갛게 표시
+    const _holiCol = (_closedK && _dowI !== 0 && _dowI !== 6) ? 'var(--up)' : null;
     if(v) {
       const col = v.kpc >= 0 ? 'var(--up)' : 'var(--dn)';
       html += '<div onclick="idxCalInfo(\'' + key + '\')" style="background:var(--sf2);border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center;cursor:pointer">'
         + '<div style="font-size:9px;font-weight:700;color:' + (isToday ? 'var(--pr)' : 'var(--tx2)') + '">' + d + '</div>'
         + '<div style="font-size:7px;font-weight:800;color:' + col + '">' + (v.kpc >= 0 ? '+' : '') + v.kpc.toFixed(1) + '%</div></div>';
     } else {
-      html += '<div style="border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center"><div style="font-size:9px;color:var(--tx3)">' + d + '</div></div>';
+      html += '<div style="border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center"><div style="font-size:9px;color:' + (_holiCol || 'var(--tx3)') + ';font-weight:' + (_holiCol ? '700' : '500') + '">' + d + '</div>' + (_holiCol ? '<div style="font-size:7px;line-height:1">🏖️</div>' : '') + '</div>';
     }
   }
   grid.innerHTML = html;
@@ -7604,7 +7610,11 @@ function renderMktCal() {
   for(let d = 1; d <= lastDate; d++) {
     const key = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const _dowC = (firstDay + d - 1) % 7;
-    const score = (_dowC===0||_dowC===6) ? undefined : mh[key]; // 휴장일엔 점수 표시 안 함
+    // 주말 + 공휴일 모두 휴장 처리 (MARKET_HOLIDAYS 반영)
+    const _closedC = !!(window.isClosedDay && window.isClosedDay(key));
+    const score = _closedC ? undefined : mh[key]; // 휴장일엔 점수 표시 안 함
+    // 공휴일(주말 제외)은 날짜를 빨갛게 표시
+    const _holiColC = (_closedC && _dowC !== 0 && _dowC !== 6) ? 'var(--up)' : null;
     const isToday = key === todayStr;
     let bg = 'transparent', color = 'var(--tx3)', fontW = '500';
 
@@ -7616,10 +7626,10 @@ function renderMktCal() {
     }
 
     const border = isToday ? '1.5px solid var(--pr)' : '1px solid transparent';
-    const scoreText = score !== undefined ? `<div style="font-size:7px;font-weight:800;color:${color}">${score}</div>` : '';
+    const scoreText = score !== undefined ? `<div style="font-size:7px;font-weight:800;color:${color}">${score}</div>` : (_holiColC ? '<div style="font-size:7px;line-height:1">🏖️</div>' : '');
 
     html += `<div style="background:${bg};border:${border};border-radius:6px;padding:3px 1px;text-align:center;cursor:${score!==undefined?'pointer':'default'}" title="${score!==undefined?score+'pt':''}">
-      <div style="font-size:9px;font-weight:${fontW};color:${isToday?'var(--pr)':color}">${d}</div>
+      <div style="font-size:9px;font-weight:${_holiColC?'700':fontW};color:${isToday?'var(--pr)':(_holiColC||color)}">${d}</div>
       ${scoreText}
     </div>`;
   }
