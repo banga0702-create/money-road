@@ -6030,13 +6030,15 @@ window.openDatePicker = (dates, type, uid) => {
       const isToday = dStr === today;
       const dow = (firstDay + d - 1) % 7;
       const isSun = dow === 0, isSat = dow === 6;
-      let bg = 'transparent', color = isSun?'var(--up)':isSat?'var(--dn)':'var(--tx)';
-      let border = '1px solid transparent', fw = '600', cursor = 'default';
+      // 공휴일(주말 제외) - 날짜 빨강 + 🏖️
+      const isHoli = !isSun && !isSat && !!(window.isClosedDay && window.isClosedDay(dStr));
+      let bg = 'transparent', color = isSun?'var(--up)':isSat?'var(--dn)':(isHoli?'var(--up)':'var(--tx)');
+      let border = '1px solid transparent', fw = isHoli?'800':'600', cursor = 'default';
       if(hasData) { bg='var(--pr)'; color='#fff'; border='1px solid var(--pr)'; fw='800'; cursor='pointer'; }
       if(isToday && !hasData) { border='1px solid var(--pr)'; color='var(--pr)'; fw='800'; }
       html += `<div onclick="${hasData ? `${loadFn}('${dStr}','${uid}');closeMo('moDatePicker')` : ''}"
         style="text-align:center;padding:7px 2px;border-radius:8px;font-size:12px;font-weight:${fw};color:${color};background:${bg};border:${border};cursor:${cursor}">
-        ${d}
+        ${d}${isHoli && !hasData ? '<div style="font-size:8px;line-height:1">🏖️</div>' : ''}
       </div>`;
     }
     html += `</div>`;
