@@ -467,6 +467,9 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
 
 
 
+    <!-- 휴장일 목록 갱신 알림 -->
+    <div id="holidayRenewBadge" style="display:none;margin:10px 0 0;padding:8px 12px;text-align:center;border-radius:8px;font-size:10px;font-weight:700"></div>
+
     <!-- 시장온도 카드 -->
     <div class="mkt-comment" id="mktComment" style="margin-top:10px">
       <div style="padding:10px 14px 8px;display:flex;align-items:center;gap:8px">
@@ -2574,6 +2577,36 @@ function renderMarketComment(score, prevScore) {
 function renderHome(){
   const m=S.market;
   const score=m.score||0;
+
+  // 🏖️ 휴장일 목록 갱신 알림 - 목록 마지막 날짜가 30일 이내로 다가오면 표시
+  // 다음 해 목록을 넣으면 마지막 날짜가 밀리면서 자동으로 사라짐
+  try {
+    const _hrb = document.getElementById('holidayRenewBadge');
+    if(_hrb) {
+      const _hl = (window.MARKET_HOLIDAYS || []).slice().sort();
+      const _last = _hl[_hl.length - 1];
+      if(_last) {
+        const _todayS = new Date().toISOString().slice(0,10);
+        const _daysLeft = Math.round((new Date(_last + 'T00:00:00') - new Date(_todayS + 'T00:00:00')) / 86400000);
+        const _nextYear = Number(_last.slice(0,4)) + 1;
+        if(_daysLeft < 0) {
+          _hrb.innerHTML = '❗ 휴장일 목록이 <b>' + _last + '</b>로 만료됐어요 · ' + _nextYear + '년 휴장일 갱신이 필요합니다';
+          _hrb.style.background = 'rgba(239,68,68,0.12)';
+          _hrb.style.border = '1px solid rgba(239,68,68,0.35)';
+          _hrb.style.color = 'var(--dn)';
+          _hrb.style.display = 'block';
+        } else if(_daysLeft <= 30) {
+          _hrb.innerHTML = '⚠️ 휴장일 목록이 <b>' + _last + '</b>까지예요 · ' + _nextYear + '년 휴장일 갱신이 필요합니다';
+          _hrb.style.background = 'rgba(240,180,41,0.12)';
+          _hrb.style.border = '1px solid rgba(240,180,41,0.35)';
+          _hrb.style.color = 'var(--gd)';
+          _hrb.style.display = 'block';
+        } else {
+          _hrb.style.display = 'none';
+        }
+      }
+    }
+  } catch(eHR) {}
 
   // 종목수 있으면 종목수 기반, 없으면 등락률 기반으로 upR 계산
   let upR, dnR;
