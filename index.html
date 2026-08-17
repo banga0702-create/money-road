@@ -1626,6 +1626,19 @@ window.cleanWeekendData = async () => {
         if(S.weekHist.length !== before) { removedState.push('주간막대 ' + (before - S.weekHist.length) + '칸'); touched = true; }
       }
       if(touched && typeof save === 'function') { save(); if(typeof renderHome === 'function') renderHome(); }
+
+      // ⚠️ 평소 save()는 merge:true라 "삭제"가 Firestore에 반영되지 않음
+      //    (없는 필드는 '안 보낸 것'으로 취급되어 클라우드에 그대로 남음)
+      //    정리 작업에서만 appState를 통째로 덮어써서 삭제를 확정
+      if(touched) {
+        try {
+          await updateDoc(doc(db, 'users', uid), { appState: S });
+          console.log('휴장일 정리: appState 전체 덮어쓰기 완료');
+        } catch(eOv) {
+          console.warn('appState 덮어쓰기 실패:', eOv);
+          removedState.push('⚠️ 클라우드 반영 실패 - 다시 시도해주세요');
+        }
+      }
     }
 
     // 화면 갱신 (지워진 날짜 탭이 남아있지 않도록)
@@ -4149,7 +4162,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup,
          signInWithRedirect, getRedirectResult, deleteUser, updateProfile }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, getDocs, collection, onSnapshot, deleteDoc }
+import { getFirestore, doc, setDoc, updateDoc, getDoc, getDocs, collection, onSnapshot, deleteDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -4169,6 +4182,7 @@ const gProvider = new GoogleAuthProvider();
 // 첫번째 스크립트에서 Firestore 함수 사용할 수 있도록 window에 노출
 window.db = db;
 window.setDoc = setDoc;
+window.updateDoc = updateDoc;
 window.getDoc = getDoc;
 window.getDocs = getDocs;
 window.doc = doc;
