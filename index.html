@@ -1338,6 +1338,17 @@ window.renderTodayStar = async () => {
   const updEl = document.getElementById('todayStarUpdated');
   if(!card || !listEl) return;
 
+  // 🏖️ 휴장일엔 라이브 계산을 하지 않음
+  // (순매수TOP/상승수급/연속등장 재료 캐시가 비어 있어 반쪽 점수가 나옴)
+  // 저장된 마지막 거래일 기록을 대신 표시
+  const _uid0 = window._curUser?.uid;
+  if(window.isClosedDay && window.isClosedDay()) {
+    if(_uid0 && window.renderStarDateTabs) {
+      try { await window.renderStarDateTabs(_uid0); } catch(e) { console.warn('휴장일 주인공 로드 실패:', e); }
+    }
+    return;
+  }
+
   const ranked = window.calcTodayStar();
   if(!ranked.length) { card.style.display = 'none'; return; }
 
