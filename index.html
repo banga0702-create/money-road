@@ -1039,7 +1039,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <div style="margin-bottom:16px;padding:10px;background:var(--sf2);border-radius:10px">
       <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:4px">🏖️ 휴장일 기록 정리</div>
       <div style="font-size:9px;color:var(--tx3);line-height:1.6;margin-bottom:8px">토요일·일요일에 잘못 저장된 기록을 찾아서 지워요. 평일 기록은 건드리지 않아요.</div>
-      <button class="btn btn-sc" style="width:100%" onclick="cleanWeekendData()" id="cleanWkBtn">🧹 주말 기록 찾아서 지우기</button>
+      <button class="btn btn-sc" style="width:100%" onclick="cleanWeekendData()" id="cleanWkBtn">🧹 휴장일 기록 찾아서 지우기</button>
       <div id="cleanWkMsg" style="font-size:10px;margin-top:8px;line-height:1.6;display:none"></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1556,19 +1556,16 @@ window.isClosedDay = (dateStr) => {
   return dow === 0 || dow === 6;
 };
 
-// 🏖️ 주말(토/일)에 잘못 저장된 기록 정리
-// KIS는 주말에도 직전 거래일 데이터를 내려주는데, 예전 코드가 요일 확인 없이 오늘 날짜로 저장했음
+// 🏖️ 휴장일(주말 + 공휴일)에 잘못 저장된 기록 정리
+// KIS는 휴장일에도 직전 거래일 데이터를 내려주는데, 예전 코드가 휴장일 확인 없이 오늘 날짜로 저장했음
 window.cleanWeekendData = async () => {
   const btn = document.getElementById('cleanWkBtn');
   const msg = document.getElementById('cleanWkMsg');
   const uid = window._curUser?.uid;
   if(!uid) { alert('로그인 후 이용해주세요'); return; }
 
-  const isWeekend = (d) => {
-    const [y, m, day] = d.split('-').map(Number);
-    const dow = new Date(y, m-1, day).getDay(); // 로컬(한국) 기준
-    return dow === 0 || dow === 6;
-  };
+  // 주말 + MARKET_HOLIDAYS 공휴일까지 함께 판정
+  const isWeekend = (d) => window.isClosedDay(d);
 
   if(btn) { btn.disabled = true; btn.textContent = '⏳ 찾는 중...'; }
   if(msg) { msg.style.display = 'block'; msg.style.color = 'var(--tx3)'; msg.textContent = '기록을 확인하고 있어요...'; }
@@ -1643,7 +1640,7 @@ window.cleanWeekendData = async () => {
     if(msg) {
       if(total === 0) {
         msg.style.color = 'var(--tx3)';
-        msg.textContent = '✓ 지울 주말 기록이 없어요. 이미 깨끗해요!';
+        msg.textContent = '✓ 지울 휴장일 기록이 없어요. 이미 깨끗해요!';
       } else {
         msg.style.color = 'var(--ac)';
         msg.innerHTML = '✓ ' + total + '건 정리했어요<br>'
@@ -1654,10 +1651,10 @@ window.cleanWeekendData = async () => {
       }
     }
   } catch(e) {
-    console.warn('주말 기록 정리 실패:', e);
+    console.warn('휴장일 기록 정리 실패:', e);
     if(msg) { msg.style.color = 'var(--dn)'; msg.textContent = '⚠️ 실패했어요: ' + (e.message || e); }
   }
-  if(btn) { btn.disabled = false; btn.textContent = '🧹 주말 기록 찾아서 지우기'; }
+  if(btn) { btn.disabled = false; btn.textContent = '🧹 휴장일 기록 찾아서 지우기'; }
 };
 
 window.loadSudTop1 = async (uid) => {
