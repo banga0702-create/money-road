@@ -562,6 +562,15 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
       </div>
     </div>
 
+    <!-- 거래대금 (20일 평균 대비) -->
+    <div id="trAmtCard" style="margin:10px 16px 0;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🔥 거래대금 <span style="font-size:9px;font-weight:600;color:var(--tx3)">20일 평균 대비</span></span>
+        <span id="trAmtState" style="font-size:9px;color:var(--tx3)"></span>
+      </div>
+      <div id="trAmtList" style="margin-top:8px"><div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오는 중...</div></div>
+    </div>
+
     <!-- 외국인 일별 매매동향 -->
     <div id="invDailyCard" style="margin:10px 16px 0;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -6572,24 +6581,14 @@ window.fetchMarketIndex = async () => {
     window._mktKospiIdx  = parseFloat(kp?.bstp_nmix_prpr) ? parseFloat(kp.bstp_nmix_prpr).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
     window._mktKosdaqIdx = parseFloat(kq?.bstp_nmix_prpr) ? parseFloat(kq.bstp_nmix_prpr).toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
     // 일별 지수 기록 저장 (지수 달력용 - 하루 중 마지막 조회값이 남음)
+    // 거래대금은 index_daily API에서 과거치까지 한 번에 받아오므로 여기 저장하지 않음
     try {
       const idxKey = new Date().toISOString().slice(0,10);
       if(window.isClosedDay && window.isClosedDay(idxKey)) throw new Error('휴장일 - 지수 기록 건너뜀');
       if(!S.idxHist) S.idxHist = {};
-      const _prevIdx = S.idxHist[idxKey] || {};
-      // 거래대금 (누적) - 백만원 → 억원. 15:30 이후 조회분만 amtFinal:true
-      const _nowK = new Date();
-      const _isFinal = _nowK.getHours() > 15 || (_nowK.getHours() === 15 && _nowK.getMinutes() >= 30);
-      const _kpAmt = Math.round((parseFloat(kp?.acml_tr_pbmn)||0) / 100);
-      const _kqAmt = Math.round((parseFloat(kq?.acml_tr_pbmn)||0) / 100);
       S.idxHist[idxKey] = {
         kp: parseFloat(kp?.bstp_nmix_prpr)||0, kpc: parseFloat(kp?.bstp_nmix_prdy_ctrt)||0,
-        kq: parseFloat(kq?.bstp_nmix_prpr)||0, kqc: parseFloat(kq?.bstp_nmix_prdy_ctrt)||0,
-        // 값이 0으로 오면 기존 값 유지 (덮어쓰기 사고 방지)
-        kpAmt: _kpAmt > 0 ? _kpAmt : (_prevIdx.kpAmt || 0),
-        kqAmt: _kqAmt > 0 ? _kqAmt : (_prevIdx.kqAmt || 0),
-        // 한 번 true가 되면 계속 true
-        amtFinal: (_isFinal && _kpAmt > 0) || _prevIdx.amtFinal === true
+        kq: parseFloat(kq?.bstp_nmix_prpr)||0, kqc: parseFloat(kq?.bstp_nmix_prdy_ctrt)||0
       };
       if(typeof save === 'function') save();
     } catch(eI) {}
@@ -7252,6 +7251,9 @@ window.homeRefresh = async () => {
     await new Promise(r => setTimeout(r, 1500));
     // 외국인 일별 매매동향
     if(window.fetchInvestorDaily) await fetchInvestorDaily();
+    await new Promise(r => setTimeout(r, 1500));
+    // 🔥 거래대금 (20일 평균 대비)
+    if(window.fetchTradeAmount) await fetchTradeAmount();
   } catch(e) { console.warn('홈 새로고침 실패:', e); }
   if(btn) { delete btn.dataset.busy; btn.textContent = '🔄'; }
 };
@@ -7295,6 +7297,64 @@ window.fetchInvestorDaily = async () => {
     renderInvDaily();
   } catch(e) {
     console.warn('외국인 매매동향 실패:', e);
+    listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오기 실패 - 새로고침 해주세요</div>';
+  }
+};
+
+// ── 🔥 거래대금 (20일 평균 대비)
+// index_daily API가 과거 일봉을 한번에 주므로 별도 저장이 필요 없음
+// 원본 단위는 십만원 → 1000으로 나누면 억원
+window.fetchTradeAmount = async () => {
+  const listEl = document.getElementById('trAmtList');
+  const stateEl = document.getElementById('trAmtState');
+  if(!listEl) return;
+
+  // 15:30 이전이면 오늘 값은 '누적 중'이라 평균 비교를 하지 않음
+  const _n = new Date();
+  const isLive = !window.isClosedDay() && (_n.getHours() < 15 || (_n.getHours() === 15 && _n.getMinutes() < 30));
+  if(stateEl) stateEl.textContent = isLive ? '장중 집계중' : '';
+
+  const fetchOne = async (code) => {
+    const r = await fetch('/api/kis?action=index_daily&code=' + code + '&days=40');
+    const d = await r.json();
+    const arr = (d.output2 || []).filter(x => x && x.stck_bsop_date && parseFloat(x.acml_tr_pbmn) > 0);
+    if(!arr.length) return null;
+    const toEok = (v) => Math.round((parseFloat(v) || 0) / 1000); // 십만원 → 억원
+    const today = toEok(arr[0].acml_tr_pbmn);
+    // 오늘을 제외한 직전 20거래일 평균
+    const past = arr.slice(1, 21).map(x => toEok(x.acml_tr_pbmn)).filter(v => v > 0);
+    const avg = past.length ? Math.round(past.reduce((a,b) => a+b, 0) / past.length) : 0;
+    return { today, avg, n: past.length, date: arr[0].stck_bsop_date };
+  };
+
+  const fmtJo = (eok) => (eok / 10000).toFixed(2) + '조';
+
+  try {
+    const [kp, kq] = await Promise.all([fetchOne('0001'), fetchOne('1001')]);
+    const row = (label, v) => {
+      if(!v) return `<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:11px;font-weight:700;color:var(--tx2)">${label}</span><span style="font-size:10px;color:var(--tx3)">—</span></div>`;
+      let right;
+      if(isLive) {
+        right = `<span style="font-size:10px;font-weight:700;color:var(--tx3)">장중</span>`;
+      } else if(v.n < 5) {
+        right = `<span style="font-size:10px;font-weight:700;color:var(--tx3)">집계중</span>`;
+      } else {
+        const pct = Math.round((v.today - v.avg) / v.avg * 100);
+        const col = pct >= 10 ? 'var(--up)' : pct <= -10 ? 'var(--dn)' : 'var(--tx3)';
+        const fire = pct >= 10 ? ' 🔥' : '';
+        right = `<span style="font-size:11px;font-weight:800;color:${col}">${pct >= 0 ? '+' : ''}${pct}%${fire}</span>`;
+      }
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+        <span style="font-size:11px;font-weight:700;color:var(--tx2)">${label}</span>
+        <span style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;font-weight:800;color:var(--tx)">${fmtJo(v.today)}</span>
+          ${right}
+        </span>
+      </div>`;
+    };
+    listEl.innerHTML = row('코스피', kp) + row('코스닥', kq);
+  } catch(e) {
+    console.warn('거래대금 조회 실패:', e);
     listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오기 실패 - 새로고침 해주세요</div>';
   }
 };
@@ -7797,6 +7857,7 @@ onAuthStateChanged(auth, async (user) => {
       fetchMarketIndex();
       setTimeout(fetchEtf52Week, 3000); // 토큰 충돌 방지 딜레이
       setTimeout(fetchInvestorDaily, 6000); // 외국인 일별 매매동향
+      setTimeout(() => { if(window.fetchTradeAmount) fetchTradeAmount(); }, 9000); // 🔥 거래대금
       // 15:30 이후 앱을 열면 (탭 상관없이) 오늘 데이터가 없을 때만 자동으로 수급1등 계산 + 자동투자 체크
       setTimeout(async () => {
         const _n = new Date();
