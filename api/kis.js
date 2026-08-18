@@ -394,6 +394,27 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    // 지수 일봉 조회 (거래대금 포함) - 코스피 0001 / 코스닥 1001
+    // daily_price와 TR은 같지만 시장구분이 U(업종)라 별도 액션으로 분리
+    // (daily_price는 정배열/주봉/백테스트에서 쓰는 핵심 경로라 건드리지 않음)
+    if (action === 'index_daily') {
+      const token = await getToken();
+      const { code, period, days } = req.query;
+      const idxCode = code || '0001';
+      const periodCode = (period === 'W' || period === 'M') ? period : 'D';
+      const backDays = Math.min(Math.max(parseInt(days) || 60, 7), 365);
+      const nowKST = new Date(Date.now() + 9*60*60*1000);
+      const fromKST = new Date(nowKST.getTime() - backDays*24*60*60*1000);
+      const dTo = nowKST.toISOString().slice(0,10).replace(/-/g,'');
+      const dFrom = fromKST.toISOString().slice(0,10).replace(/-/g,'');
+      const r = await fetch(
+        `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${idxCode}&FID_INPUT_DATE_1=${dFrom}&FID_INPUT_DATE_2=${dTo}&FID_PERIOD_DIV_CODE=${periodCode}`,
+        { headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}`, 'appkey': APP_KEY, 'appsecret': APP_SECRET, 'tr_id': 'FHKUP03500100', 'custtype': 'P' } }
+      );
+      const data = await r.json();
+      return res.status(200).json(data);
+    }
+
     // 정배열 배치 조회 - 여러 종목 한번에 처리
     if (action === 'jungbae_batch') {
       const token = await getToken();
