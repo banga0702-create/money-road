@@ -590,6 +590,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
             <button id="todayStarRefreshBtn" onclick="refreshTodayStar()" style="background:rgba(79,99,232,0.12);color:var(--pr);border:1px solid rgba(79,99,232,0.3);border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer">⚡ 재실행</button>
           </div>
         </div>
+        <div id="starClosedBadge" style="display:none;margin:0 0 8px;padding:6px 10px;text-align:center;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.35);border-radius:8px;font-size:10px;color:var(--gd);font-weight:700"></div>
         <div id="todayStarDateTabs" style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto"></div>
         <div id="todayStarList" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
@@ -699,6 +700,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         </div>
       </div>
       <div id="jungBaeMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div id="jungBaeClosedBadge" style="display:none;margin:0 16px 8px;padding:7px 10px;text-align:center;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.35);border-radius:8px;font-size:10px;color:var(--gd);font-weight:700"></div>
       <div id="jungBaeDateTabs" style="display:flex;gap:6px;padding:0 16px 8px;overflow-x:auto"></div>
       <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">5일 &gt; 20일 &gt; 60일 순 정배열 종목 (섹터별)</div>
       <div id="jungBaeCustomSectors" style="display:none"></div>
@@ -726,6 +728,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
         <button class="btn btn-ac btn-sm" onclick="reverseFetch()" id="reverseBtn">⚡ 재실행</button>
       </div>
       <div id="reverseMsg" style="margin:0 16px 8px;font-size:11px;color:var(--ac);display:none"></div>
+      <div id="reverseClosedBadge" style="display:none;margin:0 16px 8px;padding:7px 10px;text-align:center;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.35);border-radius:8px;font-size:10px;color:var(--gd);font-weight:700"></div>
       <div id="reverseDateTabs" style="display:flex;gap:6px;padding:0 16px 6px;overflow-x:auto"></div>
       <div style="margin:4px 16px 8px;font-size:10px;color:var(--tx3)">
         📉 거래대금 1000억↑ 하락종목 중 외국인/기관 순매수 종목
@@ -1423,6 +1426,7 @@ window.renderStarDateTabs = async (uid) => {
 
 // 히스토리 로드
 window.loadStarHistory = async (date, uid) => {
+  if(window.showClosedBadge) window.showClosedBadge('starClosedBadge', date);
   document.querySelectorAll('[id^="starDateBtn-"]').forEach(b => {
     b.style.background = 'transparent'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
   });
@@ -1627,6 +1631,18 @@ window.closedDayGuard = async (loader) => {
     alert('🏖️ 오늘은 휴장일이라 재실행할 수 없어요');
   }
   return true;
+};
+
+// 🏖️ 휴장일 배지 표시 - 지금 보는 게 언제 데이터인지 알려줌
+window.showClosedBadge = (elId, date) => {
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!window.isClosedDay || !window.isClosedDay() || !date) { el.style.display = 'none'; return; }
+  const dn = ['일','월','화','수','목','금','토'];
+  const [y,m,d] = date.split('-').map(Number);
+  const lbl = m + '/' + d + '(' + dn[new Date(y, m-1, d).getDay()] + ')';
+  el.innerHTML = '🏖️ 오늘은 휴장일이에요 · 지금 보는 건 <b>' + lbl + '</b> 데이터예요';
+  el.style.display = 'block';
 };
 
 // 🏖️ 휴장일(주말 + 공휴일)에 잘못 저장된 기록 정리
@@ -4931,6 +4947,7 @@ window.saveJungBaeHistory = async (uid, results, targetDate) => {
 
 // 정배열 Firestore 로드
 window.loadJungBaeHistory = async (date, uid) => {
+  if(window.showClosedBadge) window.showClosedBadge('jungBaeClosedBadge', date);
   try {
     const snap = await getDoc(doc(db, 'users', uid, 'jungBaeHistory', date));
     if(!snap.exists()) return false;
@@ -5945,6 +5962,7 @@ window.renderReverseDateTabs = async (uid) => {
 
 // 역발상 과거 데이터 불러오기
 window.loadReverseHistory = async (date, uid) => {
+  if(window.showClosedBadge) window.showClosedBadge('reverseClosedBadge', date);
   document.querySelectorAll('[id^="revDateBtn-"]').forEach(b => {
     b.style.background = 'var(--sf2)'; b.style.color = 'var(--tx2)'; b.style.borderColor = 'var(--bd)';
   });
