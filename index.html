@@ -565,7 +565,7 @@ label{font-size:11px;font-weight:700;color:var(--tx2);display:block;margin-botto
     <!-- 거래대금 (20일 평균 대비) -->
     <div id="trAmtCard" style="margin:10px 16px 0;background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🔥 거래대금 <span style="font-size:9px;font-weight:600;color:var(--tx3)">20일 평균 대비</span></span>
+        <span style="font-size:12px;font-weight:800;color:var(--tx2)">🔥 거래대금 <span style="font-size:9px;font-weight:600;color:var(--tx3)">코스피 · 코스닥 · 일별</span></span>
         <span id="trAmtState" style="font-size:9px;color:var(--tx3)"></span>
       </div>
       <div id="trAmtList" style="margin-top:8px"><div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오는 중...</div></div>
@@ -7330,29 +7330,46 @@ window.fetchTradeAmount = async () => {
   const fmtJo = (eok) => (eok / 10000).toFixed(2) + '조';
 
   try {
-    const [kp, kq] = await Promise.all([fetchOne('0001'), fetchOne('1001')]);
-    const row = (label, v) => {
-      if(!v) return `<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:11px;font-weight:700;color:var(--tx2)">${label}</span><span style="font-size:10px;color:var(--tx3)">—</span></div>`;
-      let right;
+    // 동시 호출하면 KIS 토큰이 충돌해 500이 나므로 순차 조회 (앱 다른 곳과 동일한 방식)
+    const kp = await fetchOne('0001');
+    await new Promise(r => setTimeout(r, 800));
+    const kq = await fetchOne('1001');
+
+    // 표 형태로 열 고정 - 금액 길이에 따라 % 위치가 흔들리지 않게
+    const cell = (v) => {
+      if(!v) return { amt: '—', pctHtml: '' };
+      let pctHtml;
       if(isLive) {
-        right = `<span style="font-size:10px;font-weight:700;color:var(--tx3)">장중</span>`;
+        pctHtml = `<span style="font-size:10px;font-weight:700;color:var(--tx3)">장중</span>`;
       } else if(v.n < 5) {
-        right = `<span style="font-size:10px;font-weight:700;color:var(--tx3)">집계중</span>`;
+        pctHtml = `<span style="font-size:10px;font-weight:700;color:var(--tx3)">집계중</span>`;
       } else {
         const pct = Math.round((v.today - v.avg) / v.avg * 100);
         const col = pct >= 10 ? 'var(--up)' : pct <= -10 ? 'var(--dn)' : 'var(--tx3)';
         const fire = pct >= 10 ? ' 🔥' : '';
-        right = `<span style="font-size:11px;font-weight:800;color:${col}">${pct >= 0 ? '+' : ''}${pct}%${fire}</span>`;
+        pctHtml = `<span style="font-size:11px;font-weight:800;color:${col}">${pct >= 0 ? '+' : ''}${pct}%${fire}</span>`;
       }
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
-        <span style="font-size:11px;font-weight:700;color:var(--tx2)">${label}</span>
-        <span style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:11px;font-weight:800;color:var(--tx)">${fmtJo(v.today)}</span>
-          ${right}
-        </span>
-      </div>`;
+      return { amt: fmtJo(v.today), pctHtml };
     };
-    listEl.innerHTML = row('코스피', kp) + row('코스닥', kq);
+    const ck = cell(kp), cq = cell(kq);
+    listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <colgroup><col style="width:34%"><col style="width:33%"><col style="width:33%"></colgroup>
+      <tr>
+        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:left;padding:0 0 4px"></th>
+        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:right;padding:0 0 4px">거래대금</th>
+        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:right;padding:0 0 4px">20일 평균 대비</th>
+      </tr>
+      <tr>
+        <td style="font-size:11px;font-weight:700;color:var(--tx2);padding:5px 0">코스피</td>
+        <td style="font-size:11px;font-weight:800;color:var(--tx);text-align:right;padding:5px 0">${ck.amt}</td>
+        <td style="text-align:right;padding:5px 0">${ck.pctHtml}</td>
+      </tr>
+      <tr>
+        <td style="font-size:11px;font-weight:700;color:var(--tx2);padding:5px 0">코스닥</td>
+        <td style="font-size:11px;font-weight:800;color:var(--tx);text-align:right;padding:5px 0">${cq.amt}</td>
+        <td style="text-align:right;padding:5px 0">${cq.pctHtml}</td>
+      </tr>
+    </table>`;
   } catch(e) {
     console.warn('거래대금 조회 실패:', e);
     listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오기 실패 - 새로고침 해주세요</div>';
