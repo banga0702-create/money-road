@@ -7220,9 +7220,15 @@ window.renderIdxCal = () => {
     const _holiCol = (_closedK && _dowI !== 0 && _dowI !== 6) ? 'var(--up)' : null;
     if(v) {
       const col = v.kpc >= 0 ? 'var(--up)' : 'var(--dn)';
+      // 거래대금 (억원) - index_daily 캐시에서 가져옴. 조 단위로 표시
+      const _amt = (window._idxAmtCache || {})[key];
+      const _amtHtml = _amt > 0
+        ? '<div style="font-size:6px;font-weight:700;color:var(--tx3);line-height:1.1">' + (_amt/10000).toFixed(1) + '조</div>'
+        : '';
       html += '<div onclick="idxCalInfo(\'' + key + '\')" style="background:var(--sf2);border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center;cursor:pointer">'
         + '<div style="font-size:9px;font-weight:700;color:' + (isToday ? 'var(--pr)' : 'var(--tx2)') + '">' + d + '</div>'
-        + '<div style="font-size:7px;font-weight:800;color:' + col + '">' + (v.kpc >= 0 ? '+' : '') + v.kpc.toFixed(1) + '%</div></div>';
+        + '<div style="font-size:7px;font-weight:800;color:' + col + '">' + (v.kpc >= 0 ? '+' : '') + v.kpc.toFixed(1) + '%</div>'
+        + _amtHtml + '</div>';
     } else {
       html += '<div style="border:' + border + ';border-radius:6px;padding:3px 1px;text-align:center"><div style="font-size:9px;color:' + (_holiCol || 'var(--tx3)') + ';font-weight:' + (_holiCol ? '700' : '500') + '">' + d + '</div>' + (_holiCol ? '<div style="font-size:7px;line-height:1">🏖️</div>' : '') + '</div>';
     }
@@ -7234,7 +7240,9 @@ window.idxCalInfo = (key) => {
   if(!v) return;
   const f = (n) => n.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2});
   const s = (n) => (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
-  alert('\ud83d\udcca ' + key.slice(5).replace('-','/') + ' \uc9c0\uc218\n\n\ucf54\uc2a4\ud53c ' + f(v.kp) + ' (' + s(v.kpc) + ')\n\ucf54\uc2a4\ub2e5 ' + f(v.kq) + ' (' + s(v.kqc) + ')');
+  const _amt = (window._idxAmtCache || {})[key];
+  const amtLine = _amt > 0 ? '\n\n\ud83d\udd25 \ucf54\uc2a4\ud53c \uac70\ub798\ub300\uae08 ' + (_amt/10000).toFixed(2) + '\uc870' : '';
+  alert('\ud83d\udcca ' + key.slice(5).replace('-','/') + ' \uc9c0\uc218\n\n\ucf54\uc2a4\ud53c ' + f(v.kp) + ' (' + s(v.kpc) + ')\n\ucf54\uc2a4\ub2e5 ' + f(v.kq) + ' (' + s(v.kqc) + ')' + amtLine);
 };
 
 // 홈 화면 전체 새로고침 (지수/시장온도/투자자현황/외국인동향)
@@ -7324,7 +7332,13 @@ window.fetchTradeAmount = async () => {
     // 오늘을 제외한 직전 20거래일 평균
     const past = arr.slice(1, 21).map(x => toEok(x.acml_tr_pbmn)).filter(v => v > 0);
     const avg = past.length ? Math.round(past.reduce((a,b) => a+b, 0) / past.length) : 0;
-    return { today, avg, n: past.length, date: arr[0].stck_bsop_date };
+    // 날짜별 거래대금 맵 (달력 표시용) - YYYYMMDD → YYYY-MM-DD
+    const raw = {};
+    arr.forEach(x => {
+      const ds = String(x.stck_bsop_date || '');
+      if(ds.length === 8) raw[ds.slice(0,4) + '-' + ds.slice(4,6) + '-' + ds.slice(6,8)] = toEok(x.acml_tr_pbmn);
+    });
+    return { today, avg, n: past.length, date: arr[0].stck_bsop_date, raw };
   };
 
   const fmtJo = (eok) => (eok / 10000).toFixed(2) + '조';
@@ -7349,27 +7363,29 @@ window.fetchTradeAmount = async () => {
         const fire = pct >= 10 ? ' 🔥' : '';
         pctHtml = `<span style="font-size:11px;font-weight:800;color:${col}">${pct >= 0 ? '+' : ''}${pct}%${fire}</span>`;
       }
-      return { amt: fmtJo(v.today), pctHtml };
+      return { amt: fmtJo(v.today), avg: v.avg > 0 ? fmtJo(v.avg) : '—', pctHtml };
     };
     const ck = cell(kp), cq = cell(kq);
+    const rowHtml = (label, c) => `<tr>
+        <td style="font-size:11px;font-weight:700;color:var(--tx2);padding:5px 0">${label}</td>
+        <td style="font-size:11px;font-weight:800;color:var(--tx);text-align:right;padding:5px 0">${c.amt}</td>
+        <td style="font-size:10px;font-weight:700;color:var(--tx3);text-align:right;padding:5px 0">${c.avg}</td>
+        <td style="text-align:right;padding:5px 0">${c.pctHtml}</td>
+      </tr>`;
     listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;table-layout:fixed">
-      <colgroup><col style="width:34%"><col style="width:33%"><col style="width:33%"></colgroup>
+      <colgroup><col style="width:24%"><col style="width:24%"><col style="width:24%"><col style="width:28%"></colgroup>
       <tr>
-        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:left;padding:0 0 4px"></th>
+        <th style="padding:0 0 4px"></th>
         <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:right;padding:0 0 4px">거래대금</th>
-        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:right;padding:0 0 4px">20일 평균 대비</th>
+        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:right;padding:0 0 4px">20일 평균</th>
+        <th style="font-size:9px;font-weight:600;color:var(--tx3);text-align:right;padding:0 0 4px">대비</th>
       </tr>
-      <tr>
-        <td style="font-size:11px;font-weight:700;color:var(--tx2);padding:5px 0">코스피</td>
-        <td style="font-size:11px;font-weight:800;color:var(--tx);text-align:right;padding:5px 0">${ck.amt}</td>
-        <td style="text-align:right;padding:5px 0">${ck.pctHtml}</td>
-      </tr>
-      <tr>
-        <td style="font-size:11px;font-weight:700;color:var(--tx2);padding:5px 0">코스닥</td>
-        <td style="font-size:11px;font-weight:800;color:var(--tx);text-align:right;padding:5px 0">${cq.amt}</td>
-        <td style="text-align:right;padding:5px 0">${cq.pctHtml}</td>
-      </tr>
+      ${rowHtml('코스피', ck)}
+      ${rowHtml('코스닥', cq)}
     </table>`;
+
+    // 지수 달력용 거래대금 캐시도 함께 채움 (코스피)
+    if(kp && kp.raw) { window._idxAmtCache = Object.assign(window._idxAmtCache || {}, kp.raw); if(window.renderIdxCal) renderIdxCal(); }
   } catch(e) {
     console.warn('거래대금 조회 실패:', e);
     listEl.innerHTML = '<div style="font-size:10px;color:var(--tx3);text-align:center;padding:10px 0">불러오기 실패 - 새로고침 해주세요</div>';
