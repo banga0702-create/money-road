@@ -7330,7 +7330,8 @@ window.fetchInvestorDaily = async () => {
 
 // ── 🔥 거래대금 (20일 평균 대비)
 // index_daily API가 과거 일봉을 한번에 주므로 별도 저장이 필요 없음
-// 원본 단위는 십만원 → 1000으로 나누면 억원
+// 원본 단위는 백만원 → 100으로 나누면 억원 (1억 = 100백만원)
+// 검증: 8/14 코스피 27,196,790백만원 = 27.2조. 같은 날 외국인 순매수 +3.04조와 정합
 window.fetchTradeAmount = async () => {
   const listEl = document.getElementById('trAmtList');
   const stateEl = document.getElementById('trAmtState');
@@ -7346,7 +7347,7 @@ window.fetchTradeAmount = async () => {
     const d = await r.json();
     const arr = (d.output2 || []).filter(x => x && x.stck_bsop_date && parseFloat(x.acml_tr_pbmn) > 0);
     if(!arr.length) return null;
-    const toEok = (v) => Math.round((parseFloat(v) || 0) / 1000); // 십만원 → 억원
+    const toEok = (v) => Math.round((parseFloat(v) || 0) / 100); // 백만원 → 억원
     const today = toEok(arr[0].acml_tr_pbmn);
     // 오늘을 제외한 직전 20거래일 평균
     const past = arr.slice(1, 21).map(x => toEok(x.acml_tr_pbmn)).filter(v => v > 0);
