@@ -1298,9 +1298,11 @@ window.calcTodayStar = () => {
     if(data.ratio >= 30) addScore(name, 1, '수급30%↑');
   });
 
-  // 5. ⭐ 연속등장(2일↑) +1
+  // 5. ⭐ 수급 연속(2일↑) +1
+  // stars는 순매수TOP(외국인/외국인+기관) 또는 상승수급에 연속 등장한 일수
+  // '연속등장'이라고만 쓰면 오늘의 주인공에 연속으로 떴다는 뜻으로 오해됨
   Object.entries(scores).forEach(([name, data]) => {
-    if(data.stars >= 2) addScore(name, 1, '⭐연속등장');
+    if(data.stars >= 2) addScore(name, 1, '⭐수급 ' + data.stars + '일 연속');
   });
 
   // 점수순 정렬, 상위 5개
@@ -1320,7 +1322,10 @@ function renderStarList(ranked, isHistory) {
     const chgStr = data.chg != null ? (data.chg >= 0 ? '+' : '') + parseFloat(data.chg).toFixed(2) + '%' : '';
     const chgColor = (data.chg || 0) >= 0 ? 'var(--up)' : 'var(--dn)';
     const sector = (window._stockThemeMap && window._stockThemeMap[name]) || data.sector || '';
-    const isJB = !isHistory && window._jbLastResults && window._jbLastResults.some(sec => sec.stocks.some(s => s.name === name));
+    // 저장본은 저장 당시 값(data.jb)을, 오늘 계산분은 현재 정배열 결과를 사용
+    const isJB = isHistory
+      ? !!data.jb
+      : !!(window._jbLastResults && window._jbLastResults.some(sec => sec.stocks.some(s => s.name === name)));
     const stars = data.stars > 0 ? '⭐'.repeat(data.stars) : '';
     return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">'
       + '<span style="font-size:16px;flex-shrink:0">' + medals[i] + '</span>'
@@ -1375,7 +1380,15 @@ window.renderTodayStar = async () => {
   const uid = window._curUser?.uid;
   if(uid && !window.isClosedDay(today)) {
     try {
-      const saveData = ranked.map(([name, data]) => ({ name, score: data.score, reasons: data.reasons.filter((v,i,a)=>a.indexOf(v)===i), chg: data.chg, sector: data.sector || '' }));
+      // ⭐별 개수와 정배열 여부도 함께 저장 (저장본과 재실행 화면을 같게 만들기 위함)
+      // 정배열은 시점에 따라 달라지는 값이라 '그날의 상태'로 박제해야 함
+      const saveData = ranked.map(([name, data]) => ({
+        name, score: data.score,
+        reasons: data.reasons.filter((v,i,a)=>a.indexOf(v)===i),
+        chg: data.chg, sector: data.sector || '',
+        stars: data.stars || 0,
+        jb: !!(window._jbLastResults && window._jbLastResults.some(sec => (sec.stocks||[]).some(x => x.name === name)))
+      }));
       await setDoc(doc(db, 'users', uid, 'starHistory', today), { date: today, list: saveData, savedAt: Date.now() });
       await renderStarDateTabs(uid);
     } catch(e) {}
