@@ -1366,6 +1366,20 @@ window.renderTodayStar = async () => {
     return;
   }
 
+  // 오늘 저장본이 있으면 그걸 먼저 표시 (재실행 눌렀을 때만 새로 계산)
+  // 앱 시작 직후엔 등락률·수급비중 캐시가 아직 안 차서 반쪽 점수가 나오기 때문
+  if(!window._starForceCalc && _uid0) {
+    try {
+      const _today0 = new Date().toISOString().slice(0,10);
+      const _snap0 = await getDoc(doc(db, 'users', _uid0, 'starHistory', _today0));
+      if(_snap0.exists() && (_snap0.data().list || []).length) {
+        if(window.renderStarDateTabs) await window.renderStarDateTabs(_uid0);
+        if(window.loadStarHistory) await window.loadStarHistory(_today0, _uid0);
+        return;
+      }
+    } catch(e) { console.warn('오늘 주인공 저장본 확인 실패:', e); }
+  }
+
   const ranked = window.calcTodayStar();
   if(!ranked.length) { card.style.display = 'none'; return; }
 
@@ -2035,6 +2049,7 @@ window.simManualSell = async (id) => {
 // ── 오늘의 주인공 재실행 (KIS API 새로 호출)
 window.refreshTodayStar = async () => {
   if(await window.closedDayGuard(window.loadStarHistory)) return;
+  window._starForceCalc = true; // 재실행은 저장본 대신 새로 계산
   const btn = document.getElementById('todayStarRefreshBtn');
   if(btn) { btn.textContent = '⏳'; btn.disabled = true; }
   try {
